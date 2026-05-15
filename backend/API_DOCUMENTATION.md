@@ -168,6 +168,114 @@ Retrieves all users except the authenticated user.
 
 ---
 
+### 5. Get User By ID
+**GET** `/users/:id`
+
+Retrieves a specific user's profile and their ratings.
+
+**Authentication:** Required
+
+**Response (200):**
+```json
+{
+  "user": {
+    "_id": "userId",
+    "fullname": { "firstname": "John", "lastname": "Doe" },
+    "email": "john@example.com",
+    "role": "Developer",
+    "location": "New York",
+    "bio": "I am a developer",
+    "ratings": [
+      {
+        "user": { "fullname": "Jane Doe", "email": "jane@example.com" },
+        "rating": 5,
+        "review": "Great mentor!"
+      }
+    ],
+    "averageRating": 5,
+    "totalRatings": 1
+  }
+}
+```
+
+**Error Responses:**
+- `404` - User not found
+- `500` - Internal server error
+
+---
+
+### 6. Update Profile
+**PUT** `/users/update-profile`
+
+Updates the authenticated user's profile information. (Cannot update email or password through this route).
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "location": "San Francisco",
+  "bio": "Updated bio text"
+}
+```
+
+**Validation Rules:**
+- `bio` - Minimum 3 characters
+
+**Response (200):**
+```json
+{
+  "message": "Profile updated successfully",
+  "user": {
+    "_id": "userId",
+    "fullname": { "firstname": "John", "lastname": "Doe" },
+    "email": "john@example.com",
+    "role": "Developer",
+    "location": "San Francisco",
+    "bio": "Updated bio text"
+  }
+}
+```
+
+**Error Responses:**
+- `404` - User not found
+- `500` - Internal server error
+
+---
+
+### 7. Rate User
+**POST** `/users/rate/:id`
+
+Submits a rating and review for a specific user.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "rating": 5,
+  "review": "Great experience working with this person."
+}
+```
+
+**Validation Rules:**
+- `rating` - Required, integer between 1 and 5
+
+**Response (200):**
+```json
+{
+  "message": "Rating submitted successfully",
+  "averageRating": 4.5
+}
+```
+
+**Error Responses:**
+- `400` - You cannot rate yourself
+- `404` - User not found
+- `500` - Internal server error
+
+---
+
 ## Skills Endpoints
 
 ### 1. Add Skill to Offer
@@ -677,6 +785,161 @@ Toggles like status for a post.
   }
 }
 ```
+
+---
+
+### 4. Comment on Post
+**POST** `/posts/comment/:postId`
+
+Adds a comment to a specific post.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "text": "This is a great post!",
+  "comment": "This is a great post!"
+}
+```
+
+**Validation Rules:**
+- `text` - Minimum 1 character (Note: The controller might expect `comment` in the body)
+
+**Response (201):**
+```json
+{
+  "comment": {
+    "post": "postId",
+    "user": "userId",
+    "content": "This is a great post!",
+    "_id": "commentId",
+    "createdAt": "2024-01-15T10:35:00Z"
+  }
+}
+```
+
+**Error Responses:**
+- `404` - Post not found
+- `500` - Internal server error
+
+---
+
+### 5. Get Post Comments
+**GET** `/posts/comments/:postId`
+
+Retrieves all comments for a specific post.
+
+**Authentication:** Required
+
+**Response (200):**
+```json
+{
+  "comments": [
+    {
+      "_id": "commentId",
+      "post": "postId",
+      "user": { "_id": "userId", "fullname": "John Doe", "email": "john@example.com", "role": "Developer" },
+      "content": "Great post!",
+      "createdAt": "2024-01-15T10:35:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `404` - Comments not found
+- `500` - Internal server error
+
+---
+
+### 6. Get User Posts
+**GET** `/posts/user/:userId`
+
+Retrieves all posts created by a specific user.
+
+**Authentication:** Required
+
+**Response (200):**
+```json
+{
+  "posts": [
+    {
+      "_id": "postId",
+      "user": { "_id": "userId", "fullname": "John Doe", "email": "john@example.com", "role": "Developer" },
+      "content": "Check out my React skills!",
+      "mediaUrl": "/uploads/media-123.png",
+      "mediaType": "image",
+      "likes": [],
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `500` - Internal server error
+
+---
+
+### 7. Delete Post
+**DELETE** `/posts/:postId`
+
+Deletes a post and its associated comments. Only the post owner can delete it.
+
+**Authentication:** Required
+
+**Response (200):**
+```json
+{
+  "message": "Post deleted successfully"
+}
+```
+
+**Error Responses:**
+- `403` - Unauthorized to delete this post
+- `404` - Post not found
+- `500` - Internal server error
+
+---
+
+### 8. Update Post
+**PUT** `/posts/:postId`
+
+Updates the content of a post. Only the post owner can update it.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "content": "Updated post content"
+}
+```
+
+**Validation Rules:**
+- `content` - Minimum 1 character
+
+**Response (200):**
+```json
+{
+  "post": {
+    "_id": "postId",
+    "user": "userId",
+    "content": "Updated post content",
+    "mediaUrl": "/uploads/media-123.png",
+    "mediaType": "image",
+    "likes": [],
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:45:00Z"
+  }
+}
+```
+
+**Error Responses:**
+- `403` - Unauthorized to update this post
+- `404` - Post not found
+- `500` - Internal server error
 
 ---
 
