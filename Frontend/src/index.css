@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+:root {
+  /* Colors */
+  --primary: #004ac6;
+  --primary-container: #2563eb;
+  --on-primary: #ffffff;
+  
+  --secondary: #006c49;
+  --secondary-container: #6cf8bb;
+  --on-secondary-container: #00714d;
+  
+  --tertiary: #784b00;
+  --tertiary-container: #996100;
+  
+  --error: #ba1a1a;
+  
+  --background: #faf8ff;
+  --surface: #faf8ff;
+  --surface-container: #ededf9;
+  --surface-container-low: #f3f3fe;
+  --surface-container-lowest: #ffffff;
+  --surface-container-high: #e1e3ef;
+  
+  --on-surface: #191b23;
+  --on-surface-variant: #434655;
+  --outline-variant: rgba(195, 198, 215, 0.2);
+  
+  /* Typography */
+  --font-display: 'Manrope', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  
+  /* Shape */
+  --radius-xl: 1.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  
+  /* Shadows */
+  --shadow-ambient: 0 12px 32px rgba(25, 27, 35, 0.04);
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  
+  --color-error: var(--error);
+  
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-high: var(--surface-container-high);
+  
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  
+  --color-outline-variant: var(--outline-variant);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --radius-3xl: var(--radius-xl);
+  --radius-2xl: var(--radius-lg);
+  --radius-xl: var(--radius-md);
+
+  --shadow-ambient: var(--shadow-ambient);
+}
+
+@layer base {
+  body {
+    @apply font-body bg-background text-on-surface antialiased leading-relaxed;
+  }
+}
+
+@layer components {
+  /* Typography Scales */
+  .display-lg { 
+    @apply text-[3.5rem] font-extrabold leading-[1.1] font-display; 
+  }
+  .headline-sm { 
+    @apply text-2xl font-bold font-display; 
+  }
+  .body-lg { 
+    @apply text-base; 
+  }
+  .label-md { 
+    @apply text-xs font-bold uppercase tracking-widest text-on-surface-variant font-display; 
+  }
+
+  /* Components */
+  .container {
+    @apply max-w-7xl mx-auto px-8;
+  }
+
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20;
+  }
+
+  .card {
+    @apply bg-surface-container-lowest rounded-3xl p-8 transition-transform duration-300;
+  }
+
+  .card:hover {
+    @apply -translate-y-1;
+  }
+
+  /* Button Primitives */
+  .btn {
+    @apply inline-flex items-center gap-2 px-6 py-3 rounded-3xl font-display font-semibold transition-all duration-200 cursor-pointer text-sm;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-br from-primary to-primary-container text-white shadow-lg shadow-primary/10 hover:opacity-90 active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply bg-surface-container-low text-primary hover:bg-surface-container active:scale-[0.98];
+  }
+
+  /* Utilities */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
