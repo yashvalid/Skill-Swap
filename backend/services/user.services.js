@@ -1,9 +1,9 @@
 const User = require('../model/user.model');
 
-module.exports.registerUser = async ({firstname, lastname, email, password, role, location, bio}) => {
-    try{
+module.exports.registerUser = async ({ firstname, lastname, email, password, role, location, bio }) => {
+    try {
         const user = await User.create({
-            fullname : {
+            fullname: {
                 firstname,
                 lastname
             },
@@ -14,8 +14,7 @@ module.exports.registerUser = async ({firstname, lastname, email, password, role
             bio
         })
         return user;
-    } catch(err){
-        console.log(err);
+    } catch (err) {
         throw new Error("Error registering user");
     }
 }

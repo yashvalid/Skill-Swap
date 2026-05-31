@@ -66,7 +66,6 @@ module.exports.rejectSwap = async (req, res) => {
 
     try {
         const skillSwap = await skillSwapService.rejectSwap(requestId);
-        console.log(skillSwap)
         return res.status(201).json({ message: "Swap rejected" });
     } catch (err) {
         return res.status(500).json({ error: "internal server error" });
@@ -75,9 +74,7 @@ module.exports.rejectSwap = async (req, res) => {
 
 module.exports.getAllAcceptedSwaps = async (req, res) => {
     try {
-        console.log("getting users", req.user._id)
         const allUsers = await skillSwapService.getAllAcceptedSwaps(req.user._id);
-        console.log(allUsers);
         return res.status(201).json({ allUsers });
     } catch (err) {
         return res.status(500).json({ error: " Server error" });

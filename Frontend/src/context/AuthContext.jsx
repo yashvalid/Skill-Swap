@@ -27,7 +27,6 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post('http://localhost:9000/users/login', { email, password });
-      console.log(response.data);
       setUser(response.data.user);
       if (response.data.token) localStorage.setItem('token', response.data.token);
       toast.success('Logged in successfully');

@@ -85,11 +85,8 @@ const initSocket = async (server) => {
 }
 
 async function sendMessages(socketId, message) {
-    console.log("sending message to", socketId, message)
     if (io)
         io.to(socketId).emit(message.event, message.data);
-    else
-        console.log("socket not initialized")
 }
 
 module.exports = {

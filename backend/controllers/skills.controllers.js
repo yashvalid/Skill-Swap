@@ -29,7 +29,6 @@ module.exports.getSkills = async (req, res) => {
 
     if (!skills)
       return res.status(400).json({ message: "no skill found" });
-    console.log(skills)
     return res.status(201).json({ skills });
   } catch (err) {
     return res.status(500).json({ err });

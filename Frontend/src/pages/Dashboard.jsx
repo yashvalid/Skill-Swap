@@ -33,7 +33,6 @@ const Dashboard = () => {
         swapService.getPendingSwaps(),
         swapService.getAcceptedSwaps()
       ]);
-      console.log(pendingRes, acceptedRes)
       setPendingSwaps(pendingRes.data.pendingSwaps || []);
       setAcceptedSwaps(acceptedRes.data.allUsers || []);
     } catch (error) {

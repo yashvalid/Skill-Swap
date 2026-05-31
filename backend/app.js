@@ -24,8 +24,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.get('/', (req, res) => {
-    return res.send("hello world");
+app.use(express.static('public'));
+
+app.get('/health', (req, res) => {
+    return res.send("Server is up and running");
 })
 app.use("/users", userRoutes);
 app.use("/skillswap", SkillSwapRoutes);

@@ -42,7 +42,6 @@ const Messaging = () => {
       const handleNewMessage = (data) => {
         if (activeChatUser && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
           setMessages((prev) => [...prev, data]);
-          console.log(data);
         }
       };
 
@@ -68,7 +67,6 @@ const Messaging = () => {
     try {
       const response = await swapService.getAcceptedSwaps();
       setChatUsers(response.data.allUsers || []);
-      console.log(response.data.allUsers)
     } catch (error) {
       console.error('Failed to fetch chat users');
     } finally {
@@ -154,7 +152,7 @@ const Messaging = () => {
             <>
               {/* Header */}
               <div className="p-4 px-8 border-b border-outline-variant flex items-center justify-between glass sticky top-0 z-10">
-                <div 
+                <div
                   className="flex items-center gap-4 cursor-pointer group"
                   onClick={() => navigate(`/profile/${activeChatUser._id}`)}
                 >

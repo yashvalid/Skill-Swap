@@ -30,7 +30,7 @@ const Profile = () => {
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [newSkill, setNewSkill] = useState({ skill: '', des: '', type: 'offer' });
   const [posts, setPosts] = useState([]);
-  
+
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editProfileData, setEditProfileData] = useState({ bio: '', location: '' });
 
@@ -56,15 +56,13 @@ const Profile = () => {
 
   const fetchSkills = async () => {
     try {
-      // console.log("fetching")
       // const [offeredRes, learnRes] = await Promise.all([
       //   skillService.getOfferedSkills(),
       //   skillService.getSkillsToLearn()
       // ]);
-      // console.log(offeredRes, learnRes);
       const offeredRes = await skillService.getOfferedSkills();
       const learnRes = await skillService.getSkillsToLearn();
-      console.log(offeredRes, learnRes);
+
       setOfferedSkills(offeredRes.data.skills || []);
       setSkillsToLearn(learnRes.data.skills || []);
     } catch (error) {
@@ -111,7 +109,7 @@ const Profile = () => {
   };
 
   const handleDeletePost = async (postId) => {
-    if(!window.confirm("Are you sure you want to delete this post?")) return;
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
     try {
       await feedService.deletePost(postId);
       toast.success('Post deleted');
@@ -184,13 +182,13 @@ const Profile = () => {
             >
               <Plus size={18} /> Add New Skill
             </button>
-            <button 
+            <button
               onClick={handleShareProfile}
               className="btn btn-outline px-8 flex items-center gap-2"
             >
               <Share2 size={18} /> Share
             </button>
-            <button 
+            <button
               onClick={() => setShowEditProfile(true)}
               className="p-3 rounded-2xl border border-outline-variant hover:bg-white transition-colors"
             >
@@ -319,7 +317,7 @@ const Profile = () => {
                     </button>
                   </div>
                   <div className="flex items-center gap-4 mb-4">
-                    <img 
+                    <img
                       src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullname?.firstname}`}
                       className="w-12 h-12 rounded-full bg-white border-2 border-primary/20"
                       alt="avatar"

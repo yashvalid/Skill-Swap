@@ -2,7 +2,6 @@ const redisClient = require('../services/redis.service');
 
 const cache = (ttl = 300, keyFn = null) => async (req, res, next) => {
     const key = keyFn ? keyFn(req) : `cache:${req.originalUrl}`;
-    console.log(key);
     try {
         const hit = await redisClient.get(key);
         if (hit)
@@ -45,12 +44,8 @@ const invalidateCache = async (patterns) => {
                     }
                 } while (cursor !== '0');
 
-                if (total)
-                    console.log(`Busted ${total} key(s) matching "${pattern}"`);
             } else {
-                const deleted = await redisClient.del(pattern);
-                if (deleted)
-                    console.log(`Busted key "${pattern}"`);
+                await redisClient.del(pattern);
             }
         } catch (err) {
             console.error(`Redis invalidation error (${pattern}):`, err.message);

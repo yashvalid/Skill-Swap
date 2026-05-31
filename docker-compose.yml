@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000" 
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=9000
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    # ports:
+    #   - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

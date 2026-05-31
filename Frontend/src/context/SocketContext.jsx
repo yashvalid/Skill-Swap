@@ -11,9 +11,8 @@ export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    console.log("socket connected")
     if (user) {
-      const newSocket = io('http://localhost:9000');
+      const newSocket = io(import.meta.env.VITE_BASE_URL);
       setSocket(newSocket);
 
       newSocket.emit('join', { userId: user._id });

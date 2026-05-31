@@ -36,7 +36,6 @@ const Feed = () => {
   const fetchPosts = async () => {
     try {
       const { data } = await feedService.getAllPosts();
-      console.log(data);
       setPosts(data.posts);
     } catch (error) {
       toast.error('Failed to load feed');
@@ -55,7 +54,6 @@ const Feed = () => {
 
   const handleComment = async (postId) => {
     try {
-      console.log(postId);
       const response = await feedService.commentPost(postId, newComment);
       if (response.status === 201) {
         fetchComments(postId);
@@ -71,9 +69,7 @@ const Feed = () => {
 
   const fetchComments = async (postId) => {
     try {
-      console.log(postId);
       const { data } = await feedService.getComments(postId);
-      console.log(data);
       setComments(data.comments);
     } catch (error) {
       toast.error('Failed to load comments');
@@ -147,7 +143,7 @@ const Feed = () => {
                   <div className="flex flex-col border-r border-outline-variant/10">
                     {/* Post Header */}
                     <div className="p-4 px-6 flex items-center justify-between">
-                      <div 
+                      <div
                         className="flex items-center gap-3 cursor-pointer group"
                         onClick={() => navigate(`/profile/${post.user?._id}`)}
                       >
@@ -235,7 +231,7 @@ const Feed = () => {
                                 </div>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div 
+                                <div
                                   className="flex items-center gap-2 mb-1 cursor-pointer hover:text-primary transition-colors inline-flex"
                                   onClick={() => navigate(`/profile/${comment.user?._id}`)}
                                 >
