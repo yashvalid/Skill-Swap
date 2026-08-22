@@ -1,6 +1,6 @@
-# Skill Swap Marketplace
+# Skill Swap
 
-Skill Swap Marketplace is a full-stack platform that enables users to exchange skills with others, fostering a collaborative learning environment without monetary transactions. Users can teach, learn, and connect through real-time messaging, skill swap requests, and a social feed.
+Skill Swap is a full-stack platform that enables users to exchange skills with others, fostering a collaborative learning environment without monetary transactions. Users can teach, learn, and connect through real-time messaging, skill swap requests, and a social feed.
 
 ---
 
