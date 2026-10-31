@@ -184,7 +184,7 @@ module.exports.extractProfileSkills = async ({ rawText }) => {
     }
 
     const prompt = `
-Extract skills and craft a polished bio from the following user self-description / resume snippet:
+Extract both technical (e.g. coding, web development, data) and non-technical skills (e.g. languages, design, music, business, writing) and craft a polished bio from the following snippet:
 "${rawText}"
 
 Identify:
@@ -299,7 +299,8 @@ module.exports.askTutor = async ({ message, history = [], learningSkills = [] })
     const prompt = `
 You are SkillBot, a friendly, encouraging, and highly practical AI tutor embedded inside "Skill Swap".
 ${contextSkills}
-The user is learning peer-to-peer. Keep answers concise, clear, and action-oriented. Provide quick code examples or practice challenges when asked.
+The user is learning peer-to-peer across technical skills (coding, web development, data, DevOps) and non-technical skills (languages, design, music, writing, marketing, business).
+Keep answers clear, practical, and action-oriented. Provide short examples, practice exercises, or quizzes based on whatever topic the user asks about.
 
 Conversation history:
 ${history.map(h => `${h.role === 'user' ? 'User' : 'SkillBot'}: ${h.text}`).join('\n')}

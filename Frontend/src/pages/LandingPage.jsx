@@ -57,7 +57,7 @@ const LandingPage = () => {
             </h1>
 
             <p className="body-md text-base sm:text-lg text-[#A4B0BE]">
-              SkillSwap connects developers, designers, and creators to trade 1-on-1 mentorship. Teach what you know, learn what you don't, and build real milestones together.
+              SkillSwap connects developers, language speakers, designers, musicians, and creators to trade 1-on-1 mentorship. Trade code with design, Spanish with Python, or music production with digital marketing.
             </p>
 
             <div className="flex flex-wrap items-center gap-3.5 pt-2">
@@ -75,7 +75,7 @@ const LandingPage = () => {
               <span className="font-mono text-xs text-[#718093] uppercase">
                 Active Tracks:
               </span>
-              {['GO ROUTINES', 'NEXT.JS 15', 'DESIGN TOKENS', 'WEBRTC PIPELINES', 'RAG ARCHITECTURE'].map((track) => (
+              {['WEB DEVELOPMENT', 'CONVERSATIONAL SPANISH', 'UI/UX DESIGN', 'VIDEO & MOTION', 'PYTHON & ML', 'MUSIC PRODUCTION'].map((track) => (
                 <span key={track} className="tag-chip text-[11px]">
                   {track}
                 </span>
@@ -343,7 +343,7 @@ const LandingPage = () => {
               Structured Milestone Cadence
             </h2>
             <p className="body-md text-[#A4B0BE]">
-              Unstructured meetings rarely yield lasting skills. When a swap is accepted, both partners co-author or AI-synthesize a 4-week milestones agenda. Each session has a clear goal, a repository artifact, and peer code review.
+              Unstructured calls rarely yield lasting skills. When a swap is accepted, both partners get a tailored 4-week roadmap. Each session has a clear goal and hands-on practice?whether you're reviewing code, speaking Spanish, or refining audio tracks.
             </p>
             <ul className="space-y-2 pt-2 text-sm text-[#F5F6FA]">
               <li className="flex items-center gap-2.5">
@@ -370,7 +370,7 @@ const LandingPage = () => {
               Direct WebRTC Signaling
             </h2>
             <p className="body-md text-[#A4B0BE]">
-              No third-party conference links or external tool fragmentation. Launch video calls, share screen windows, and inspect code side-by-side right within the exchange dashboard via low-latency Socket.io WebRTC signaling.
+              No third-party links or meeting codes. Launch 1-on-1 video calls, share your screen, and practice together side-by-side right within your browser.
             </p>
             <div className="flex gap-3 pt-2">
               <Link to="/marketplace" className="btn btn-primary text-xs py-2.5 px-5">
@@ -422,7 +422,7 @@ const LandingPage = () => {
             Start Your First Skill Swap
           </h2>
           <p className="body-md text-sm text-[#A4B0BE] mx-auto leading-relaxed">
-            Connect with engineers, designers, and creators trading knowledge freely without paywalls.
+            Connect with developers, language speakers, designers, musicians, and creators trading knowledge freely without paywalls.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
             <Link to="/marketplace" className="btn btn-cta text-xs py-3 px-6">

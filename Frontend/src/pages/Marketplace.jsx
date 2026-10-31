@@ -21,75 +21,114 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-// Curated default mentors to ensure the commons is never empty
+// Curated default mentors spanning both technical and non-technical disciplines
 const CURATED_PEERS = [
   {
     _id: 'peer-1',
     fullname: { firstname: 'Sarah', lastname: 'Lin' },
-    role: 'Lead Design Systems Engineer',
-    bio: 'Crafting production token systems, component libraries, and spatial micro-interactions in Figma and React.',
+    role: 'Lead UI/UX Designer',
+    category: 'Design & Creative',
+    bio: 'Crafting production design systems, responsive wireframes, and interactive prototypes in Figma.',
     location: 'San Francisco, CA',
-    skillsOffered: ['Figma Variables', 'Design Tokens', 'Tailwind CSS', 'Accessibility'],
-    skillsNeeded: ['Next.js 15', 'TypeScript', 'State Machines'],
+    skillsOffered: ['Figma Design', 'UI/UX Architecture', 'Design Systems', 'User Research'],
+    skillsNeeded: ['React & Next.js', 'TypeScript', 'Web Development'],
     averageRating: 4.95,
     totalRatings: 34
   },
   {
     _id: 'peer-2',
     fullname: { firstname: 'Marcus', lastname: 'Thorne' },
-    role: 'Principal Backend Architect',
-    bio: 'Specializing in high-throughput distributed systems, WebSocket protocols, and cloud event pipelines.',
+    role: 'Backend Architect',
+    category: 'Coding & Tech',
+    bio: 'Specializing in high-throughput distributed systems, WebSocket APIs, and database optimization.',
     location: 'Berlin / Remote',
-    skillsOffered: ['Distributed Systems', 'Redis Architecture', 'Node.js Internals', 'Docker'],
-    skillsNeeded: ['Product UI', 'SwiftUI', 'Animation Curves'],
+    skillsOffered: ['Distributed Systems', 'Redis Architecture', 'Node.js & Express', 'Docker'],
+    skillsNeeded: ['UI/UX Design', 'Conversational Spanish', 'Video Editing'],
     averageRating: 4.9,
     totalRatings: 48
   },
   {
     _id: 'peer-3',
+    fullname: { firstname: 'Sofia', lastname: 'Morales' },
+    role: 'Language Coach & Polyglot',
+    category: 'Languages',
+    bio: 'Native Spanish and fluent French speaker helping peers achieve conversational fluency and professional confidence.',
+    location: 'Madrid / Remote',
+    skillsOffered: ['Conversational Spanish', 'Business French', 'Accent & Pronunciation', 'Grammar'],
+    skillsNeeded: ['Python for Data', 'Web Development', 'Figma Basics'],
+    averageRating: 4.98,
+    totalRatings: 52
+  },
+  {
+    _id: 'peer-4',
+    fullname: { firstname: 'David', lastname: 'Kim' },
+    role: 'Music Producer & Audio Engineer',
+    category: 'Music & Audio',
+    bio: 'Music producer and guitarist. Teaching Ableton Live production, vocal mixing, beat making, and acoustic guitar.',
+    location: 'Seoul / Remote',
+    skillsOffered: ['Ableton Live', 'Vocal Mixing', 'Acoustic Guitar', 'Sound Design'],
+    skillsNeeded: ['React Web Basics', 'SEO Strategy', 'Content Writing'],
+    averageRating: 4.91,
+    totalRatings: 29
+  },
+  {
+    _id: 'peer-5',
     fullname: { firstname: 'Elena', lastname: 'Vance' },
-    role: 'Staff Product Strategist',
-    bio: 'Helping technical founders and builders shape product narratives, user retention loops, and UX research.',
+    role: 'Product Strategist & Speaker',
+    category: 'Business & Growth',
+    bio: 'Helping builders shape compelling pitch decks, public speaking confidence, and product positioning.',
     location: 'New York, NY',
-    skillsOffered: ['Product Strategy', 'UX Architecture', 'Growth Loops', 'User Research'],
-    skillsNeeded: ['React Basics', 'Full-Stack Development', 'API Design'],
+    skillsOffered: ['Public Speaking', 'Pitch Deck Storytelling', 'Product Strategy', 'Brand Positioning'],
+    skillsNeeded: ['React Basics', 'Graphic Design', 'Video Editing'],
     averageRating: 5.0,
     totalRatings: 62
   },
   {
-    _id: 'peer-4',
-    fullname: { firstname: 'Kai', lastname: 'Tanaka' },
-    role: 'iOS & macOS Developer',
-    bio: 'Building fluid, gesture-driven apps with SwiftUI, Metal shaders, and Apple Human Interface guidelines.',
-    location: 'Tokyo / Remote',
-    skillsOffered: ['SwiftUI', 'Apple Guidelines', 'Metal Shaders', 'CoreAnimation'],
-    skillsNeeded: ['GraphQL', 'Backend Scalability', 'PostgreSQL'],
-    averageRating: 4.88,
-    totalRatings: 27
+    _id: 'peer-6',
+    fullname: { firstname: 'Lucas', lastname: 'Mendes' },
+    role: 'Video Editor & Motion Designer',
+    category: 'Design & Creative',
+    bio: 'Commercial video creator. Teaching Premiere Pro cutting, After Effects animations, and visual storytelling.',
+    location: 'S?o Paulo / Remote',
+    skillsOffered: ['Video Editing', 'After Effects', 'Storyboarding', 'Color Grading'],
+    skillsNeeded: ['TypeScript', 'Full-Stack Development', 'PostgreSQL'],
+    averageRating: 4.89,
+    totalRatings: 37
   },
   {
-    _id: 'peer-5',
+    _id: 'peer-7',
     fullname: { firstname: 'Chloe', lastname: 'Dupont' },
-    role: 'AI & ML Research Engineer',
-    bio: 'Implementing local LLMs, fine-tuning reasoning models, and crafting retrieval-augmented generation pipelines.',
+    role: 'AI & Data Science Researcher',
+    category: 'Coding & Tech',
+    bio: 'Implementing practical Python machine learning models, retrieval pipelines, and data analytics.',
     location: 'Paris, France',
-    skillsOffered: ['LLM Orchestration', 'RAG Pipelines', 'Python', 'Vector DBs'],
-    skillsNeeded: ['Modern Web UI', 'Tailwind', 'Design Systems'],
+    skillsOffered: ['Python & ML', 'Data Visualization', 'SQL Analytics', 'AI Prompting'],
+    skillsNeeded: ['Conversational French', 'Audio Podcast Editing', 'UI Design'],
     averageRating: 4.92,
     totalRatings: 41
   },
   {
-    _id: 'peer-6',
-    fullname: { firstname: 'Arjun', lastname: 'Mehta' },
-    role: 'Engineering Director & Mentor',
-    bio: 'Mentoring engineers on leadership transitions, technical architecture reviews, and high-stakes roadmap delivery.',
-    location: 'London, UK',
-    skillsOffered: ['Engineering Leadership', 'System Architecture', 'Career Navigation', 'Code Review'],
-    skillsNeeded: ['Rust', 'WebAssembly', 'Deep Learning'],
-    averageRating: 4.97,
-    totalRatings: 56
+    _id: 'peer-8',
+    fullname: { firstname: 'Amara', lastname: 'Okonkwo' },
+    role: 'Content Strategist & Copywriter',
+    category: 'Writing',
+    bio: 'Direct-response copywriter and editor helping founders write engaging articles, newsletters, and landing pages.',
+    location: 'London / Remote',
+    skillsOffered: ['Copywriting', 'SEO Articles', 'Creative Writing', 'Brand Voice'],
+    skillsNeeded: ['Webflow & HTML/CSS', 'Basic JavaScript', 'Figma'],
+    averageRating: 4.96,
+    totalRatings: 44
   }
 ];
+
+const CATEGORY_MAP = {
+  'Coding & Tech': ['developer', 'engineer', 'backend', 'frontend', 'full-stack', 'system', 'python', 'react', 'code', 'docker', 'ai', 'data', 'sql', 'typescript'],
+  'Design & Creative': ['design', 'figma', 'ui', 'ux', 'video', 'motion', 'animation', 'creative', 'art', 'color grading'],
+  'Languages': ['language', 'spanish', 'french', 'german', 'japanese', 'mandarin', 'polyglot', 'linguist', 'accent', 'pronunciation'],
+  'Music & Audio': ['music', 'audio', 'sound', 'guitar', 'piano', 'ableton', 'vocal', 'production'],
+  'Business & Growth': ['business', 'product', 'strategy', 'finance', 'marketing', 'leadership', 'sales', 'speaking', 'pitch'],
+  'Writing': ['writing', 'copywriting', 'content', 'seo', 'storytelling', 'article', 'editorial']
+};
 
 const Marketplace = () => {
   const { user: currentUser } = useAuth();
@@ -106,7 +145,7 @@ const Marketplace = () => {
   const [generatingPitch, setGeneratingPitch] = useState(false);
   const [copiedPitch, setCopiedPitch] = useState(false);
 
-  const categories = ['All', 'Developer', 'Designer', 'Engineer', 'Product', 'Strategist'];
+  const categories = ['All', 'Coding & Tech', 'Design & Creative', 'Languages', 'Music & Audio', 'Business & Growth', 'Writing'];
 
   useEffect(() => {
     fetchUsers();
@@ -230,7 +269,7 @@ const Marketplace = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search mentors by skill or stack..."
+            placeholder="Search by skill (e.g. React, Spanish, Video Editing, Guitar)..."
             className="w-full pl-10 pr-9 py-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.15)] focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7] focus:ring-offset-2 focus:ring-offset-[#2F3640] text-sm text-[#F5F6FA] placeholder-[#718093] outline-none transition-colors"
           />
           {searchTerm && (

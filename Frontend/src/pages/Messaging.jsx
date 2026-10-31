@@ -34,7 +34,7 @@ const SKILLBOT_USER = {
 const DEFAULT_BOT_MESSAGE = {
   _id: 'welcome',
   senderId: 'skillbot',
-  text: "Hey! I'm SkillBot. Ask me anything about what you're learning, get quick practice questions, or ask for help planning your next swap session.",
+  text: "Hey! I'm SkillBot. Ask me anything about what you're learning?from coding and design to languages and music?or get help planning your next swap session.",
   createdAt: new Date().toISOString()
 };
 
@@ -55,10 +55,10 @@ const getInitialBotMessages = (userId) => {
 };
 
 const QUICK_PROMPTS = [
-  { label: "Quiz fundamentals", icon: <HelpCircle size={12} />, prompt: "Quiz me on the core fundamentals of this topic" },
+  { label: "Practice exercises", icon: <HelpCircle size={12} />, prompt: "Give me 3 practice exercises or quiz questions for my skill" },
   { label: "Prepare for swap", icon: <Target size={12} />, prompt: "Help me prepare for my upcoming skill swap session" },
-  { label: "Structure 30-min session", icon: <FileCode size={12} />, prompt: "How should I structure a 30-minute swap session?" },
-  { label: "Review learning goal", icon: <Sparkles size={12} />, prompt: "Review my learning goals and suggest next steps" }
+  { label: "Conversation practice", icon: <MessageSquare size={12} />, prompt: "Help me practice conversational dialogue or speaking points for my skill" },
+  { label: "Structure 30-min session", icon: <FileCode size={12} />, prompt: "How should I structure a 30-minute swap session?" }
 ];
 
 const formatMessageTime = (dateString) => {

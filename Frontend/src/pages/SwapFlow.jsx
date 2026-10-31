@@ -34,9 +34,9 @@ const SwapFlow = () => {
     seeking: "React Basics & State Architecture"
   };
 
-  const [selectedOffering, setSelectedOffering] = useState("React Basics & State Architecture");
+  const [selectedOffering, setSelectedOffering] = useState("Web Development (React & Node)");
   const [proposalNotes, setProposalNotes] = useState(
-    `Hi ${partner.name.split(' ')[0]}! I reviewed your work on ${partner.skill} and would love to exchange knowledge. I have built production applications and can walk through core architectural patterns.`
+    `Hi ${partner.name.split(' ')[0]}! I'd love to swap skills with you. I can help you with ${partner.seeking || 'what you want to learn'} in exchange for practicing ${partner.skill}. Let's build a great milestone together!`
   );
 
   const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));

@@ -416,7 +416,7 @@ const Profile = () => {
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">REGISTRY</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Add Competency</h2>
+                <h2 className="heading-h2 text-base text-[#F5F6FA]">Add Skill</h2>
               </div>
               <button onClick={() => setShowAddSkill(false)} className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]">
                 <X size={18} />
@@ -430,7 +430,7 @@ const Profile = () => {
                   value={newSkill.skill}
                   onChange={(e) => setNewSkill({ ...newSkill, skill: e.target.value })}
                   required
-                  placeholder="e.g. Distributed Systems in Go"
+                  placeholder="e.g. Conversational Spanish, React & Node, UI/UX Design, Acoustic Guitar"
                   className="input-field rounded-none"
                 />
               </div>
@@ -440,7 +440,7 @@ const Profile = () => {
                   value={newSkill.des}
                   onChange={(e) => setNewSkill({ ...newSkill, des: e.target.value })}
                   required
-                  placeholder="What topics or frameworks can you mentor on or want to learn?"
+                  placeholder="What skills can you teach or what are you excited to learn?"
                   className="input-field min-h-[90px] resize-none rounded-none"
                 />
               </div>
@@ -456,7 +456,7 @@ const Profile = () => {
                 </select>
               </div>
               <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold mt-2 rounded-none">
-                Save Competency
+                Save Skill
               </button>
             </form>
           </div>

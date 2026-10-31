@@ -24,11 +24,11 @@ const CURATED_SHOWCASES = [
     user: {
       _id: 'user-elena',
       fullname: { firstname: 'Elena', lastname: 'Vance' },
-      role: 'Staff Product Architect'
+      role: 'Product Strategist'
     },
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    content: 'Completed the 3D isometric design pipeline exchange with Marcus. Built a live interactive perspective viewport using CSS transforms and hardware-accelerated shaders. Reciprocal mastery works!',
-    mediaUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+    content: 'Just completed 4 weeks of conversational Spanish with Sofia in exchange for pitch deck coaching. Delivered my first client presentation in Spanish today! Reciprocal learning is unmatched.',
+    mediaUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
     mediaType: 'image',
     likes: ['u1', 'u2', 'u3', 'u4', 'u5']
   },
@@ -37,13 +37,26 @@ const CURATED_SHOWCASES = [
     user: {
       _id: 'user-marcus',
       fullname: { firstname: 'Marcus', lastname: 'Chen' },
-      role: 'Distributed Systems Lead'
+      role: 'Backend Architect'
     },
-    createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-    content: 'Just wrapped up a great skill swap session on WebRTC networking and Rust profiling. Highly recommend swapping skills 1-on-1 over static tutorials!',
+    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    content: 'Wrapped up our peer swap on WebRTC networking and Rust profiling. Traded distributed systems knowledge for advanced memory profiling. Highly recommend swapping skills 1-on-1!',
     mediaUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
     mediaType: 'image',
     likes: ['u1', 'u3', 'u8']
+  },
+  {
+    _id: 'curated-3',
+    user: {
+      _id: 'user-david',
+      fullname: { firstname: 'David', lastname: 'Kim' },
+      role: 'Music Producer'
+    },
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+    content: 'Traded Ableton vocal mixing techniques for React web portfolio guidance with Sarah. Both launched our milestone projects this weekend!',
+    mediaUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
+    mediaType: 'image',
+    likes: ['u2', 'u4', 'u6', 'u7']
   }
 ];
 
