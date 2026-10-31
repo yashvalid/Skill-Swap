@@ -12,6 +12,7 @@ import Feed from './pages/Feed';
 import SwapFlow from './pages/SwapFlow';
 import Docs from './pages/Docs';
 import UserProfile from './pages/UserProfile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import VideoCallModal from './components/VideoCallModal';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -27,6 +28,8 @@ function App() {
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/feed" element={<Feed />} />
           <Route path="/docs" element={<Docs />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/login" element={<Login />} />
           <Route path="/profile/:id" element={<UserProfile />} />
 

@@ -61,6 +61,18 @@ const userSchema = new mongoose.Schema({
     totalRatings: {
         type: Number,
         default: 0
+    },
+    privacyPolicyAccepted: {
+        type: Boolean,
+        default: false
+    },
+    privacyPolicyAcceptedAt: {
+        type: Date,
+        default: null
+    },
+    privacyPolicyVersion: {
+        type: String,
+        default: '1.0'
     }
 });
 

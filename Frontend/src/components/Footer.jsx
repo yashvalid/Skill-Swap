@@ -88,7 +88,7 @@ const Footer = () => {
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">How Skill Swapping Works</Link></li>
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Milestone Proofs</Link></li>
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">WebRTC Direct Signaling</Link></li>
-            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Identity Verification</Link></li>
+            <li><Link to="/privacy" className="hover:text-[#55E6C1] transition-colors">Privacy Policy</Link></li>
           </ul>
         </div>
 
@@ -124,8 +124,16 @@ const Footer = () => {
       </div>
 
       <div className="max-w-[1280px] mx-auto px-6 mt-12 pt-6 border-t border-[rgba(255,255,255,0.08)] flex flex-col sm:flex-row items-center justify-between text-xs text-[#718093]">
-        <p className="font-mono">SkillSwap Network • Peer-to-Peer Learning</p>
-        <p className="mt-2 sm:mt-0">Trade skills, learn from peers, and build together</p>
+        <p className="font-mono">SkillSwap Network &bull; Peer-to-Peer Learning</p>
+        <div className="flex items-center gap-4 mt-2 sm:mt-0">
+          <Link to="/privacy" className="hover:text-[#55E6C1] transition-colors underline">
+            Privacy Policy
+          </Link>
+          <span>&bull;</span>
+          <Link to="/docs" className="hover:text-[#55E6C1] transition-colors">
+            Documentation
+          </Link>
+        </div>
       </div>
     </footer>
   );

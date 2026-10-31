@@ -7,7 +7,11 @@ module.exports.registerUser = async (req, res) => {
     if(!errors.isEmpty())
         return res.status(422).json({ errors: errors.array() });
     
-    const { fullname, email, password, role, location, bio } = req.body;
+    const { fullname, email, password, role, location, bio, agreedToPrivacyPolicy, privacyPolicyAccepted } = req.body;
+    
+    if (!agreedToPrivacyPolicy && !privacyPolicyAccepted) {
+        return res.status(422).json({ message: "You must read and agree to the Privacy Policy to create an account" });
+    }
     
     try{
         const userExists = await User.findOne({ email });
@@ -21,7 +25,10 @@ module.exports.registerUser = async (req, res) => {
             password : HashPassword,
             role : role,
             location : location,
-            bio : bio
+            bio : bio,
+            privacyPolicyAccepted: true,
+            privacyPolicyAcceptedAt: new Date(),
+            privacyPolicyVersion: '1.0'
          });
          return res.status(201).json({ message: "User registered successfully", user });
     } catch(err){

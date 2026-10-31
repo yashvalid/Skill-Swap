@@ -12,6 +12,9 @@ router.post('/register',
     body('role').isLength({ min: 3 }).withMessage('role is required'),
     body('location').isLength({ min: 3 }).withMessage('location is required'),
     body('bio').isLength({ min: 3 }).withMessage('bio is required'),
+    body('agreedToPrivacyPolicy')
+        .custom((value, { req }) => value === true || value === 'true' || req.body.privacyPolicyAccepted === true || req.body.privacyPolicyAccepted === 'true')
+        .withMessage('You must read and agree to the Privacy Policy to create an account'),
     userController.registerUser
 );
 

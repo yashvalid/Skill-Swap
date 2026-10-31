@@ -9,12 +9,18 @@ import {
   MapPin, 
   AlignLeft, 
   ShieldCheck,
-  ArrowLeftRight
+  ArrowLeftRight,
+  X,
+  ExternalLink,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
@@ -39,6 +45,10 @@ const Login = () => {
         navigate('/dashboard');
       }
     } else {
+      if (!agreedToPolicy) {
+        toast.error('Please read and agree to the Privacy Policy to create an account');
+        return;
+      }
       const userData = {
         fullname: {
           firstname: formData.firstname,
@@ -48,7 +58,9 @@ const Login = () => {
         password: formData.password,
         role: formData.role,
         location: formData.location,
-        bio: formData.bio
+        bio: formData.bio,
+        agreedToPrivacyPolicy: true,
+        privacyPolicyAccepted: true
       };
       if (await register(userData)) {
         navigate('/dashboard');
@@ -257,6 +269,43 @@ const Login = () => {
               </div>
             </div>
 
+            {!isLogin && (
+              <div className="p-3 bg-[#242A32] border border-[rgba(255,255,255,0.08)] space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <input 
+                    type="checkbox"
+                    id="privacyPolicyConsent"
+                    checked={agreedToPolicy}
+                    onChange={(e) => setAgreedToPolicy(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded-none accent-[#6C5CE7] cursor-pointer shrink-0"
+                    required
+                  />
+                  <label htmlFor="privacyPolicyConsent" className="text-xs text-[#A4B0BE] leading-relaxed cursor-pointer select-none">
+                    I have read and agree to the{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowPolicyModal(true)}
+                      className="text-[#55E6C1] underline font-medium hover:text-[#55E6C1]/80 inline-flex items-center gap-0.5"
+                    >
+                      Privacy Policy
+                    </button>
+                    . I understand live video calls are peer-to-peer and my personal data is never monetized.
+                  </label>
+                </div>
+                
+                <div className="flex items-center justify-between pl-6 text-[11px] font-mono text-[#718093]">
+                  <span>Status: {agreedToPolicy ? 'Consented (v1.0)' : 'Agreement required'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPolicyModal(true)}
+                    className="text-[#55E6C1] hover:underline"
+                  >
+                    Read Policy
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-none"
@@ -272,6 +321,123 @@ const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* Privacy Policy Reader Modal */}
+      {showPolicyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="relative w-full max-w-2xl bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl flex flex-col max-h-[85vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#242A32]">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck size={18} className="text-[#55E6C1]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#F5F6FA] uppercase tracking-wide">
+                    SkillSwap Privacy Policy
+                  </h3>
+                  <p className="font-mono text-[10px] text-[#A4B0BE]">
+                    Version 1.0 &bull; Effective October 2026
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPolicyModal(false)}
+                className="p-1.5 text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2F3640] transition-colors"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable Policy Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-[#A4B0BE] leading-relaxed">
+              <div className="p-3 bg-[#242A32] border-l-2 border-[#55E6C1] text-[#F5F6FA] font-medium">
+                Summary: We respect your privacy. Video calls run directly peer-to-peer (P2P), we do not record audio/video, and we never sell your personal data.
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                  1. Information We Collect
+                </h4>
+                <p>
+                  We store your name, email, chosen role, skills offered/needed, bio, and time zone to pair you with learning partners. We log call session timestamps and duration to chat for exchange accountability.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                  2. Peer-to-Peer 1-on-1 Video & Audio
+                </h4>
+                <p>
+                  Direct 1-on-1 video calls use WebRTC P2P media connections. Your video and audio streams travel directly between your device and your swap partner. SkillSwap does NOT view, listen to, record, or store your live calls on our servers.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                  3. SkillBot AI Tutor
+                </h4>
+                <p>
+                  Questions to SkillBot are processed in real-time to generate study assistance and practice tips. They remain private to your session and are not used for third-party public model training.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                  4. Security & Encryption
+                </h4>
+                <p>
+                  Passwords are encrypted using bcrypt hashing (10 salt rounds). Sessions are authenticated using secure JSON Web Tokens.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                  5. Recording of Acceptance
+                </h4>
+                <p>
+                  When you create an account, your acceptance of these terms is recorded alongside an immutable timestamp in our database for auditability and compliance.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 border-t border-[rgba(255,255,255,0.1)] bg-[#242A32] flex items-center justify-between gap-3">
+              <Link
+                to="/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-[#55E6C1] hover:underline inline-flex items-center gap-1 font-mono"
+              >
+                <span>Full Policy Page</span>
+                <ExternalLink size={12} />
+              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPolicyModal(false)}
+                  className="btn btn-secondary text-xs py-2 px-3"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAgreedToPolicy(true);
+                    setShowPolicyModal(false);
+                    toast.success('Privacy Policy accepted');
+                  }}
+                  className="btn btn-primary text-xs py-2 px-4"
+                >
+                  I Read & Agree
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };
