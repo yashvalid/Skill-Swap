@@ -199,11 +199,11 @@ const UserProfile = () => {
               </div>
 
               <p className="font-mono text-xs text-[#55E6C1] uppercase tracking-wider mb-2 font-semibold">
-                {profileUser.role || 'Senior Practitioner'}
+                {profileUser.role || 'Member'}
               </p>
 
               <div className="flex flex-wrap gap-4 text-xs text-[#A4B0BE] font-mono">
-                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {profileUser.location || 'Remote // Available'}</span>
+                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {profileUser.location || 'Remote'}</span>
                 <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#55E6C1]" /> Identity Verified</span>
               </div>
             </div>
@@ -264,11 +264,11 @@ const UserProfile = () => {
           {/* About Section */}
           <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
             <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.08)] pb-2">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">About // {profileUser.fullname?.firstname}</h2>
+              <h2 className="heading-h2 text-base text-[#F5F6FA]">About {profileUser.fullname?.firstname}</h2>
               <span className="font-mono text-[10px] text-[#718093]">SYNOPSIS</span>
             </div>
             <p className="body-md text-sm text-[#A4B0BE] leading-relaxed">
-              {profileUser.bio || "Passionate about reciprocal skill barters, collaborative building, and direct knowledge exchange."}
+              {profileUser.bio || "Passionate about learning new skills, collaborating on projects, and sharing knowledge."}
             </p>
           </section>
 
@@ -333,7 +333,7 @@ const UserProfile = () => {
               {posts.map(post => (
                 <div key={post._id} className="ui-card p-5 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
                   <p className="font-mono text-[10px] text-[#718093] mb-2">
-                    PUBLISHED // {new Date(post.createdAt).toLocaleDateString()}
+                    Posted on {new Date(post.createdAt).toLocaleDateString()}
                   </p>
                   <p className="body-md text-sm text-[#F5F6FA] mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
 
@@ -389,7 +389,7 @@ const UserProfile = () => {
         <div className="space-y-6">
           <div className="ui-card p-6 bg-[#2B313A] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
             <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Exchange // Standing</h3>
+              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Swap Reviews</h3>
               <span className="tag-chip text-[9px]">ACTIVE</span>
             </div>
             <div className="space-y-3 text-xs">

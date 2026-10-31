@@ -75,7 +75,7 @@ const Login = () => {
           </h1>
           <p className="body-md text-xs sm:text-sm text-[#A4B0BE] mt-1.5 mx-auto">
             {isLogin 
-              ? 'Access your active bilateral swaps, study syllabi, and peer messages.' 
+              ? 'Access your active swaps, study plans, and messages.' 
               : 'Trade modern mastery without monetary transaction fees.'}
           </p>
         </div>

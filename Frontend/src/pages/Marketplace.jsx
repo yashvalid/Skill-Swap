@@ -145,7 +145,7 @@ const Marketplace = () => {
         skillOffered: swapData.offersSkill,
         skillRequested: swapData.requestsSkill
       });
-      toast.success('Bilateral swap request transmitted');
+      toast.success('Swap request sent!');
       setSelectedUser(null);
       setSwapData({ offersSkill: '', requestsSkill: '' });
       setPitchData(null);
@@ -205,13 +205,13 @@ const Marketplace = () => {
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-[rgba(255,255,255,0.12)]">
         <div>
           <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider">
-            Directory // 01
+            Mentor Directory
           </span>
           <h1 className="heading-h1 text-[#F5F6FA] mt-1">
             Skill Marketplace
           </h1>
           <p className="body-md text-sm text-[#A4B0BE] mt-1 max-w-xl">
-            Browse verified mentors offering direct 1:1 sessions. Propose a bilateral trade with your skills.
+            Browse mentors offering direct 1-on-1 sessions. Propose a swap with your skills.
           </p>
         </div>
 
@@ -322,7 +322,7 @@ const Marketplace = () => {
                   {/* Offers Section */}
                   <div className="space-y-1.5 mb-3 bg-[#2B313A] p-3 rounded-none border border-[rgba(255,255,255,0.08)]">
                     <span className="font-mono text-[10px] uppercase font-bold text-[#55E6C1] block">
-                      Offers //
+                      Teaches
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {u.skillsOffered?.slice(0, 3).map((sk, i) => (
@@ -342,7 +342,7 @@ const Marketplace = () => {
                   {u.skillsNeeded && u.skillsNeeded.length > 0 && (
                     <div className="space-y-1 mb-5">
                       <span className="font-mono text-[10px] uppercase font-bold text-[#718093] block">
-                        Seeks //
+                        Wants to Learn
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {u.skillsNeeded.slice(0, 2).map((sk, i) => (
@@ -499,7 +499,7 @@ const Marketplace = () => {
                 type="submit"
                 className="w-full btn btn-primary py-2.5 justify-center text-sm font-semibold mt-2 rounded-none"
               >
-                Transmit Bilateral Proposal
+                Send Swap Request
               </button>
             </form>
           </div>

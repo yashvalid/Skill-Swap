@@ -40,7 +40,7 @@ const CURATED_SHOWCASES = [
       role: 'Distributed Systems Lead'
     },
     createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-    content: 'Wrapped up our bilateral swap on WebRTC peer connection topologies. Traded 6 hours of high-throughput networking for advanced Rust memory profiling. Highly recommend intentional skill barters over static tutorials.',
+    content: 'Just wrapped up a great skill swap session on WebRTC networking and Rust profiling. Highly recommend swapping skills 1-on-1 over static tutorials!',
     mediaUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
     mediaType: 'image',
     likes: ['u1', 'u3', 'u8']
@@ -218,13 +218,13 @@ const Feed = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 pb-6 border-b border-[rgba(255,255,255,0.12)]">
         <div>
           <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider block mb-1">
-            Community // Showcases
+            Community Showcases
           </span>
           <h1 className="heading-h1 text-[#F5F6FA]">
             Peer Projects & Proof
           </h1>
           <p className="body-md text-sm text-[#A4B0BE] mt-1 max-w-xl">
-            Live artifact demonstrations, milestone proofs, and technical summaries produced through bilateral skill exchanges.
+            Project demos, milestone progress, and takeaways shared by members after their skill swaps.
           </p>
         </div>
 
@@ -277,7 +277,7 @@ const Feed = () => {
                         <span className="tag-chip text-[9px] py-0 px-1.5">VERIFIED</span>
                       </div>
                       <p className="text-xs text-[#A4B0BE] font-mono">
-                        {post.user?.role || 'Skill Practitioner'}
+                        {post.user?.role || 'Community Member'}
                       </p>
                     </div>
                   </div>
@@ -334,7 +334,7 @@ const Feed = () => {
                         }`}
                       >
                         <MessageCircle size={14} />
-                        <span className="font-mono">Discuss // {postComments.length}</span>
+                        <span className="font-mono">Comments ({postComments.length})</span>
                       </button>
                     </div>
 
@@ -417,7 +417,7 @@ const Feed = () => {
           <div className="z-[300] ui-card w-full max-w-lg bg-[#353B48] overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] rounded-none">
             <div className="p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#2B313A]">
               <div>
-                <span className="tag-chip text-[10px] mb-1 inline-block">Publish // Demo</span>
+                <span className="tag-chip text-[10px] mb-1 inline-block">Share Demo</span>
                 <h2 className="heading-h2 text-lg text-[#F5F6FA]">Share Project Showcase</h2>
               </div>
               <button

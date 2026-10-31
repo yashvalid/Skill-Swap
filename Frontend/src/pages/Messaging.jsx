@@ -28,13 +28,13 @@ const SKILLBOT_USER = {
   _id: 'skillbot',
   isBot: true,
   fullname: { firstname: 'SkillBot', lastname: 'AI' },
-  role: '24/7 Practice Companion & Learning Tutor'
+  role: 'AI Study Assistant'
 };
 
 const DEFAULT_BOT_MESSAGE = {
   _id: 'welcome',
   senderId: 'skillbot',
-  text: "SkillBot ready. Inquire about skills you are learning, request practice quizzes, or ask for guidance structuring your next bilateral barter milestone.",
+  text: "Hey! I'm SkillBot. Ask me anything about what you're learning, get quick practice questions, or ask for help planning your next swap session.",
   createdAt: new Date().toISOString()
 };
 
@@ -55,10 +55,10 @@ const getInitialBotMessages = (userId) => {
 };
 
 const QUICK_PROMPTS = [
-  { label: "Quiz fundamentals", icon: <HelpCircle size={12} />, prompt: "Quiz me on core fundamentals of my topic" },
-  { label: "Prepare for swap", icon: <Target size={12} />, prompt: "Help me prepare for my first bilateral peer swap session" },
-  { label: "Structure 30-min session", icon: <FileCode size={12} />, prompt: "Help structure an effective 30-minute peer exchange session" },
-  { label: "Review learning goal", icon: <Sparkles size={12} />, prompt: "Review and refine my 4-week milestone learning goal" }
+  { label: "Quiz fundamentals", icon: <HelpCircle size={12} />, prompt: "Quiz me on the core fundamentals of this topic" },
+  { label: "Prepare for swap", icon: <Target size={12} />, prompt: "Help me prepare for my upcoming skill swap session" },
+  { label: "Structure 30-min session", icon: <FileCode size={12} />, prompt: "How should I structure a 30-minute swap session?" },
+  { label: "Review learning goal", icon: <Sparkles size={12} />, prompt: "Review my learning goals and suggest next steps" }
 ];
 
 const formatMessageTime = (dateString) => {
@@ -130,7 +130,7 @@ const Messaging = () => {
       {
         _id: Date.now().toString(),
         senderId: 'skillbot',
-        text: "SkillBot conversation reset. What skill or milestone would you like to practice today?",
+        text: "Conversation reset. What would you like to practice today?",
         createdAt: new Date().toISOString()
       }
     ];
@@ -342,7 +342,7 @@ const Messaging = () => {
         const botReply = {
           _id: (Date.now() + 1).toString(),
           senderId: 'skillbot',
-          text: res.data?.reply || "Ready for our next technical breakdown. What area would you like to drill down into?",
+          text: res.data?.reply || "Got it! What area would you like to explore next?",
           createdAt: new Date().toISOString()
         };
         setBotMessages(prev => [...prev, botReply]);
@@ -352,7 +352,7 @@ const Messaging = () => {
           {
             _id: (Date.now() + 1).toString(),
             senderId: 'skillbot',
-            text: "Request timed out. Please rephrase or try another topic.",
+            text: "Sorry, I couldn't process that request. Please try again.",
             createdAt: new Date().toISOString()
           }
         ]);
@@ -430,7 +430,7 @@ const Messaging = () => {
           <div className="p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#242A32]">
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider">
-                Channels
+                Conversations
               </span>
               <span className="tag-chip text-[9px]">
                 {chatUsers.length + 1} ACTIVE
@@ -441,7 +441,7 @@ const Messaging = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]" size={14} />
               <input
                 type="text"
-                placeholder="Filter channels..."
+                placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input-field pl-8 py-1.5 text-xs rounded-none bg-[#2B313A]"
@@ -467,23 +467,23 @@ const Messaging = () => {
               </div>
               <div className="flex-grow min-w-0">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-xs tracking-wide">SkillBot 24/7</span>
+                  <span className="font-bold text-xs tracking-wide">SkillBot</span>
                   <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded-none font-semibold ${
                     activeChatUser?.isBot ? 'bg-[#2F3640] text-[#55E6C1]' : 'bg-[#242A32] text-[#55E6C1]'
                   }`}>
-                    TUTOR
+                    AI BOT
                   </span>
                 </div>
                 <p className={`text-[11px] truncate ${
                   activeChatUser?.isBot ? 'text-white/80' : 'text-[#A4B0BE]'
                 }`}>
-                  Instant practice companion
+                  Instant practice & study help
                 </p>
               </div>
             </div>
 
             <div className="px-3 pt-3 pb-1 font-mono text-[10px] uppercase text-[#718093]">
-              Exchange Partners ({filteredChatUsers.length})
+              Swap Partners ({filteredChatUsers.length})
             </div>
 
             {filteredChatUsers.map((chat) => {
@@ -537,7 +537,7 @@ const Messaging = () => {
 
             {filteredChatUsers.length === 0 && !loading && (
               <div className="p-6 text-center font-mono text-xs text-[#718093] italic">
-                No active partners indexed yet.
+                No active conversations yet.
               </div>
             )}
           </div>
@@ -569,7 +569,7 @@ const Messaging = () => {
                     </h3>
                     <span className="font-mono text-[10px] text-[#55E6C1] font-medium flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
-                      {activeChatUser.isBot ? 'SYNTHESIS ASSISTANT' : 'BILATERAL PARTNER'}
+                      {activeChatUser.isBot ? 'AI ASSISTANT' : 'SWAP PARTNER'}
                     </span>
                   </div>
                 </div>
@@ -581,7 +581,7 @@ const Messaging = () => {
                       className="btn btn-cta text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono"
                     >
                       <Video size={13} />
-                      <span>Video Sync</span>
+                      <span>Video Call</span>
                     </button>
                   </div>
                 ) : (
@@ -607,7 +607,7 @@ const Messaging = () => {
                 {activeChatUser.isBot && (
                   <div className="mb-4 p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
                     <span className="font-mono text-[10px] text-[#A4B0BE] uppercase block mb-2 font-semibold">
-                      Quick Synthesis Prompts //
+                      Suggested Prompts
                     </span>
                     <div className="flex flex-wrap gap-2">
                       {QUICK_PROMPTS.map((p, i) => (
@@ -729,7 +729,7 @@ const Messaging = () => {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={activeChatUser.isBot ? "Inquire with SkillBot about any technical topic..." : "Draft message to partner..."}
+                    placeholder={activeChatUser.isBot ? "Ask SkillBot anything..." : "Write a message..."}
                     className="input-field text-xs sm:text-sm py-2 rounded-none bg-[#242A32]"
                   />
                   <button
@@ -745,7 +745,7 @@ const Messaging = () => {
             </>
           ) : (
             <div className="flex-grow flex items-center justify-center p-6 text-center text-[#A4B0BE]">
-              Select a channel to commence exchange dialogue.
+              Select a conversation to start chatting.
             </div>
           )}
         </div>

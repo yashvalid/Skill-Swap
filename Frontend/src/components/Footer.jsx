@@ -9,7 +9,7 @@ const Footer = () => {
   const handleSubscribe = (e) => {
     e.preventDefault();
     if (!email.trim()) return;
-    toast.success('Subscribed to bilateral protocol updates');
+    toast.success('Subscribed to updates!');
     setEmail('');
   };
 
@@ -34,7 +34,7 @@ const Footer = () => {
           </Link>
 
           <p className="body-md text-sm text-[#A4B0BE] leading-relaxed">
-            Direct peer-to-peer technical barter. Engineers and designers trade 1:1 mentorship and build verified project milestones without intermediaries.
+            Direct peer-to-peer skill exchange. Developers and designers trade 1-on-1 mentorship and build real projects together.
           </p>
 
           <div className="flex items-center gap-2.5 pt-1">
@@ -82,10 +82,10 @@ const Footer = () => {
         {/* Specifications */}
         <div className="md:col-span-2 space-y-3">
           <h4 className="font-mono text-xs uppercase tracking-wider text-[#F5F6FA] font-semibold">
-            Protocols
+            Platform
           </h4>
           <ul className="space-y-2 text-sm text-[#A4B0BE]">
-            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Barter Architecture</Link></li>
+            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">How Skill Swapping Works</Link></li>
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Milestone Proofs</Link></li>
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">WebRTC Direct Signaling</Link></li>
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Identity Verification</Link></li>
@@ -98,7 +98,7 @@ const Footer = () => {
             Technical Dispatch
           </h4>
           <p className="text-xs text-[#A4B0BE] leading-relaxed">
-            Curated weekly breakdown of verified engineering pairs, benchmark reviews, and open barter slots.
+            Weekly highlights of community skill swaps, project milestones, and featured members.
           </p>
           <form onSubmit={handleSubscribe} className="space-y-2">
             <div className="input-group">
@@ -124,8 +124,8 @@ const Footer = () => {
       </div>
 
       <div className="max-w-[1280px] mx-auto px-6 mt-12 pt-6 border-t border-[rgba(255,255,255,0.08)] flex flex-col sm:flex-row items-center justify-between text-xs text-[#718093]">
-        <p className="font-mono">SkillSwap Network // Bold & Energetic 60/30/10 Protocol</p>
-        <p className="mt-2 sm:mt-0">Reciprocal technical knowledge barter</p>
+        <p className="font-mono">SkillSwap Network • Peer-to-Peer Learning</p>
+        <p className="mt-2 sm:mt-0">Trade skills, learn from peers, and build together</p>
       </div>
     </footer>
   );

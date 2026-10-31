@@ -194,7 +194,7 @@ const Profile = () => {
                 <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F5F6FA]">
                   {user.fullname?.firstname} {user.fullname?.lastname}
                 </h1>
-                <span className="tag-chip text-[10px]">PRACTITIONER</span>
+                <span className="tag-chip text-[10px]">MEMBER</span>
                 <span className="tag-chip text-[10px] bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.15)]">
                   <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
                   4.9 RATING
@@ -206,7 +206,7 @@ const Profile = () => {
               </p>
 
               <div className="flex flex-wrap gap-4 text-xs text-[#A4B0BE] font-mono">
-                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {user.location || 'Remote // Global'}</span>
+                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {user.location || 'Remote'}</span>
                 <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#55E6C1]" /> Identity Verified</span>
               </div>
             </div>
@@ -245,7 +245,7 @@ const Profile = () => {
           {/* Bio / About */}
           <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
             <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.08)] pb-2">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">About // Practitioner</h2>
+              <h2 className="heading-h2 text-base text-[#F5F6FA]">About Me</h2>
               <span className="font-mono text-[10px] text-[#718093]">SYNOPSIS</span>
             </div>
             <p className="body-md text-sm text-[#A4B0BE] leading-relaxed">
@@ -352,7 +352,7 @@ const Profile = () => {
                   </div>
 
                   <p className="font-mono text-[10px] text-[#718093] mb-2">
-                    POSTED // {new Date(post.createdAt).toLocaleDateString()}
+                    Posted on {new Date(post.createdAt).toLocaleDateString()}
                   </p>
                   <p className="body-md text-sm text-[#F5F6FA] mb-4 whitespace-pre-wrap pr-14 leading-relaxed">
                     {post.content}
@@ -383,7 +383,7 @@ const Profile = () => {
         <div className="space-y-6">
           <div className="ui-card p-6 bg-[#2B313A] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
             <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Trust // Protocol</h3>
+              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Reputation & Reviews</h3>
               <span className="tag-chip text-[9px]">ACTIVE</span>
             </div>
 
@@ -502,7 +502,7 @@ const Profile = () => {
 
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="input-group">
-                <label className="input-label">Location // Timezone</label>
+                <label className="input-label">Location & Timezone</label>
                 <input
                   type="text"
                   value={editProfileData.location}

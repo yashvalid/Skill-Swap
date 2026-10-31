@@ -31,13 +31,13 @@ const Docs = () => {
       <header className="mb-12 text-center">
         <div className="inline-flex items-center gap-1.5 tag-chip mb-3">
           <BookOpen size={14} />
-          <span>SPECIFICATION // SYSTEM DOCS</span>
+          <span>SYSTEM DOCUMENTATION</span>
         </div>
         <h1 className="heading-h1 text-[#F5F6FA]">
           Bold & Energetic Architecture Spec
         </h1>
         <p className="body-md text-sm text-[#A4B0BE] max-w-2xl mx-auto mt-2 leading-relaxed">
-          Design tokens, 60/30/10 color balance, typography scales, bilateral matching algorithms, and WebRTC protocols powering SkillSwap.
+          Design tokens, color palette, typography scales, matching logic, and WebRTC video calling powering SkillSwap.
         </p>
       </header>
 
@@ -70,20 +70,20 @@ const Docs = () => {
         {/* Content Area */}
         <div className="md:col-span-3 space-y-10">
           <section id="introduction" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION // 01</span>
+            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 1</span>
             <h2 className="heading-h2 text-[#F5F6FA] mb-4">The Reciprocal Commons Philosophy</h2>
             <div className="body-md text-sm text-[#A4B0BE] space-y-4 leading-relaxed">
               <p>
-                SkillSwap replaces passive tutorial consumption with active peer-to-peer reciprocity. Rather than treating knowledge as a paywalled commodity, we structure an open exchange where developers barter high-value skills directly.
+                SkillSwap replaces passive tutorial watching with active peer-to-peer learning. Instead of treating skills as a paywalled commodity, members teach and learn directly from each other.
               </p>
               <p>
-                Bilateral accountability drives genuine retention: when two practitioners exchange feedback on real codebases and creative artifacts, learning speed increases by 3-5x over video tutorials.
+                Peer accountability drives real retention: when two people give direct feedback on real code and projects, learning happens much faster than solo studying.
               </p>
             </div>
           </section>
 
           <section id="design-system" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION // 02</span>
+            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 2</span>
             <h2 className="heading-h2 text-[#F5F6FA] mb-3">Bold & Energetic Design System</h2>
             <p className="body-md text-sm text-[#A4B0BE] mb-6 leading-relaxed">
               Bold and energetic poster-style interface using strict 60/30/10 color balance, sharp 0px geometry, high typographical impact, and instant utilitarian feedback.
@@ -126,15 +126,15 @@ const Docs = () => {
                   <span>AI CURRICULUM ENGINE</span>
                 </div>
                 <p className="body-md text-xs text-[#A4B0BE] leading-relaxed">
-                  Bilateral curricula synthesized dynamically. Shimmer skeletons used during generation; circular spinners omitted per specification.
+                  Study plans are generated dynamically to match both partners' goals. Shimmer loaders are used while fetching.
                 </p>
               </div>
             </div>
           </section>
 
           <section id="product-requirements" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION // 03</span>
-            <h2 className="heading-h2 text-[#F5F6FA] mb-4">Bilateral Exchange Logic</h2>
+            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 3</span>
+            <h2 className="heading-h2 text-[#F5F6FA] mb-4">Swap Matching Logic</h2>
             <div className="space-y-4">
               {[
                 {
@@ -164,7 +164,7 @@ const Docs = () => {
           </section>
 
           <section id="safety-trust" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION // 04</span>
+            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 4</span>
             <h2 className="heading-h2 text-[#F5F6FA] mb-4">Trust & Community Safety</h2>
             <p className="body-md text-sm text-[#A4B0BE] leading-relaxed mb-4">
               SkillSwap enforces a zero-tolerance policy against financial solicitation and corporate recruitment spam.
@@ -174,7 +174,7 @@ const Docs = () => {
                 <span className="font-mono text-[#55E6C1] font-semibold">[VERIFIED]</span> Verified cryptographic identity badges on completed mentor profiles.
               </li>
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#55E6C1] font-semibold">[RATING]</span> Bilateral double-blind reviews published only when both parties submit or after 7 days.
+                <span className="font-mono text-[#55E6C1] font-semibold">[RATING]</span> Double-blind reviews are published only when both members submit or after 7 days.
               </li>
               <li className="flex items-center gap-2">
                 <span className="font-mono text-[#55E6C1] font-semibold">[REPORT]</span> 1-click community moderation and instant socket disconnect on any violation.

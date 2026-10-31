@@ -63,7 +63,7 @@ const Dashboard = () => {
   const handleAccept = async (id) => {
     try {
       await swapService.acceptSwap(id);
-      toast.success('Bilateral swap accepted! Added to active exchange tracks.');
+      toast.success('Swap request accepted! Added to active swaps.');
       fetchSwaps();
     } catch (error) {
       toast.error('Failed to accept swap');
@@ -160,14 +160,14 @@ Cadence: ${curriculumData.recommendedSessionCadence}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 pb-6 border-b border-[rgba(255,255,255,0.12)] gap-4">
         <div>
           <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider">
-            Control // 01
+            Dashboard
           </span>
           <h1 className="heading-h1 text-[#F5F6FA] mt-1">
-            Exchange Desk : {user.fullname?.firstname}
+            Welcome back, {user.fullname?.firstname}
           </h1>
           <p className="body-md text-sm text-[#A4B0BE] mt-1">
-            <span className="font-mono font-bold text-[#F5F6FA]">{acceptedSwaps.length}</span> active bilateral tracks •{' '}
-            <span className="font-mono font-bold text-[#F5F6FA]">{pendingSwaps.length}</span> incoming proposals
+            <span className="font-mono font-bold text-[#F5F6FA]">{acceptedSwaps.length}</span> active swaps •{' '}
+            <span className="font-mono font-bold text-[#F5F6FA]">{pendingSwaps.length}</span> incoming requests
           </p>
         </div>
         <div className="flex gap-2.5">
@@ -187,22 +187,22 @@ Cadence: ${curriculumData.recommendedSessionCadence}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               {
-                code: "PENDING // 01",
-                label: "Incoming Proposals",
+                code: "PENDING",
+                label: "Incoming Requests",
                 value: pendingSwaps.length,
                 badge: pendingSwaps.length > 0 ? "ACTION REQ" : "CLEAR",
                 isAction: pendingSwaps.length > 0
               },
               {
-                code: "ACTIVE // 02",
-                label: "Bilateral Tracks",
+                code: "ACTIVE",
+                label: "Active Swaps",
                 value: acceptedSwaps.length,
-                badge: "IN CADENCE",
+                badge: "ONGOING",
                 isAction: false
               },
               {
-                code: "CREDITS // 03",
-                label: "Reputation Credits",
+                code: "CREDITS",
+                label: "Swap Credits",
                 value: user.credits !== undefined ? user.credits : 3,
                 badge: "+1 PER SWAP",
                 isAction: false
@@ -234,8 +234,8 @@ Cadence: ${curriculumData.recommendedSessionCadence}
           {pendingSwaps.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-semibold text-[#FFA502]">ACTION REQUIRED //</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Incoming Proposals ({pendingSwaps.length})</h2>
+                <span className="font-mono text-xs font-semibold text-[#FFA502]">Action Required •</span>
+                <h2 className="heading-h2 text-base text-[#F5F6FA]">Incoming Requests ({pendingSwaps.length})</h2>
               </div>
 
               <div className="space-y-3">
@@ -281,12 +281,12 @@ Cadence: ${curriculumData.recommendedSessionCadence}
             </section>
           )}
 
-          {/* Active Bilateral Tracks */}
+          {/* Active Skill Swaps */}
           <section className="space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-[rgba(255,255,255,0.12)]">
               <div>
-                <span className="font-mono text-xs text-[#55E6C1] uppercase font-semibold">Cadence // 02</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Active Bilateral Tracks</h2>
+                <span className="font-mono text-xs text-[#55E6C1] uppercase font-semibold">Swaps</span>
+                <h2 className="heading-h2 text-base text-[#F5F6FA]">Active Skill Swaps</h2>
               </div>
               <button
                 onClick={() => navigate('/marketplace')}
@@ -334,11 +334,11 @@ Cadence: ${curriculumData.recommendedSessionCadence}
                       {/* Learning / Teaching Pills */}
                       <div className="space-y-2 mb-4 text-xs font-mono">
                         <div className="p-2.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                          <span className="text-[10px] uppercase text-[#55E6C1] block font-semibold">You Learn //</span>
+                          <span className="text-[10px] uppercase text-[#55E6C1] block font-semibold">You Learn</span>
                           <p className="text-[#F5F6FA] font-medium mt-0.5">{swap.skillOffered}</p>
                         </div>
                         <div className="p-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)]">
-                          <span className="text-[10px] uppercase text-[#A4B0BE] block font-semibold">You Teach //</span>
+                          <span className="text-[10px] uppercase text-[#A4B0BE] block font-semibold">You Teach</span>
                           <p className="text-[#F5F6FA] font-medium mt-0.5">{swap.requestedSkill}</p>
                         </div>
                       </div>
@@ -364,7 +364,7 @@ Cadence: ${curriculumData.recommendedSessionCadence}
                         </button>
                       ) : (
                         <div className="py-1 text-center text-xs font-mono text-[#55E6C1] bg-[#2B313A] rounded-none border border-[rgba(85,230,193,0.3)]">
-                          Milestone Complete // 1 Credit Awarded
+                          Milestone Complete • +1 Credit Earned
                         </div>
                       )}
                     </div>
@@ -375,10 +375,10 @@ Cadence: ${curriculumData.recommendedSessionCadence}
               {acceptedSwaps.length === 0 && (
                 <div className="md:col-span-2 p-8 text-center ui-card bg-[#2B313A] border-dashed border-[rgba(255,255,255,0.15)] rounded-none">
                   <p className="font-mono text-xs text-[#A4B0BE] mb-3">
-                    NO ACTIVE SWAP TRACKS RECORDED
+                    No active swaps yet
                   </p>
                   <button onClick={() => navigate('/marketplace')} className="btn btn-primary text-xs py-2 px-4">
-                    Find First Partner
+                    Find a Partner
                   </button>
                 </div>
               )}
@@ -390,23 +390,23 @@ Cadence: ${curriculumData.recommendedSessionCadence}
         <div className="space-y-6">
           <div className="ui-card p-6 bg-[#2B313A] border border-[rgba(255,255,255,0.12)] rounded-none">
             <span className="font-mono text-[10px] text-[#A4B0BE] uppercase font-semibold block mb-2">
-              Scheduled Cadence
+              Upcoming Session
             </span>
             <h3 className="heading-h2 text-base text-[#F5F6FA] mb-1">Next 1:1 Session</h3>
             <p className="font-mono text-3xl font-bold text-[#F5F6FA] mb-1">14:00 UTC</p>
             <p className="text-xs text-[#A4B0BE] mb-5">
-              Pair programming sync with active barter partner
+              Live pair session with your swap partner
             </p>
             <button
               onClick={() => navigate('/messages')}
               className="w-full btn btn-primary text-xs py-2.5 font-semibold"
             >
-              Open Session Channel
+              Open Chat
             </button>
           </div>
 
           <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] space-y-3 rounded-none">
-            <span className="font-mono text-xs text-[#55E6C1] uppercase font-semibold">Reputation Protocol</span>
+            <span className="font-mono text-xs text-[#55E6C1] uppercase font-semibold">Community Guidelines</span>
             <h3 className="heading-h2 text-sm text-[#F5F6FA]">Honor Code</h3>
             <ul className="text-xs text-[#A4B0BE] space-y-2 leading-relaxed">
               <li className="flex items-start gap-2">
@@ -481,7 +481,7 @@ Cadence: ${curriculumData.recommendedSessionCadence}
                       >
                         <div className="flex items-center justify-between">
                           <span className="tag-chip text-[10px]">
-                            Week // 0{week.week}
+                            Week {week.week}
                           </span>
                           <span className="font-bold text-sm text-[#F5F6FA]">
                             {week.focus}

@@ -73,13 +73,13 @@ const SwapFlow = () => {
         <div className="text-center mb-8">
           <div className="tag-chip mb-2 inline-flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-none bg-[#55E6C1]" />
-            <span>BILATERAL EXCHANGE // PROTOCOL</span>
+            <span>START A SKILL SWAP</span>
           </div>
           <h1 className="heading-h1 text-[#F5F6FA]">
             Propose a Skill Swap
           </h1>
           <p className="body-md text-xs sm:text-sm text-[#A4B0BE] mt-1.5 mx-auto">
-            Establish bilateral expectations, meeting rhythm, and target milestones with your peer.
+            Set expectations, pick meeting times, and agree on milestones with your partner.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ const SwapFlow = () => {
           <div className="w-full md:w-72 bg-[#2B313A] p-6 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)] flex flex-col justify-between">
             <div>
               <span className="font-mono text-[10px] text-[#A4B0BE] uppercase block mb-4 font-semibold">
-                Exchange Recipient //
+                Partner
               </span>
               
               <div className="flex items-center gap-3.5 mb-6">
@@ -129,7 +129,7 @@ const SwapFlow = () => {
                 <div>
                   <p className="font-bold text-sm text-[#F5F6FA]">{partner.name}</p>
                   <div className="flex items-center gap-1 text-[#55E6C1] font-mono text-[10px]">
-                    VERIFIED // <CheckCircle2 size={11} />
+                    VERIFIED <CheckCircle2 size={11} />
                   </div>
                 </div>
               </div>
@@ -147,7 +147,7 @@ const SwapFlow = () => {
             </div>
 
             <div className="pt-6 text-[10px] text-[#718093] font-mono">
-              <span>ZERO FEES // ZERO COMMISSIONS // 100% RECIPROCAL</span>
+              <span>ZERO FEES • 100% FREE PEER EXCHANGE</span>
             </div>
           </div>
 
@@ -157,7 +157,7 @@ const SwapFlow = () => {
               <div>
                 <span className="tag-chip text-[10px] mb-2 inline-block">STEP 01</span>
                 <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Select Your Knowledge Offering</h3>
-                <p className="body-md text-xs text-[#A4B0BE] mb-6">Choose what you will mentor on during this bilateral exchange.</p>
+                <p className="body-md text-xs text-[#A4B0BE] mb-6">Choose the skill you will teach during this swap.</p>
                 
                 <div className="space-y-3">
                   {[
@@ -224,10 +224,10 @@ const SwapFlow = () => {
                 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { day: "Mon, Apr 14", slots: "3 SLOTS // AVAILABLE" },
-                    { day: "Tue, Apr 15", slots: "1 SLOT // AVAILABLE" },
+                    { day: "Mon, Apr 14", slots: "3 slots available" },
+                    { day: "Tue, Apr 15", slots: "1 slot available" },
                     { day: "Wed, Apr 16", slots: "FULLY BOOKED" },
-                    { day: "Thu, Apr 17", slots: "4 SLOTS // AVAILABLE" }
+                    { day: "Thu, Apr 17", slots: "4 slots available" }
                   ].map((s, i) => (
                     <div
                       key={i}
@@ -272,7 +272,7 @@ const SwapFlow = () => {
                     </div>
                     <div>
                       <p className="font-bold text-xs text-[#F5F6FA]">INITIAL KICKOFF</p>
-                      <p className="font-mono text-[10px] text-[#A4B0BE]">MONDAY // 14:00 UTC</p>
+                      <p className="font-mono text-[10px] text-[#A4B0BE]">Monday • 14:00 UTC</p>
                     </div>
                   </div>
                 </div>

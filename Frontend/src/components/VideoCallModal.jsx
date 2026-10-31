@@ -102,14 +102,14 @@ const VideoCallModal = () => {
 
           <span className="tag-chip text-[9px] mb-2 inline-flex items-center gap-1">
             <Radio size={10} className="text-[#55E6C1] animate-pulse" />
-            <span>INCOMING BILATERAL SYNC</span>
+            <span>INCOMING VIDEO CALL</span>
           </span>
 
           <h3 className="heading-h2 text-base sm:text-lg text-[#F5F6FA] mb-1">
             {partnerName}
           </h3>
           <p className="text-[#55E6C1] text-xs font-mono font-semibold uppercase tracking-wider mb-6">
-            P2P Video Session Requested
+            Incoming video call
           </p>
           
           <div className="flex justify-center items-center gap-6">
@@ -147,10 +147,10 @@ const VideoCallModal = () => {
               }`} />
               <div className="truncate">
                 <span className="font-mono text-xs font-bold text-[#F5F6FA] uppercase tracking-wider block truncate">
-                  Bilateral Sync // {partnerName}
+                  Video Call &bull; {partnerName}
                 </span>
                 <span className="text-[10px] font-mono text-[#A4B0BE] block">
-                  {callStatus === 'ongoing' ? 'WebRTC Encrypted &bull; 720p Peer Link' : 'Ringing &bull; Awaiting Answer'}
+                  {callStatus === 'ongoing' ? 'Connected' : 'Calling...'}
                 </span>
               </div>
             </div>
@@ -208,7 +208,7 @@ const VideoCallModal = () => {
                     {callStatus === 'calling' ? `Calling ${partnerName}...` : `Connecting with ${partnerName}...`}
                   </h3>
                   <p className="text-[#A4B0BE] text-xs font-mono tracking-wider uppercase">
-                    {callStatus === 'calling' ? 'Waiting for remote response' : 'Exchanging ICE descriptors'}
+                    {callStatus === 'calling' ? 'Waiting for answer...' : 'Connecting...'}
                   </p>
                 </div>
               </div>
