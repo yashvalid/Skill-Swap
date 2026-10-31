@@ -40,7 +40,7 @@ const CURATED_SHOWCASES = [
       role: 'Backend Architect'
     },
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    content: 'Wrapped up our peer swap on WebRTC networking and Rust profiling. Traded distributed systems knowledge for advanced memory profiling. Highly recommend swapping skills 1-on-1!',
+    content: 'Wrapped up our 4-week peer swap on Video Editing and Python automation. Traded creative motion skills for Python scripting. Highly recommend swapping skills 1-on-1!',
     mediaUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
     mediaType: 'image',
     likes: ['u1', 'u3', 'u8']
@@ -211,7 +211,7 @@ const Feed = () => {
       setNewPostContent('');
       setSelectedFile(null);
       setPreviewUrl(null);
-      toast.success('Showcase published to commons!');
+      toast.success('Showcase published to the community feed!');
     } catch (error) {
       toast.error('Failed to create post');
     } finally {
@@ -495,7 +495,7 @@ const Feed = () => {
                 disabled={uploading || !newPostContent || !selectedFile}
                 className="btn btn-primary w-full py-2.5 rounded-none flex items-center justify-center gap-2 text-xs font-semibold disabled:opacity-40"
               >
-                {uploading ? 'Transmitting...' : (
+                {uploading ? 'Publishing...' : (
                   <>
                     <Send size={14} />
                     <span>Publish Showcase</span>

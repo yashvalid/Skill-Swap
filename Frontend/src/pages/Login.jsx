@@ -83,12 +83,12 @@ const Login = () => {
             </span>
           </Link>
           <h1 className="heading-h1 text-[#F5F6FA] text-2xl sm:text-3xl">
-            {isLogin ? 'Authenticate Access' : 'Create Member Account'}
+            {isLogin ? 'Sign In to Account' : 'Create Your Account'}
           </h1>
           <p className="body-md text-xs sm:text-sm text-[#A4B0BE] mt-1.5 mx-auto">
             {isLogin 
               ? 'Access your active swaps, study plans, and messages.' 
-              : 'Trade modern mastery without monetary transaction fees.'}
+              : 'Exchange skills 1-on-1 for free without paying fees.'}
           </p>
         </div>
 
@@ -294,7 +294,7 @@ const Login = () => {
                 </div>
                 
                 <div className="flex items-center justify-between pl-6 text-[11px] font-mono text-[#718093]">
-                  <span>Status: {agreedToPolicy ? 'Consented (v1.0)' : 'Agreement required'}</span>
+                  <span>Status: {agreedToPolicy ? 'Agreed' : 'Agreement required'}</span>
                   <button
                     type="button"
                     onClick={() => setShowPolicyModal(true)}
@@ -310,14 +310,14 @@ const Login = () => {
               type="submit"
               className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-none"
             >
-              <span>{isLogin ? 'Sign In to Account' : 'Create Exchange Account'}</span>
+              <span>{isLogin ? 'Sign In to Account' : 'Create Your Account'}</span>
               <ArrowRight size={15} />
             </button>
           </form>
 
           <div className="mt-6 pt-4 border-t border-[rgba(255,255,255,0.08)] flex items-center justify-center gap-2 text-xs font-mono text-[#A4B0BE]">
             <ShieldCheck size={14} className="text-[#55E6C1]" />
-            <span>Zero monetary transaction fees. Built on mutual peer credits.</span>
+            <span>Free 1-on-1 learning. Earn credits as you teach and learn.</span>
           </div>
         </div>
       </div>
@@ -353,7 +353,7 @@ const Login = () => {
             {/* Scrollable Policy Body */}
             <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-[#A4B0BE] leading-relaxed">
               <div className="p-3 bg-[#242A32] border-l-2 border-[#55E6C1] text-[#F5F6FA] font-medium">
-                Summary: We respect your privacy. Video calls run directly peer-to-peer (P2P), we do not record audio/video, and we never sell your personal data.
+                Summary: We respect your privacy. Video calls connect directly between devices, we do not record audio/video, and we never sell your personal data.
               </div>
 
               <div className="space-y-1.5">
@@ -367,10 +367,10 @@ const Login = () => {
 
               <div className="space-y-1.5">
                 <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
-                  2. Peer-to-Peer 1-on-1 Video & Audio
+                  2. Direct 1-on-1 Video & Audio
                 </h4>
                 <p>
-                  Direct 1-on-1 video calls use WebRTC P2P media connections. Your video and audio streams travel directly between your device and your swap partner. SkillSwap does NOT view, listen to, record, or store your live calls on our servers.
+                  Direct 1-on-1 video calls connect directly between you and your partner. SkillSwap does NOT listen to, record, or store your live calls on our servers.
                 </p>
               </div>
 
@@ -388,7 +388,7 @@ const Login = () => {
                   4. Security & Encryption
                 </h4>
                 <p>
-                  Passwords are encrypted using bcrypt hashing (10 salt rounds). Sessions are authenticated using secure JSON Web Tokens.
+                  Passwords are encrypted with industry-standard security and sessions use encrypted sign-in tokens.
                 </p>
               </div>
 
@@ -397,7 +397,7 @@ const Login = () => {
                   5. Recording of Acceptance
                 </h4>
                 <p>
-                  When you create an account, your acceptance of these terms is recorded alongside an immutable timestamp in our database for auditability and compliance.
+                  When you create an account, your acceptance of these terms is recorded alongside a timestamp in our database.
                 </p>
               </div>
             </div>

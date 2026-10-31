@@ -22,9 +22,11 @@ module.exports.sendMessage = async (req, res) => {
 
     const text = req.body.text || req.body.message || req.body.content;
     const receiverId = req.body.receiverId || req.body.to || req.body.receiver;
+    const isEncrypted = req.body.isEncrypted || false;
+    const iv = req.body.iv || null;
 
     try {
-        const messages = await messagesService.sendMessage(text, receiverId, req.user._id);
+        const messages = await messagesService.sendMessage(text, receiverId, req.user._id, isEncrypted, iv);
         const receiverSocketID = await getReceiverSocketId(receiverId);
         if (receiverSocketID) {
             await sendMessages(receiverSocketID, {

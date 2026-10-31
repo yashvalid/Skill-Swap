@@ -111,15 +111,15 @@ const LandingPage = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-[#F5F6FA]">Sarah Lin</p>
-                    <p className="text-xs text-[#A4B0BE]">Lead Design Systems</p>
+                    <p className="text-xs text-[#A4B0BE]">UI/UX Designer</p>
                   </div>
                 </div>
                 <span className="tag-chip text-[10px]">
-                  Teaches Figma Tokens
+                  Teaches Figma Design
                 </span>
               </div>
 
-              {/* Barter Direction Icon */}
+              {/* Swap Direction Icon */}
               <div className="flex items-center justify-center my-2">
                 <div className="w-8 h-8 rounded-none bg-[#FF7675] text-[#2F3640] flex items-center justify-center shadow-md">
                   <ArrowLeftRight size={15} strokeWidth={2.5} />
@@ -134,25 +134,25 @@ const LandingPage = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-[#F5F6FA]">Marcus Thorne</p>
-                    <p className="text-xs text-[#A4B0BE]">Distributed Systems Architect</p>
+                    <p className="text-xs text-[#A4B0BE]">Language Coach</p>
                   </div>
                 </div>
                 <span className="tag-chip-purple text-[10px]">
-                  Teaches Distributed Go
+                  Teaches Spanish Practice
                 </span>
               </div>
 
               {/* Progress Track */}
               <div className="p-4 bg-[#242A32] border border-[rgba(255,255,255,0.08)] space-y-2.5">
                 <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="text-[#A4B0BE]">Cadence Progress</span>
+                  <span className="text-[#A4B0BE]">Swap Progress</span>
                   <span className="text-[#F5F6FA] font-semibold">Week 3 of 4</span>
                 </div>
                 <div className="w-full h-2 rounded-none bg-[#2F3640] overflow-hidden">
                   <div className="h-full bg-[#6C5CE7] w-3/4" />
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-[#A4B0BE] pt-1">
-                  <span>Target: WebRTC Data Channel Sync</span>
+                  <span>Goal: 45-min Practice Completed</span>
                   <span className="font-mono text-[#55E6C1] font-medium">VERIFIED</span>
                 </div>
               </div>
@@ -245,7 +245,7 @@ const LandingPage = () => {
             </div>
 
             <div className="p-3 bg-[#242A32] rounded-none border border-[rgba(255,255,255,0.08)] space-y-1">
-              <p className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">Suggested Cadence</p>
+              <p className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">Suggested Schedule</p>
               <p className="text-xs text-[#A4B0BE] leading-relaxed">
                 4-week structured exchange with weekly 45-minute live practice sessions, milestone tracking, and shared progress reviews.
               </p>
@@ -315,7 +315,7 @@ const LandingPage = () => {
                 <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="tag-chip text-[9px]">PART 2</span>
-                    <span className="text-xs font-semibold text-[#F5F6FA]">React & Web UI Architecture</span>
+                    <span className="text-xs font-semibold text-[#F5F6FA]">React & Modern Web Design</span>
                   </div>
                   <span className="font-mono text-[10px] text-[#6C5CE7]">Alex &bull; 30 min</span>
                 </div>
@@ -350,10 +350,10 @@ const LandingPage = () => {
               </div>
               
               {[
-                { week: '01', title: 'Architecture & Boundary Definition', status: 'Completed', color: 'text-[#55E6C1]' },
-                { week: '02', title: 'Core Implementation & State Pipeline', status: 'Completed', color: 'text-[#55E6C1]' },
-                { week: '03', title: 'Edge Case Profiling & Concurrency', status: 'In Progress', color: 'text-[#FFA502]' },
-                { week: '04', title: 'Production PR Review & Validation', status: 'Scheduled', color: 'text-[#718093]' },
+                { week: '01', title: 'Foundations & Goal Setting', status: 'Completed', color: 'text-[#55E6C1]' },
+                { week: '02', title: 'Core Practice & Guided Exercises', status: 'Completed', color: 'text-[#55E6C1]' },
+                { week: '03', title: 'Real-World Application & Review', status: 'In Progress', color: 'text-[#FFA502]' },
+                { week: '04', title: 'Final Project & Skill Verification', status: 'Scheduled', color: 'text-[#718093]' },
               ].map((m) => (
                 <div key={m.week} className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -371,15 +371,15 @@ const LandingPage = () => {
           <div className="md:col-span-6 order-1 md:order-2 space-y-4">
             <div className="tag-chip text-xs">FEATURE 2</div>
             <h2 className="heading-h1 text-[#F5F6FA]">
-              Structured Milestone Cadence
+              Structured 4-Week Learning Plans
             </h2>
             <p className="body-md text-[#A4B0BE]">
-              Unstructured calls rarely yield lasting skills. When a swap is accepted, both partners get a tailored 4-week roadmap. Each session has a clear goal and hands-on practice?whether you're reviewing code, speaking Spanish, or refining audio tracks.
+              Unstructured calls rarely yield lasting skills. When a swap is accepted, both partners get a tailored 4-week roadmap. Each session has a clear goal and hands-on practice — whether you're reviewing code, speaking Spanish, or refining audio tracks.
             </p>
             <ul className="space-y-2 pt-2 text-sm text-[#F5F6FA]">
               <li className="flex items-center gap-2.5">
                 <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0" />
-                <span>Deterministic weekly objectives with hands-on exercises</span>
+                <span>Clear weekly goals with practical hands-on exercises</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0" />
@@ -387,7 +387,7 @@ const LandingPage = () => {
               </li>
               <li className="flex items-center gap-2.5">
                 <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0" />
-                <span>Earn skill credits on milestone completion to unlock senior tracks</span>
+                <span>Earn skill credits on milestone completion to unlock advanced learning badges</span>
               </li>
             </ul>
           </div>
@@ -501,7 +501,7 @@ const LandingPage = () => {
       {/* CTA Bottom Banner */}
       <section className="ui-card p-8 sm:p-12 bg-[#353B48] border border-[rgba(255,255,255,0.15)] text-center relative overflow-hidden">
         <div className="max-w-2xl mx-auto space-y-4">
-          <div className="tag-chip text-xs">OPEN SKILL COMMONS</div>
+          <div className="tag-chip text-xs">JOIN OUR COMMUNITY</div>
           <h2 className="heading-h1 text-[#F5F6FA]">
             Start Your First Skill Swap
           </h2>

@@ -67,9 +67,9 @@ const PrivacyPolicy = () => {
             <div className="w-8 h-8 rounded-none bg-[#55E6C1]/20 text-[#55E6C1] flex items-center justify-center font-bold">
               <Video size={16} />
             </div>
-            <h3 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wide">Peer-to-Peer Calls</h3>
+            <h3 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wide">Direct Video Calls</h3>
             <p className="text-xs text-[#A4B0BE] leading-relaxed">
-              Live 1-on-1 audio and video streams flow directly between peers via WebRTC. We do not record or store your calls.
+              Live 1-on-1 audio and video calls connect directly between you and your partner. We do not record or store your calls.
             </p>
           </div>
 
@@ -77,9 +77,9 @@ const PrivacyPolicy = () => {
             <div className="w-8 h-8 rounded-none bg-[#FFA502]/20 text-[#FFA502] flex items-center justify-center font-bold">
               <Lock size={16} />
             </div>
-            <h3 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wide">Encrypted & Audited</h3>
+            <h3 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wide">Encrypted & Protected</h3>
             <p className="text-xs text-[#A4B0BE] leading-relaxed">
-              Passwords are salted and hashed with bcrypt. Policy consent is logged with an immutable timestamp upon registration.
+              Passwords are strongly encrypted. Your policy acceptance timestamp is securely recorded upon registration.
             </p>
           </div>
         </div>
@@ -123,7 +123,7 @@ const PrivacyPolicy = () => {
             <li className="flex items-start gap-2.5">
               <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0 mt-0.5" />
               <div>
-                <strong className="text-[#F5F6FA]">Policy Acceptance Record:</strong> When you register an account, we record your explicit confirmation (`privacyPolicyAccepted: true`), the exact timestamp (`privacyPolicyAcceptedAt`), and policy version (`privacyPolicyVersion`).
+                <strong className="text-[#F5F6FA]">Policy Acceptance Record:</strong> When you register an account, we record your confirmation, the exact date and time of acceptance, and the policy version.
               </div>
             </li>
           </ul>
@@ -136,16 +136,16 @@ const PrivacyPolicy = () => {
               <Video size={16} />
             </div>
             <h2 className="heading-h2 text-lg text-[#F5F6FA]">
-              2. Peer-to-Peer Video & Audio Privacy
+              2. Live Video & Audio Call Privacy
             </h2>
           </div>
           <p>
-            SkillSwap utilizes standard WebRTC technology for browser-to-browser communication:
+            SkillSwap connects live calls directly between user browsers:
           </p>
           <div className="p-4 bg-[#242A32] border-l-2 border-[#55E6C1] text-xs space-y-2">
             <p className="font-semibold text-[#F5F6FA]">Important Notice Regarding Live Calls:</p>
             <p>
-              Your live video, screen shares, and audio streams travel <span className="text-[#55E6C1] font-medium">directly peer-to-peer (P2P)</span> between your browser and your swap partner. SkillSwap servers act solely as an initial signaling broker (exchanging SDP offers/answers and ICE candidate network descriptors) to establish the direct handshake.
+              Your live video, screen shares, and audio streams travel <span className="text-[#55E6C1] font-medium">directly between your device and your swap partner's device</span>. SkillSwap only helps connect the two devices at the start of the call.
             </p>
             <p className="text-[#F5F6FA] font-medium">
               We do NOT intercept, record, view, listen to, or save your live video or audio streams on our servers.
@@ -182,13 +182,13 @@ const PrivacyPolicy = () => {
             <li className="flex items-start gap-2.5">
               <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0 mt-0.5" />
               <div>
-                <strong className="text-[#F5F6FA]">Password Hashing:</strong> Passwords are never saved in plain text. We utilize bcrypt with 10 salt rounds before persisting credentials.
+                <strong className="text-[#F5F6FA]">Password Security:</strong> Passwords are never saved in plain text. We utilize modern industry-standard encryption so your password is never readable by anyone.
               </div>
             </li>
             <li className="flex items-start gap-2.5">
               <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0 mt-0.5" />
               <div>
-                <strong className="text-[#F5F6FA]">Authenticated Sessions:</strong> All API requests to member endpoints require validated JSON Web Tokens (JWT).
+                <strong className="text-[#F5F6FA]">Secure Sign-In:</strong> All account requests use secure, encrypted sign-in tokens.
               </div>
             </li>
             <li className="flex items-start gap-2.5">
