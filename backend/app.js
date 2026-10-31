@@ -1,5 +1,7 @@
+const path = require('path');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -9,7 +11,7 @@ const SkillSwapRoutes = require('./routes/skillSwap.routes');
 const SkillRoutes = require('./routes/skills.routes');
 const MessagesRoutes = require('./routes/messages.routes');
 const postRoutes = require('./routes/post.routes');
-const path = require('path');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 
@@ -34,5 +36,6 @@ app.use("/skillswap", SkillSwapRoutes);
 app.use("/skill", SkillRoutes);
 app.use("/messages", MessagesRoutes);
 app.use("/posts", postRoutes);
+app.use("/ai", aiRoutes);
 
-module.exports = app; 
+module.exports = app;

@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import LandingPage from './pages/LandingPage';
 import Marketplace from './pages/Marketplace';
@@ -13,6 +12,7 @@ import Feed from './pages/Feed';
 import SwapFlow from './pages/SwapFlow';
 import Docs from './pages/Docs';
 import UserProfile from './pages/UserProfile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import VideoCallModal from './components/VideoCallModal';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -23,51 +23,70 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/marketplace" element={
-            <ProtectedRoute>
-              <Marketplace />
-            </ProtectedRoute>} />
+          
+          {/* Public browsing routes */}
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/feed" element={<Feed />} />
+          <Route path="/docs" element={<Docs />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/profile/:id" element={<UserProfile />} />
 
+          {/* Member authenticated routes */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
-            </ProtectedRoute>} />
+            </ProtectedRoute>} 
+          />
 
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile />
-            </ProtectedRoute>} />
-
-          <Route path="/profile/:id" element={
-            <ProtectedRoute>
-              <UserProfile />
-            </ProtectedRoute>} />
-
-          <Route path="/login" element={<Login />} />
+            </ProtectedRoute>} 
+          />
 
           <Route path="/messages" element={
             <ProtectedRoute>
               <Messaging />
-            </ProtectedRoute>} />
-
-          <Route path="/feed" element={
-            <ProtectedRoute>
-              <Feed />
-            </ProtectedRoute>} />
+            </ProtectedRoute>} 
+          />
 
           <Route path="/swap-flow" element={
             <ProtectedRoute>
               <SwapFlow />
-            </ProtectedRoute>} />
-
-          <Route path="/docs" element={
-            <ProtectedRoute>
-              <Docs />
-            </ProtectedRoute>} />
+            </ProtectedRoute>} 
+          />
         </Routes>
       </Layout>
-
-      <Toaster position="bottom-right" />
+      <Toaster 
+        position="top-right"
+        containerStyle={{ zIndex: 500 }}
+        toastOptions={{
+          style: {
+            background: '#353B48',
+            color: '#F5F6FA',
+            border: '1px solid rgba(108, 92, 231, 0.4)',
+            borderRadius: '0px',
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            fontSize: '0.875rem',
+            letterSpacing: '-0.01em',
+            boxShadow: '0 4px 18px rgba(0, 0, 0, 0.25)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#55E6C1',
+              secondary: '#2F3640',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#FF7675',
+              secondary: '#2F3640',
+            },
+          },
+        }}
+      />
     </>
   );
 }

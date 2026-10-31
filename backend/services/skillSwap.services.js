@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const SkillSwap = require('../model/skillSwap.model');
 const User = require('../model/user.model');
+const Messages = require('../model/message.model');
 const { sendMessages, getReceiverSocketId } = require('../socket');
 
 module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSkill }) => {
@@ -11,7 +13,6 @@ module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSki
             requestsSkill
         });
         const toUserSocketId = getReceiverSocketId(toUser);
-        // const fromUserData = await User.findOne({ _id: fromUser })
         const swapReq = await SkillSwap.findOne({ _id: skillSwap._id }).populate('fromUser');
         sendMessages(toUserSocketId, {
             event: 'swap-request',
@@ -33,7 +34,7 @@ module.exports.acceptSwapRequest = async (requestId) => {
             { new: true }
         );
         const user = await User.findOne({ _id: acceptSwap.fromUser })
-        sendMessages(user.socketId, message = {
+        sendMessages(user.socketId, {
             event: 'swap-accepted',
             data: user,
             swapId: acceptSwap._id,
@@ -41,6 +42,27 @@ module.exports.acceptSwapRequest = async (requestId) => {
         return acceptSwap
     } catch (err) {
         throw new Error("Error accepting skill swap request");
+    }
+}
+
+module.exports.completeSwap = async (requestId) => {
+    try {
+        const swap = await SkillSwap.findById(requestId);
+        if (!swap) throw new Error("Swap not found");
+
+        swap.status = 'completed';
+        swap.completedAt = new Date();
+        await swap.save();
+
+        // Reward 1 credit to both users for completing an exchange
+        await User.updateMany(
+            { _id: { $in: [swap.fromUser, swap.toUser] } },
+            { $inc: { credits: 1 } }
+        );
+
+        return swap;
+    } catch (err) {
+        throw new Error("Error completing swap");
     }
 }
 
@@ -63,7 +85,7 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
         if (!currUserId) throw new Error("No User ID provided");
 
         const swaps = await SkillSwap.find({
-            status: 'accepted',
+            status: { $in: ['accepted', 'completed'] },
             $or: [
                 { fromUser: currUserId },
                 { toUser: currUserId }
@@ -75,13 +97,14 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
 
         const otherUsers = swaps
             .map(swap => {
-
                 if (!swap.fromUser || !swap.toUser) return null;
 
                 const isFrom = swap.fromUser._id.toString() === currUserId.toString();
                 const otherUser = isFrom ? swap.toUser : swap.fromUser;
 
                 return {
+                    swapId: swap._id,
+                    status: swap.status,
                     otherUser,
                     requestedSkill: isFrom ? swap.requestsSkill : swap.offersSkill,
                     skillOffered: isFrom ? swap.offersSkill : swap.requestsSkill
@@ -89,12 +112,78 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
             })
             .filter(item => item !== null);
 
-
         const uniqueUsers = Array.from(
             new Map(
                 otherUsers.map(entry => [entry.otherUser._id.toString(), entry])
             ).values()
         );
+
+        if (uniqueUsers.length > 0) {
+            const userObjIds = uniqueUsers.map(u => new mongoose.Types.ObjectId(u.otherUser._id));
+            const currUserObjId = new mongoose.Types.ObjectId(currUserId);
+
+            const lastMessages = await Messages.aggregate([
+                {
+                    $match: {
+                        $or: [
+                            { senderId: currUserObjId, receiverId: { $in: userObjIds } },
+                            { receiverId: currUserObjId, senderId: { $in: userObjIds } }
+                        ]
+                    }
+                },
+                {
+                    $sort: { createdAt: -1 }
+                },
+                {
+                    $project: {
+                        text: 1,
+                        isEncrypted: 1,
+                        iv: 1,
+                        messageType: 1,
+                        senderId: 1,
+                        receiverId: 1,
+                        createdAt: 1,
+                        partnerId: {
+                            $cond: [
+                                { $eq: ["$senderId", currUserObjId] },
+                                "$receiverId",
+                                "$senderId"
+                            ]
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$partnerId",
+                        lastMessage: { $first: "$$ROOT" }
+                    }
+                }
+            ]);
+
+            const lastMessageMap = new Map(
+                lastMessages.map(item => [item._id.toString(), item.lastMessage])
+            );
+
+            uniqueUsers.forEach(entry => {
+                const partnerId = entry.otherUser._id.toString();
+                const msg = lastMessageMap.get(partnerId);
+                if (msg) {
+                    entry.lastMessage = {
+                        text: msg.text,
+                        senderId: msg.senderId,
+                        receiverId: msg.receiverId,
+                        createdAt: msg.createdAt
+                    };
+                    entry.lastMessageAt = new Date(msg.createdAt).getTime();
+                } else {
+                    entry.lastMessage = null;
+                    entry.lastMessageAt = 0;
+                }
+            });
+
+            // Order recipients: whoever has sent the most recent message comes first
+            uniqueUsers.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+        }
 
         return uniqueUsers;
     } catch (err) {

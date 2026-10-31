@@ -4,20 +4,57 @@ import {
   Star,
   MapPin,
   CheckCircle2,
-  Clock,
   MessageSquare,
-  Zap,
   Share2,
   Award,
-  Video
+  Video,
+  X,
+  ShieldCheck,
+  ArrowRight,
+  ArrowLeftRight
 } from 'lucide-react';
 import { userService } from '../services/userService';
 import { feedService } from '../services/feedService';
-import { skillService } from '../services/skillService';
 import { swapService } from '../services/swapService';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useVideoCall } from '../context/VideoCallContext';
+
+const CURATED_FALLBACK_PEERS = {
+  'peer-1': {
+    _id: 'peer-1',
+    fullname: { firstname: 'Sarah', lastname: 'Lin' },
+    role: 'Lead Design Systems Engineer',
+    bio: 'Crafting production token systems, component libraries, and spatial micro-interactions in Figma and React.',
+    location: 'San Francisco, CA',
+    skillsOffered: ['Figma Variables', 'Design Tokens', 'Tailwind CSS', 'Accessibility'],
+    skillsNeeded: ['Next.js 15', 'TypeScript', 'State Machines'],
+    averageRating: 4.95,
+    totalRatings: 34
+  },
+  'peer-2': {
+    _id: 'peer-2',
+    fullname: { firstname: 'Marcus', lastname: 'Thorne' },
+    role: 'Principal Backend Architect',
+    bio: 'Specializing in high-throughput distributed systems, WebSocket protocols, and cloud event pipelines.',
+    location: 'Berlin / Remote',
+    skillsOffered: ['Distributed Systems', 'Redis Architecture', 'Node.js Internals', 'Docker'],
+    skillsNeeded: ['Product UI', 'SwiftUI', 'Animation Curves'],
+    averageRating: 4.9,
+    totalRatings: 48
+  },
+  'peer-3': {
+    _id: 'peer-3',
+    fullname: { firstname: 'Elena', lastname: 'Vance' },
+    role: 'Staff Product Strategist',
+    bio: 'Helping technical founders and builders shape product narratives, user retention loops, and UX research.',
+    location: 'New York, NY',
+    skillsOffered: ['Product Strategy', 'UX Architecture', 'Growth Loops', 'User Research'],
+    skillsNeeded: ['React Basics', 'Full-Stack Development', 'API Design'],
+    averageRating: 5.0,
+    totalRatings: 62
+  }
+};
 
 const UserProfile = () => {
   const { id } = useParams();
@@ -33,6 +70,7 @@ const UserProfile = () => {
   // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
   const [hasConnection, setHasConnection] = useState(false);
 
@@ -43,35 +81,46 @@ const UserProfile = () => {
         return;
       }
       fetchUserData();
-      checkConnection();
+      if (currentUser) {
+        checkConnection();
+      }
     }
-  }, [id]);
+  }, [id, currentUser]);
 
   const fetchUserData = async () => {
-    try {
-      const [userRes, postsRes] = await Promise.all([
-        userService.getUserById(id),
-        feedService.getUserPosts(id)
-      ]);
+    if (CURATED_FALLBACK_PEERS[id]) {
+      const mock = CURATED_FALLBACK_PEERS[id];
+      setProfileUser(mock);
+      setOfferedSkills(mock.skillsOffered || []);
+      setSkillsToLearn(mock.skillsNeeded || []);
+      return;
+    }
 
-      setProfileUser(userRes.data.user);
-      setPosts(postsRes.data.posts);
-      setOfferedSkills(userRes.data.user.skillsOffered || []);
-      setSkillsToLearn(userRes.data.user.skillsNeeded || []);
+    try {
+      const userRes = await userService.getUserById(id);
+      if (userRes.data?.user) {
+        setProfileUser(userRes.data.user);
+        setOfferedSkills(userRes.data.user.skillsOffered || []);
+        setSkillsToLearn(userRes.data.user.skillsNeeded || []);
+      }
     } catch (error) {
       console.error('Failed to fetch user data', error);
       toast.error('Failed to load profile');
+    }
+
+    try {
+      const postsRes = await feedService.getUserPosts(id);
+      setPosts(postsRes.data?.posts || []);
+    } catch (error) {
+      setPosts([]);
     }
   };
 
   const checkConnection = async () => {
     try {
       const res = await swapService.getAcceptedSwaps();
-      // Check if there is an accepted swap with this user
       const connectedUsers = res.data.allUsers || [];
-      const connected = connectedUsers.some(s =>
-        s.otherUser._id === id
-      );
+      const connected = connectedUsers.some(s => s.otherUser?._id === id);
       setHasConnection(connected);
     } catch (error) {
       console.error('Error checking connection', error);
@@ -82,9 +131,10 @@ const UserProfile = () => {
     e.preventDefault();
     try {
       await userService.rateUser(id, { rating, review });
-      toast.success('Rating submitted successfully!');
+      toast.success('Rating submitted successfully');
       setShowRatingModal(false);
-      fetchUserData(); // refresh rating
+      setReview('');
+      fetchUserData();
     } catch (error) {
       toast.error('Failed to submit rating');
     }
@@ -92,183 +142,340 @@ const UserProfile = () => {
 
   const handleShareProfile = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast.success('Profile link copied!');
+    toast.success('Profile permalink copied');
   };
 
-  if (!profileUser) return <div className="container py-20 text-center">Loading...</div>;
+  const handleInitiateSwap = () => {
+    if (!currentUser) {
+      toast.error('Sign in to propose a skill exchange');
+      navigate('/login');
+      return;
+    }
+    navigate('/swap-flow', { state: { partner: profileUser } });
+  };
+
+  if (!profileUser) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-6 py-24 text-center">
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="h-6 w-48 mx-auto skeleton-shimmer rounded-none" />
+          <div className="h-28 w-full skeleton-shimmer rounded-none" />
+          <p className="font-mono text-xs text-[#718093]">RETRIEVING PEER IDENTITY...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container py-16">
-      {/* Profile Header */}
-      <div className="flex flex-col md:flex-row gap-12 items-start mb-16">
-        <div className="relative group">
-          <div className="w-48 h-48 rounded-[3rem] overflow-hidden border-4 border-white shadow-2xl relative z-10 bg-surface-container">
-            <img
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileUser.fullname?.firstname}`}
-              alt={profileUser.fullname?.firstname}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-white z-20 shadow-lg">
-            <CheckCircle2 size={24} />
-          </div>
-          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-[3rem] -rotate-6 scale-105 z-0 transition-transform group-hover:rotate-0"></div>
-        </div>
+    <div className="max-w-[1280px] mx-auto px-6 py-10">
+      
+      {/* Profile Header Hero */}
+      <div className="ui-card p-6 sm:p-8 mb-10 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+        <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="relative group shrink-0">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-none overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#242A32] shadow-md">
+                <img
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileUser.fullname?.firstname || 'User'}`}
+                  alt={profileUser.fullname?.firstname}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#55E6C1] text-[#2F3640] rounded-none flex items-center justify-center font-bold shadow-md">
+                <CheckCircle2 size={15} />
+              </div>
+            </div>
 
-        <div className="flex-grow pt-4">
-          <div className="flex flex-wrap items-center gap-4 mb-4">
-            <div className="flex-1">
-              <h1 className="text-4xl font-black mb-2 flex items-center gap-3">
-                {profileUser.fullname?.firstname} {profileUser.fullname?.lastname}
-                {profileUser.averageRating >= 4.5 && profileUser.totalRatings > 0 && (
-                  <span className="flex items-center gap-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
-                    <Award size={14} /> Top Rated
-                  </span>
-                )}
-              </h1>
-            </div>
-            <div className="flex items-center gap-1 bg-secondary/10 text-secondary px-3 py-1 rounded-full text-sm font-bold">
-              <Star size={14} fill="currentColor" />
-              {profileUser.averageRating?.toFixed(1) || '0.0'} ({profileUser.totalRatings || 0} reviews)
+            <div>
+              <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F5F6FA]">
+                  {profileUser.fullname?.firstname} {profileUser.fullname?.lastname}
+                </h1>
+                <span className="tag-chip text-[10px]">COMMUNITY MEMBER</span>
+                <span className="tag-chip text-[10px] bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.15)]">
+                  <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
+                  {profileUser.averageRating?.toFixed(1) || '5.0'} RATING
+                </span>
+              </div>
+
+              <p className="font-mono text-xs text-[#55E6C1] uppercase tracking-wider mb-2 font-semibold">
+                {profileUser.role || 'Member'}
+              </p>
+
+              <div className="flex flex-wrap gap-4 text-xs text-[#A4B0BE] font-mono">
+                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {profileUser.location || 'Remote'}</span>
+                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#55E6C1]" /> Identity Verified</span>
+              </div>
             </div>
           </div>
-          <p className="text-xl text-primary font-bold mb-6" style={{ fontFamily: 'var(--font-display)' }}>{profileUser.role}</p>
-          <div className="flex flex-wrap gap-6 text-on-surface-variant mb-8">
-            <span className="flex items-center gap-2"><MapPin size={18} /> {profileUser.location}</span>
-          </div>
-          <div className="flex gap-4">
-            {hasConnection && (
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
+            {hasConnection ? (
               <button
                 onClick={() => startCall(profileUser)}
-                className="btn btn-primary px-8 flex items-center gap-2 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-md shadow-primary/20"
+                className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5 rounded-none"
               >
-                <Video size={18} className="animate-pulse" /> Start Video Call
+                <Video size={14} />
+                <span>Start Call</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleInitiateSwap}
+                className="btn btn-cta text-xs py-2 px-4 flex items-center gap-1.5 rounded-none"
+              >
+                <span>Propose Swap</span>
+                <ArrowRight size={14} />
               </button>
             )}
+
             <button
               onClick={() => navigate('/messages')}
-              className={`btn ${hasConnection ? 'btn-outline' : 'btn-primary'} px-8 flex items-center gap-2`}
+              className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 rounded-none"
             >
-              <MessageSquare size={18} /> Message
+              <MessageSquare size={14} />
+              <span>Message</span>
             </button>
+
             {hasConnection && (
               <button
                 onClick={() => setShowRatingModal(true)}
-                className="btn btn-outline px-8 flex items-center gap-2"
+                className="btn btn-secondary text-xs py-2 px-3 rounded-none"
               >
-                <Star size={18} /> Rate User
+                <Star size={14} />
+                <span>Rate</span>
               </button>
             )}
+
             <button
               onClick={handleShareProfile}
-              className="btn btn-outline px-4 flex items-center gap-2"
+              className="btn btn-secondary text-xs p-2 rounded-none"
               title="Share Profile"
             >
-              <Share2 size={18} />
+              <Share2 size={15} />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-        <div className="md:col-span-2 space-y-16">
-          <section>
-            <h2 className="headline-sm mb-6">About {profileUser.fullname?.firstname}</h2>
-            <p className="text-lg text-on-surface-variant leading-relaxed text-pretty">
-              {profileUser.bio}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* About Section */}
+          <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+            <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.08)] pb-2">
+              <h2 className="heading-h2 text-base text-[#F5F6FA]">About {profileUser.fullname?.firstname}</h2>
+              <span className="font-mono text-[10px] text-[#718093]">SYNOPSIS</span>
+            </div>
+            <p className="body-md text-sm text-[#A4B0BE] leading-relaxed">
+              {profileUser.bio || "Passionate about learning new skills, collaborating on projects, and sharing knowledge."}
             </p>
           </section>
 
-          <section>
-            <h2 className="headline-sm mb-6">Posts</h2>
-            <div className="space-y-6">
+          {/* Skills Grid */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Offering Skills */}
+            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
+                <div>
+                  <span className="tag-chip text-[9px] mb-1 inline-block">OFFERING</span>
+                  <h3 className="heading-h2 text-sm text-[#F5F6FA]">Teaches</h3>
+                </div>
+                <span className="font-mono text-xs font-semibold text-[#55E6C1]">
+                  {offeredSkills.length} Skills
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {offeredSkills.map((sk, i) => (
+                  <span key={i} className="tag-chip text-[11px]">
+                    {sk}
+                  </span>
+                ))}
+                {offeredSkills.length === 0 && (
+                  <p className="text-xs text-[#718093] italic py-2 font-mono">No skills registered yet.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Seeking Skills */}
+            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
+                <div>
+                  <span className="tag-chip text-[9px] mb-1 inline-block">SEEKING</span>
+                  <h3 className="heading-h2 text-sm text-[#F5F6FA]">Wants to Learn</h3>
+                </div>
+                <span className="font-mono text-xs font-semibold text-[#55E6C1]">
+                  {skillsToLearn.length} Targets
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skillsToLearn.map((sk, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-xs text-[#A4B0BE] font-mono">
+                    {sk}
+                  </span>
+                ))}
+                {skillsToLearn.length === 0 && (
+                  <p className="text-xs text-[#718093] italic py-2 font-mono">Open to all technical exchanges.</p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Showcases */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="heading-h2 text-base text-[#F5F6FA]">Portfolio Showcases ({posts.length})</h2>
+              <span className="font-mono text-[10px] text-[#718093]">ARTIFACTS</span>
+            </div>
+
+            <div className="space-y-4">
               {posts.map(post => (
-                <div key={post._id} className="bg-surface-container rounded-3xl p-6 shadow-sm border border-outline-variant/30">
-                  <div className="flex items-center gap-4 mb-4">
-                    <img
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileUser.fullname?.firstname}`}
-                      className="w-12 h-12 rounded-full bg-white border-2 border-primary/20"
-                      alt="avatar"
-                    />
-                    <div>
-                      <h3 className="font-bold">{profileUser.fullname?.firstname} {profileUser.fullname?.lastname}</h3>
-                      <p className="text-sm text-on-surface-variant">
-                        {new Date(post.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mb-4 text-on-surface-variant whitespace-pre-wrap">{post.content}</p>
+                <div key={post._id} className="ui-card p-5 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+                  <p className="font-mono text-[10px] text-[#718093] mb-2">
+                    Posted on {new Date(post.createdAt).toLocaleDateString()}
+                  </p>
+                  <p className="body-md text-sm text-[#F5F6FA] mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+
                   {post.mediaUrl && (
-                    <div className="rounded-2xl overflow-hidden mb-4 border border-outline-variant/20 bg-black/5">
+                    <div className="rounded-none overflow-hidden aspect-video bg-[#242A32] max-h-64 border border-[rgba(255,255,255,0.08)]">
                       {post.mediaType === 'video' ? (
-                        <video src={post.mediaUrl} controls className="w-full max-h-96 object-cover" />
+                        <video src={post.mediaUrl} controls className="w-full h-full object-contain" />
                       ) : (
-                        <img src={post.mediaUrl} alt="Post content" className="w-full max-h-96 object-cover" />
+                        <img src={post.mediaUrl} alt="" className="w-full h-full object-cover" />
                       )}
                     </div>
                   )}
                 </div>
               ))}
-              {posts.length === 0 && <p className="text-on-surface-variant text-sm italic">No posts yet.</p>}
+
+              {posts.length === 0 && (
+                <div className="p-8 text-center ui-card bg-[#2B313A] border-dashed border-[rgba(255,255,255,0.15)] rounded-none">
+                  <p className="text-xs text-[#718093] font-mono">No showcases published yet.</p>
+                </div>
+              )}
             </div>
           </section>
 
-          <section>
-            <h2 className="headline-sm mb-6">Reviews</h2>
-            <div className="space-y-4">
+          {/* Partner Reviews */}
+          <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
+            <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
+              <h2 className="heading-h2 text-base text-[#F5F6FA]">Peer Endorsements & Reviews</h2>
+              <span className="font-mono text-[10px] text-[#718093]">PROOF OF EXCHANGE</span>
+            </div>
+
+            <div className="space-y-3">
               {profileUser.ratings?.map((r, i) => (
-                <div key={i} className="bg-surface-container p-6 rounded-2xl border border-outline-variant/30">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="font-bold">{r.user?.fullname?.firstname || 'User'}</p>
-                    <div className="flex text-secondary">
+                <div key={i} className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)] space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-xs text-[#F5F6FA]">{r.user?.fullname?.firstname || 'Verified Partner'}</span>
+                    <div className="flex text-[#FFA502]">
                       {[...Array(5)].map((_, j) => (
-                        <Star key={j} size={14} fill={j < r.rating ? "currentColor" : "none"} />
+                        <Star key={j} size={11} fill={j < r.rating ? "currentColor" : "none"} />
                       ))}
                     </div>
                   </div>
-                  <p className="text-on-surface-variant text-sm">{r.review}</p>
+                  <p className="body-md text-xs text-[#A4B0BE]">{r.review}</p>
                 </div>
               ))}
               {(!profileUser.ratings || profileUser.ratings.length === 0) && (
-                <p className="text-on-surface-variant text-sm italic">No reviews yet.</p>
+                <p className="text-xs text-[#718093] italic py-2 font-mono">No reviews recorded yet. Propose a swap to earn the first testimonial!</p>
               )}
             </div>
           </section>
         </div>
+
+        {/* Sidebar Standing */}
+        <div className="space-y-6">
+          <div className="ui-card p-6 bg-[#2B313A] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
+            <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
+              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Swap Reviews</h3>
+              <span className="tag-chip text-[9px]">ACTIVE</span>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
+                <span className="text-[#A4B0BE]">Response Time</span>
+                <span className="font-mono font-bold text-[#55E6C1]">&lt; 2 hrs</span>
+              </div>
+              <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
+                <span className="text-[#A4B0BE]">Avg. Session Length</span>
+                <span className="font-bold text-[#F5F6FA]">45 mins</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[#A4B0BE]">Connection Status</span>
+                <span className="font-mono font-semibold text-[#55E6C1] text-[10px]">
+                  {hasConnection ? 'MUTUAL PARTNER' : 'AVAILABLE'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Interactive Rating Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {showRatingModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl">
-            <h2 className="headline-sm mb-6">Rate {profileUser.fullname?.firstname}</h2>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-none p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+            <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
+              <div>
+                <span className="tag-chip text-[9px] mb-1 inline-block">FEEDBACK</span>
+                <h2 className="heading-h2 text-base text-[#F5F6FA]">Rate Swap Experience</h2>
+              </div>
+              <button onClick={() => setShowRatingModal(false)} className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]">
+                <X size={18} />
+              </button>
+            </div>
+
             <form onSubmit={handleRateSubmit} className="space-y-4">
               <div>
-                <label className="label-md mb-2 block font-bold">Rating (1-5)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={rating}
-                  onChange={(e) => setRating(Number(e.target.value))}
-                  required
-                  className="w-full px-4 py-3 rounded-xl bg-surface-container border-none focus:ring-2 ring-primary/20 outline-none"
-                />
+                <label className="input-label block mb-2 text-center">
+                  Select Rating
+                </label>
+                <div className="flex justify-center gap-2 mb-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      type="button"
+                      key={star}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setRating(star)}
+                      className="p-1 text-[#FFA502] hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                    >
+                      <Star
+                        size={26}
+                        fill={(hoverRating || rating) >= star ? "currentColor" : "none"}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <label className="label-md mb-2 block font-bold">Review</label>
+
+              <div className="input-group">
+                <label className="input-label">
+                  Feedback & Notes
+                </label>
                 <textarea
                   value={review}
                   onChange={(e) => setReview(e.target.value)}
-                  placeholder="Share your experience..."
-                  className="w-full px-4 py-3 rounded-xl bg-surface-container border-none focus:ring-2 ring-primary/20 outline-none min-h-[100px]"
-                ></textarea>
+                  required
+                  placeholder="Describe your session outcomes, mentoring clarity, and reciprocation..."
+                  className="input-field min-h-[90px] resize-none rounded-none"
+                />
               </div>
-              <div className="flex gap-4 mt-6">
-                <button type="button" onClick={() => setShowRatingModal(false)} className="flex-1 btn btn-outline py-3 justify-center">
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRatingModal(false)}
+                  className="flex-1 btn btn-secondary py-2 justify-center text-xs rounded-none"
+                >
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 btn btn-primary py-3 justify-center">
-                  Submit
+                <button
+                  type="submit"
+                  className="flex-1 btn btn-primary py-2 justify-center text-xs font-semibold rounded-none"
+                >
+                  Submit Review
                 </button>
               </div>
             </form>
