@@ -3,14 +3,8 @@ import {
   BookOpen, 
   ShieldCheck, 
   FileText, 
-  Sparkles, 
   Layout, 
-  CheckCircle2, 
-  Box, 
-  Layers, 
-  Terminal,
-  ArrowLeftRight,
-  Code
+  CheckCircle2 
 } from 'lucide-react';
 
 const Docs = () => {
@@ -34,10 +28,10 @@ const Docs = () => {
           <span>SYSTEM DOCUMENTATION</span>
         </div>
         <h1 className="heading-h1 text-[#F5F6FA]">
-          Bold & Energetic Architecture Spec
+          Platform Architecture & Guidelines
         </h1>
         <p className="body-md text-sm text-[#A4B0BE] max-w-2xl mx-auto mt-2 leading-relaxed">
-          Design tokens, color palette, typography scales, matching logic, and WebRTC video calling powering SkillSwap.
+          Platform philosophy, matching logic, WebRTC video calling, and community trust guidelines powering SkillSwap.
         </p>
       </header>
 
@@ -47,7 +41,6 @@ const Docs = () => {
           <nav className="sticky top-24 space-y-1 bg-[#353B48] p-2 rounded-none border border-[rgba(255,255,255,0.12)]">
             {[
               { id: "introduction", title: "THE COMMONS", icon: <FileText size={15} /> },
-              { id: "design-system", title: "BOLD & ENERGETIC UI", icon: <Box size={15} /> },
               { id: "product-requirements", title: "EXCHANGE LOGIC", icon: <Layout size={15} /> },
               { id: "safety-trust", title: "TRUST & VERIFY", icon: <ShieldCheck size={15} /> }
             ].map((link) => (
@@ -82,58 +75,8 @@ const Docs = () => {
             </div>
           </section>
 
-          <section id="design-system" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 2</span>
-            <h2 className="heading-h2 text-[#F5F6FA] mb-3">Bold & Energetic Design System</h2>
-            <p className="body-md text-sm text-[#A4B0BE] mb-6 leading-relaxed">
-              Bold and energetic poster-style interface using strict 60/30/10 color balance, sharp 0px geometry, high typographical impact, and instant utilitarian feedback.
-            </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                <div className="flex items-center gap-2 text-[#55E6C1] font-mono text-xs font-semibold mb-2">
-                  <Terminal size={15} />
-                  <span>TYPOGRAPHY SPECS</span>
-                </div>
-                <p className="body-md text-xs text-[#A4B0BE] leading-relaxed">
-                  System UI stack with tight tracking and aggressive hierarchical scale. Hero <code className="code-mono text-[11px] text-[#55E6C1]">clamp(2.5rem, 5vw, 4rem)</code>, H1 2.25rem, Body 1rem/1.6. JetBrains Mono for code and technical values.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                <div className="flex items-center gap-2 text-[#55E6C1] font-mono text-xs font-semibold mb-2">
-                  <Box size={15} />
-                  <span>60/30/10 COLOR BALANCE</span>
-                </div>
-                <p className="body-md text-xs text-[#A4B0BE] leading-relaxed">
-                  Dominant Dark Slate <code className="code-mono text-[11px] text-[#F5F6FA]">#2F3640</code> (60%), Deep Purple <code className="code-mono text-[11px] text-[#6C5CE7]">#6C5CE7</code> & Soft Mint <code className="code-mono text-[11px] text-[#55E6C1]">#55E6C1</code> (30%), Vivid Orange <code className="code-mono text-[11px] text-[#FF7675]">#FF7675</code> (10% primary CTA).
-                </p>
-              </div>
-
-              <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                <div className="flex items-center gap-2 text-[#55E6C1] font-mono text-xs font-semibold mb-2">
-                  <Layers size={15} />
-                  <span>SHARP 0px EDGES</span>
-                </div>
-                <p className="body-md text-xs text-[#A4B0BE] leading-relaxed">
-                  Base corner radius 0px across buttons, cards, inputs, and tags. Tactile active states (-1px press) and static-first 150ms hover color transitions with zero entry animation overhead.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                <div className="flex items-center gap-2 text-[#55E6C1] font-mono text-xs font-semibold mb-2">
-                  <Sparkles size={15} />
-                  <span>AI CURRICULUM ENGINE</span>
-                </div>
-                <p className="body-md text-xs text-[#A4B0BE] leading-relaxed">
-                  Study plans are generated dynamically to match both partners' goals. Shimmer loaders are used while fetching.
-                </p>
-              </div>
-            </div>
-          </section>
-
           <section id="product-requirements" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 3</span>
+            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 2</span>
             <h2 className="heading-h2 text-[#F5F6FA] mb-4">Swap Matching Logic</h2>
             <div className="space-y-4">
               {[
@@ -164,7 +107,7 @@ const Docs = () => {
           </section>
 
           <section id="safety-trust" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 4</span>
+            <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 3</span>
             <h2 className="heading-h2 text-[#F5F6FA] mb-4">Trust & Community Safety</h2>
             <p className="body-md text-sm text-[#A4B0BE] leading-relaxed mb-4">
               SkillSwap enforces a zero-tolerance policy against financial solicitation and corporate recruitment spam.
