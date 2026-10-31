@@ -627,6 +627,46 @@ const Messaging = () => {
                 {currentChatMessages.map((msg) => {
                   const isMe = msg.senderId === currentUser._id;
                   const isBotMsg = msg.senderId === 'skillbot';
+                  const isCallRecord = msg.messageType === 'call' || msg.text?.startsWith('📹') || msg.text?.startsWith('📞');
+
+                  if (isCallRecord) {
+                    const isMissedOrDeclined = msg.callDetails?.status === 'missed' || 
+                                              msg.callDetails?.status === 'declined' || 
+                                              msg.text?.includes('Missed') || 
+                                              msg.text?.includes('Declined');
+                    return (
+                      <div key={msg._id} className="flex justify-center my-2.5">
+                        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#242A32] border border-[rgba(255,255,255,0.12)] rounded-none shadow-sm max-w-md w-full sm:w-auto">
+                          <div className={`w-8 h-8 rounded-none flex items-center justify-center shrink-0 ${
+                            isMissedOrDeclined 
+                              ? 'bg-[#FF7675]/20 text-[#FF7675] border border-[rgba(255,118,117,0.3)]' 
+                              : 'bg-[#55E6C1]/20 text-[#55E6C1] border border-[rgba(85,230,193,0.3)]'
+                          }`}>
+                            <Video size={15} />
+                          </div>
+                          <div className="flex-grow min-w-0">
+                            <p className="font-mono text-xs font-bold text-[#F5F6FA] truncate">
+                              {msg.text}
+                            </p>
+                            <span className="font-mono text-[9px] text-[#A4B0BE] block">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; {new Date(msg.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                          {!activeChatUser.isBot && (
+                            <button
+                              type="button"
+                              onClick={() => startCall(activeChatUser)}
+                              className="px-2.5 py-1 text-[11px] font-mono bg-[#6C5CE7] hover:bg-[#5b4bd8] text-white rounded-none shrink-0 transition-colors cursor-pointer"
+                              title="Start Video Call"
+                            >
+                              Call Back
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] sm:max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
