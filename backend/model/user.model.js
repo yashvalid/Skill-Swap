@@ -73,6 +73,10 @@ const userSchema = new mongoose.Schema({
     privacyPolicyVersion: {
         type: String,
         default: '1.0'
+    },
+    publicKey: {
+        type: String,
+        default: null
     }
 });
 

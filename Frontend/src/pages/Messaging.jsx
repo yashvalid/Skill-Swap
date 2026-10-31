@@ -13,7 +13,9 @@ import {
   FileCode,
   HelpCircle,
   RotateCcw,
-  ArrowDown
+  ArrowDown,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -23,6 +25,13 @@ import toast from 'react-hot-toast';
 import { messageService } from '../services/messageService';
 import { aiService } from '../services/aiService';
 import { swapService } from '../services/swapService';
+import { userService } from '../services/userService';
+import {
+  getOrInitUserKeyPair,
+  getOrDeriveSharedKey,
+  encryptMessageText,
+  decryptMessageText
+} from '../utils/e2ee';
 
 const SKILLBOT_USER = {
   _id: 'skillbot',
@@ -103,10 +112,73 @@ const Messaging = () => {
   const [loading, setLoading] = useState(true);
   const [showScrollBottomPill, setShowScrollBottomPill] = useState(false);
 
+  // E2EE States
+  const [userKeyPair, setUserKeyPair] = useState(null);
+  const [partnerSharedKey, setPartnerSharedKey] = useState(null);
+  const [isE2EEActive, setIsE2EEActive] = useState(false);
+
   const scrollContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const isSwitchingChatRef = useRef(true);
   const prevMessagesCountRef = useRef(0);
+
+  // Initialize E2EE Key Pair
+  useEffect(() => {
+    if (!currentUser?._id) return;
+    let isCancelled = false;
+    const initCrypto = async () => {
+      try {
+        const keyInfo = await getOrInitUserKeyPair(currentUser._id);
+        if (keyInfo && !isCancelled) {
+          setUserKeyPair(keyInfo);
+          if (keyInfo.isNew || !currentUser.publicKey) {
+            await userService.updateProfile({ publicKey: keyInfo.publicKeyJwkString });
+          }
+        }
+      } catch (err) {
+        console.warn('[E2EE] Key initialization error:', err);
+      }
+    };
+    initCrypto();
+    return () => { isCancelled = true; };
+  }, [currentUser?._id, currentUser?.publicKey]);
+
+  // Derive E2EE Shared Key for Active Conversation
+  useEffect(() => {
+    let isCancelled = false;
+    const deriveKeyForChat = async () => {
+      if (!activeChatUser || activeChatUser.isBot || !userKeyPair?.privateKey) {
+        setPartnerSharedKey(null);
+        setIsE2EEActive(false);
+        return;
+      }
+
+      let partnerPubKey = activeChatUser.publicKey;
+      if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
+        try {
+          const res = await userService.getUserById(activeChatUser._id);
+          partnerPubKey = res.data?.user?.publicKey;
+        } catch (e) {}
+      }
+
+      if (partnerPubKey && !isCancelled) {
+        const derivedKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
+        if (!isCancelled && derivedKey) {
+          setPartnerSharedKey(derivedKey);
+          setIsE2EEActive(true);
+          return;
+        }
+      }
+
+      if (!isCancelled) {
+        setPartnerSharedKey(null);
+        setIsE2EEActive(false);
+      }
+    };
+
+    deriveKeyForChat();
+    return () => { isCancelled = true; };
+  }, [activeChatUser, userKeyPair]);
 
   // Sync botMessages to localStorage on change
   useEffect(() => {
@@ -176,15 +248,29 @@ const Messaging = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [userKeyPair]);
 
   useEffect(() => {
     if (socket) {
-      const handleNewMessage = (data) => {
+      const handleNewMessage = async (data) => {
+        let processedData = data;
+        if (data.isEncrypted && data.iv) {
+          let currentKey = partnerSharedKey;
+          if (!currentKey && userKeyPair?.privateKey && activeChatUser?.publicKey) {
+            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, activeChatUser.publicKey);
+          }
+          if (currentKey) {
+            const decrypted = await decryptMessageText(data.text, data.iv, currentKey);
+            processedData = { ...data, text: decrypted, isDecrypted: true };
+          } else {
+            processedData = { ...data, text: '[Encrypted message]', isDecrypted: false };
+          }
+        }
+
         if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
           setMessages((prev) => {
             if (data._id && prev.some((m) => m._id === data._id)) return prev;
-            return [...prev, data];
+            return [...prev, processedData];
           });
         }
 
@@ -197,7 +283,7 @@ const Messaging = () => {
             if (item.otherUser?._id === partnerId) {
               return {
                 ...item,
-                lastMessage: data,
+                lastMessage: processedData,
                 lastMessageAt: msgTime,
               };
             }
@@ -213,7 +299,7 @@ const Messaging = () => {
         socket.off('new-message', handleNewMessage);
       };
     }
-  }, [socket, activeChatUser, currentUser?._id]);
+  }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
 
   useEffect(() => {
     isSwitchingChatRef.current = true;
@@ -280,7 +366,29 @@ const Messaging = () => {
     try {
       const response = await swapService.getAcceptedSwaps();
       const users = response.data.allUsers || [];
-      setChatUsers(sortByRecentMessage(users));
+      
+      const processedUsers = await Promise.all(
+        users.map(async (item) => {
+          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv && userKeyPair?.privateKey && item.otherUser?.publicKey) {
+            try {
+              const key = await getOrDeriveSharedKey(userKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
+              if (key) {
+                const dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, key);
+                return {
+                  ...item,
+                  lastMessage: {
+                    ...item.lastMessage,
+                    text: dec,
+                    isDecrypted: true
+                  }
+                };
+              }
+            } catch (e) {}
+          }
+          return item;
+        })
+      );
+      setChatUsers(sortByRecentMessage(processedUsers));
     } catch (error) {
       console.error('Failed to fetch chat users', error);
     } finally {
@@ -291,7 +399,41 @@ const Messaging = () => {
   const fetchMessages = async () => {
     try {
       const { data } = await messageService.getMessages(activeChatUser._id);
-      setMessages(data.messages || []);
+      const rawMessages = data.messages || [];
+
+      // Determine shared key if needed
+      let currentKey = partnerSharedKey;
+      if (!currentKey && userKeyPair?.privateKey) {
+        let partnerPubKey = activeChatUser.publicKey;
+        if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
+          try {
+            const res = await userService.getUserById(activeChatUser._id);
+            partnerPubKey = res.data?.user?.publicKey;
+          } catch (e) {}
+        }
+        if (partnerPubKey) {
+          currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
+          if (currentKey) {
+            setPartnerSharedKey(currentKey);
+            setIsE2EEActive(true);
+          }
+        }
+      }
+
+      const processed = await Promise.all(
+        rawMessages.map(async (msg) => {
+          if (msg.isEncrypted && msg.iv) {
+            if (currentKey) {
+              const decrypted = await decryptMessageText(msg.text, msg.iv, currentKey);
+              return { ...msg, text: decrypted, isDecrypted: true };
+            }
+            return { ...msg, text: '[Encrypted message]', isDecrypted: false };
+          }
+          return msg;
+        })
+      );
+
+      setMessages(processed);
       requestAnimationFrame(() => {
         scrollToBottom('auto');
         isSwitchingChatRef.current = false;
@@ -361,15 +503,49 @@ const Messaging = () => {
       }
     } else {
       try {
-        const response = await messageService.sendMessage({
+        let currentKey = partnerSharedKey;
+        if (!currentKey && userKeyPair?.privateKey) {
+          let partnerPubKey = activeChatUser.publicKey;
+          if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
+            try {
+              const res = await userService.getUserById(activeChatUser._id);
+              partnerPubKey = res.data?.user?.publicKey;
+            } catch (e) {}
+          }
+          if (partnerPubKey) {
+            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
+            if (currentKey) {
+              setPartnerSharedKey(currentKey);
+              setIsE2EEActive(true);
+            }
+          }
+        }
+
+        let payload = {
           receiverId: activeChatUser._id,
           text: messageText,
-        });
+        };
+
+        if (currentKey) {
+          const encrypted = await encryptMessageText(messageText, currentKey);
+          payload.text = encrypted.ciphertext;
+          payload.isEncrypted = true;
+          payload.iv = encrypted.iv;
+        }
+
+        const response = await messageService.sendMessage(payload);
         const savedMessage = response.data?.messages || response.data?.data || response.data;
         if (savedMessage) {
+          const localMessage = {
+            ...savedMessage,
+            text: messageText, // Display plaintext locally
+            isEncrypted: Boolean(payload.isEncrypted),
+            isDecrypted: Boolean(payload.isEncrypted)
+          };
+
           setMessages((prev) => {
             if (savedMessage._id && prev.some((m) => m._id === savedMessage._id)) return prev;
-            return [...prev, savedMessage];
+            return [...prev, localMessage];
           });
 
           // Reorder recipient list: active partner moves to top
@@ -379,7 +555,7 @@ const Messaging = () => {
               if (item.otherUser?._id === activeChatUser._id) {
                 return {
                   ...item,
-                  lastMessage: savedMessage,
+                  lastMessage: localMessage,
                   lastMessageAt: msgTime,
                 };
               }
@@ -567,10 +743,17 @@ const Messaging = () => {
                     <h3 className="font-bold text-sm text-[#F5F6FA] leading-tight">
                       {activeChatUser.fullname?.firstname} {activeChatUser.fullname?.lastname}
                     </h3>
-                    <span className="font-mono text-[10px] text-[#55E6C1] font-medium flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
-                      {activeChatUser.isBot ? 'AI ASSISTANT' : 'SWAP PARTNER'}
-                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-[10px] text-[#55E6C1] font-medium flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
+                        {activeChatUser.isBot ? 'AI ASSISTANT' : 'SWAP PARTNER'}
+                      </span>
+                      {!activeChatUser.isBot && isE2EEActive && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#55E6C1] bg-[#242A32] px-1.5 py-0.5 border border-[rgba(85,230,193,0.3)]">
+                          <Lock size={9} /> E2E Encrypted
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -620,6 +803,15 @@ const Messaging = () => {
                           <span>{p.label}</span>
                         </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {!activeChatUser.isBot && isE2EEActive && (
+                  <div className="flex justify-center my-3">
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#242A32] border border-[rgba(85,230,193,0.25)] text-[#A4B0BE] text-[10px] font-mono max-w-md text-center">
+                      <Lock size={12} className="text-[#55E6C1] shrink-0" />
+                      <span>Messages in this conversation are end-to-end encrypted. No one outside of this chat can read them.</span>
                     </div>
                   </div>
                 )}
@@ -681,7 +873,12 @@ const Messaging = () => {
                         >
                           {msg.text}
                         </div>
-                        <span className="font-mono text-[9px] text-[#718093] px-1">
+                        <span className="font-mono text-[9px] text-[#718093] px-1 flex items-center gap-1">
+                          {msg.isEncrypted && (
+                            <span className="text-[#55E6C1] inline-flex items-center" title="End-to-End Encrypted">
+                              <Lock size={9} />
+                            </span>
+                          )}
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>

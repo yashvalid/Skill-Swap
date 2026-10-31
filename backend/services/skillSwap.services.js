@@ -137,6 +137,9 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
                 {
                     $project: {
                         text: 1,
+                        isEncrypted: 1,
+                        iv: 1,
+                        messageType: 1,
                         senderId: 1,
                         receiverId: 1,
                         createdAt: 1,
