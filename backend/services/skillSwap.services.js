@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const SkillSwap = require('../model/skillSwap.model');
 const User = require('../model/user.model');
+const Messages = require('../model/message.model');
 const { sendMessages, getReceiverSocketId } = require('../socket');
 
 module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSkill }) => {
@@ -115,6 +117,70 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
                 otherUsers.map(entry => [entry.otherUser._id.toString(), entry])
             ).values()
         );
+
+        if (uniqueUsers.length > 0) {
+            const userObjIds = uniqueUsers.map(u => new mongoose.Types.ObjectId(u.otherUser._id));
+            const currUserObjId = new mongoose.Types.ObjectId(currUserId);
+
+            const lastMessages = await Messages.aggregate([
+                {
+                    $match: {
+                        $or: [
+                            { senderId: currUserObjId, receiverId: { $in: userObjIds } },
+                            { receiverId: currUserObjId, senderId: { $in: userObjIds } }
+                        ]
+                    }
+                },
+                {
+                    $sort: { createdAt: -1 }
+                },
+                {
+                    $project: {
+                        text: 1,
+                        senderId: 1,
+                        receiverId: 1,
+                        createdAt: 1,
+                        partnerId: {
+                            $cond: [
+                                { $eq: ["$senderId", currUserObjId] },
+                                "$receiverId",
+                                "$senderId"
+                            ]
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$partnerId",
+                        lastMessage: { $first: "$$ROOT" }
+                    }
+                }
+            ]);
+
+            const lastMessageMap = new Map(
+                lastMessages.map(item => [item._id.toString(), item.lastMessage])
+            );
+
+            uniqueUsers.forEach(entry => {
+                const partnerId = entry.otherUser._id.toString();
+                const msg = lastMessageMap.get(partnerId);
+                if (msg) {
+                    entry.lastMessage = {
+                        text: msg.text,
+                        senderId: msg.senderId,
+                        receiverId: msg.receiverId,
+                        createdAt: msg.createdAt
+                    };
+                    entry.lastMessageAt = new Date(msg.createdAt).getTime();
+                } else {
+                    entry.lastMessage = null;
+                    entry.lastMessageAt = 0;
+                }
+            });
+
+            // Order recipients: whoever has sent the most recent message comes first
+            uniqueUsers.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+        }
 
         return uniqueUsers;
     } catch (err) {

@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleWare = require('../middlewares/authentication');
 const { query, body } = require('express-validator');
-const messagesController = require('../controllers/messages.controllers')
-
+const messagesController = require('../controllers/messages.controllers');
 const { cache } = require('../middlewares/cache');
 
 router.get('/get-messages',
@@ -14,10 +13,20 @@ router.get('/get-messages',
 );
 
 router.post('/send-message',
-    body('text').notEmpty().withMessage('message is required'),
-    body('receiverId').notEmpty().withMessage('receiverID is required'),
+    body('text').custom((val, { req }) => {
+        if (!val && !req.body.message && !req.body.content) {
+            throw new Error('Message text is required');
+        }
+        return true;
+    }),
+    body('receiverId').custom((val, { req }) => {
+        if (!val && !req.body.to && !req.body.receiver) {
+            throw new Error('Receiver ID is required');
+        }
+        return true;
+    }),
     authMiddleWare.authUser,
     messagesController.sendMessage
-)
+);
 
 module.exports = router;

@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useVideoCall } from '../context/VideoCallContext';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { messageService } from '../services/messageService';
 import { aiService } from '../services/aiService';
 import { swapService } from '../services/swapService';
@@ -59,6 +60,31 @@ const QUICK_PROMPTS = [
   { label: "Structure 30-min session", icon: <FileCode size={12} />, prompt: "Help structure an effective 30-minute peer exchange session" },
   { label: "Review learning goal", icon: <Sparkles size={12} />, prompt: "Review and refine my 4-week milestone learning goal" }
 ];
+
+const formatMessageTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const sortByRecentMessage = (users) => {
+  return [...users].sort((a, b) => {
+    const timeA = a.lastMessageAt || (a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0);
+    const timeB = b.lastMessageAt || (b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0);
+    return timeB - timeA;
+  });
+};
 
 const Messaging = () => {
   const { user: currentUser } = useAuth();
@@ -156,8 +182,29 @@ const Messaging = () => {
     if (socket) {
       const handleNewMessage = (data) => {
         if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
-          setMessages((prev) => [...prev, data]);
+          setMessages((prev) => {
+            if (data._id && prev.some((m) => m._id === data._id)) return prev;
+            return [...prev, data];
+          });
         }
+
+        // Reorder recipient list: partner with latest message moves to top
+        const partnerId = data.senderId === currentUser?._id ? data.receiverId : data.senderId;
+        const msgTime = new Date(data.createdAt || Date.now()).getTime();
+
+        setChatUsers((prev) => {
+          const updated = prev.map((item) => {
+            if (item.otherUser?._id === partnerId) {
+              return {
+                ...item,
+                lastMessage: data,
+                lastMessageAt: msgTime,
+              };
+            }
+            return item;
+          });
+          return sortByRecentMessage(updated);
+        });
       };
 
       socket.on('new-message', handleNewMessage);
@@ -166,7 +213,7 @@ const Messaging = () => {
         socket.off('new-message', handleNewMessage);
       };
     }
-  }, [socket, activeChatUser]);
+  }, [socket, activeChatUser, currentUser?._id]);
 
   useEffect(() => {
     isSwitchingChatRef.current = true;
@@ -232,7 +279,8 @@ const Messaging = () => {
   const fetchUsers = async () => {
     try {
       const response = await swapService.getAcceptedSwaps();
-      setChatUsers(response.data.allUsers || []);
+      const users = response.data.allUsers || [];
+      setChatUsers(sortByRecentMessage(users));
     } catch (error) {
       console.error('Failed to fetch chat users', error);
     } finally {
@@ -313,15 +361,41 @@ const Messaging = () => {
       }
     } else {
       try {
-        const { data } = await messageService.sendMessage(activeChatUser._id, messageText);
-        setMessages((prev) => [...prev, data.data]);
+        const response = await messageService.sendMessage({
+          receiverId: activeChatUser._id,
+          text: messageText,
+        });
+        const savedMessage = response.data?.messages || response.data?.data || response.data;
+        if (savedMessage) {
+          setMessages((prev) => {
+            if (savedMessage._id && prev.some((m) => m._id === savedMessage._id)) return prev;
+            return [...prev, savedMessage];
+          });
+
+          // Reorder recipient list: active partner moves to top
+          const msgTime = new Date(savedMessage.createdAt || Date.now()).getTime();
+          setChatUsers((prev) => {
+            const updated = prev.map((item) => {
+              if (item.otherUser?._id === activeChatUser._id) {
+                return {
+                  ...item,
+                  lastMessage: savedMessage,
+                  lastMessageAt: msgTime,
+                };
+              }
+              return item;
+            });
+            return sortByRecentMessage(updated);
+          });
+        }
       } catch (error) {
         console.error('Failed to send message', error);
+        toast.error('Failed to send message');
       }
     }
   };
 
-  const filteredChatUsers = chatUsers.filter((u) => {
+  const filteredChatUsers = sortByRecentMessage(chatUsers).filter((u) => {
     const partner = u.otherUser;
     if (!partner) return false;
     const name = `${partner.fullname?.firstname} ${partner.fullname?.lastname}`.toLowerCase();
@@ -417,6 +491,8 @@ const Messaging = () => {
               if (!partner) return null;
               const isSelected = activeChatUser?._id === partner._id;
               const initials = `${partner.fullname?.firstname?.[0] || 'P'}${partner.fullname?.lastname?.[0] || ''}`;
+              const lastMsgText = chat.lastMessage?.text;
+              const lastMsgTime = chat.lastMessage?.createdAt ? formatMessageTime(chat.lastMessage.createdAt) : '';
 
               return (
                 <div
@@ -432,10 +508,28 @@ const Messaging = () => {
                     {initials}
                   </div>
                   <div className="flex-grow min-w-0">
-                    <p className="font-bold text-xs truncate text-[#F5F6FA]">
-                      {partner.fullname?.firstname} {partner.fullname?.lastname}
+                    <div className="flex justify-between items-baseline gap-1">
+                      <p className="font-bold text-xs truncate text-[#F5F6FA]">
+                        {partner.fullname?.firstname} {partner.fullname?.lastname}
+                      </p>
+                      {lastMsgTime && (
+                        <span className="font-mono text-[9px] text-[#718093] shrink-0">
+                          {lastMsgTime}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[#A4B0BE] truncate">
+                      {lastMsgText ? (
+                        <span>
+                          {chat.lastMessage?.senderId === currentUser?._id ? (
+                            <span className="text-[#55E6C1]">You: </span>
+                          ) : null}
+                          {lastMsgText}
+                        </span>
+                      ) : (
+                        partner.role || 'Partner'
+                      )}
                     </p>
-                    <p className="text-[10px] text-[#A4B0BE] truncate">{partner.role}</p>
                   </div>
                 </div>
               );
