@@ -122,7 +122,7 @@ const Dashboard = () => {
     if (!curriculumData) return;
     const textToCopy = `${curriculumData.title}
 ${curriculumData.summary}
-Cadence: ${curriculumData.recommendedSessionCadence}
+Schedule: ${curriculumData.recommendedSessionCadence}
 
 ` + curriculumData.weeks.map(w => (
       `Week ${w.week}: ${w.focus}
@@ -461,7 +461,7 @@ Cadence: ${curriculumData.recommendedSessionCadence}
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-base text-[#F5F6FA]">{curriculumData.title}</h4>
                       <span className="tag-chip text-[10px]">
-                        Cadence: {curriculumData.recommendedSessionCadence}
+                        Schedule: {curriculumData.recommendedSessionCadence}
                       </span>
                     </div>
                     <p className="body-md text-xs text-[#A4B0BE] leading-relaxed">
@@ -471,7 +471,7 @@ Cadence: ${curriculumData.recommendedSessionCadence}
 
                   <div className="space-y-3">
                     <span className="font-mono text-xs text-[#A4B0BE] uppercase font-semibold block">
-                      Weekly Cadence & Milestones
+                      Weekly Schedule & Milestones
                     </span>
 
                     {curriculumData.weeks?.map((week) => (

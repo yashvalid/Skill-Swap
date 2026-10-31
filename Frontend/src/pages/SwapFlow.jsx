@@ -46,7 +46,7 @@ const SwapFlow = () => {
     { title: "SKILL", desc: "Select offering" },
     { title: "PROPOSAL", desc: "Draft message" },
     { title: "SCHEDULE", desc: "Pick slot" },
-    { title: "CONFIRM", desc: "Transmit" }
+    { title: "CONFIRM", desc: "Review & Send" }
   ];
 
   const handleFinish = async () => {
@@ -61,7 +61,7 @@ const SwapFlow = () => {
         console.error('Swap request error', err);
       }
     }
-    toast.success(`Swap proposal transmitted to ${partner.name}!`);
+    toast.success(`Swap proposal sent to ${partner.name}!`);
     navigate('/dashboard');
   };
 
@@ -251,7 +251,7 @@ const SwapFlow = () => {
                 <div className="w-12 h-12 bg-[#2B313A] text-[#55E6C1] rounded-none flex items-center justify-center mx-auto mb-4 border border-[rgba(85,230,193,0.3)]">
                   <ArrowLeftRight size={22} strokeWidth={2.5} />
                 </div>
-                <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Proposal Ready For Transmission</h3>
+                <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Swap Proposal Ready to Send</h3>
                 <p className="body-md text-xs text-[#A4B0BE] max-w-sm mx-auto mb-6">
                   {partner.name.split(' ')[0]} will receive a notification in dashboard and inbox to confirm the swap.
                 </p>
@@ -262,7 +262,7 @@ const SwapFlow = () => {
                       <Clock size={16} />
                     </div>
                     <div>
-                      <p className="font-bold text-xs text-[#F5F6FA]">CADENCE</p>
+                      <p className="font-bold text-xs text-[#F5F6FA]">SCHEDULE</p>
                       <p className="font-mono text-[10px] text-[#A4B0BE]">2 SESSIONS PER WEEK (45 MINS)</p>
                     </div>
                   </div>
@@ -271,7 +271,7 @@ const SwapFlow = () => {
                       <Calendar size={16} />
                     </div>
                     <div>
-                      <p className="font-bold text-xs text-[#F5F6FA]">INITIAL KICKOFF</p>
+                      <p className="font-bold text-xs text-[#F5F6FA]">FIRST SESSION</p>
                       <p className="font-mono text-[10px] text-[#A4B0BE]">Monday • 14:00 UTC</p>
                     </div>
                   </div>
@@ -297,7 +297,7 @@ const SwapFlow = () => {
                 </button>
               ) : (
                 <button onClick={handleFinish} className="btn btn-cta text-xs py-2 px-5 rounded-none">
-                  <span>Transmit Proposal</span>
+                  <span>Send Proposal</span>
                   <Zap size={14} />
                 </button>
               )}

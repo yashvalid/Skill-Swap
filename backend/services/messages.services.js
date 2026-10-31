@@ -15,12 +15,14 @@ module.exports.getMessages = async (myId, userToChatId) => {
     }
 };
 
-module.exports.sendMessage = async (text, receiverId, myId) => {
+module.exports.sendMessage = async (text, receiverId, myId, isEncrypted = false, iv = null) => {
     try {
         const newMessage = await Messages.create({
             senderId: myId,
             receiverId,
-            text
+            text,
+            isEncrypted: Boolean(isEncrypted),
+            iv: iv || null
         });
         return newMessage;
     } catch (err) {

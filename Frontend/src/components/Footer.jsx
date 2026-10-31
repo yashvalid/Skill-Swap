@@ -86,8 +86,8 @@ const Footer = () => {
           </h4>
           <ul className="space-y-2 text-sm text-[#A4B0BE]">
             <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">How Skill Swapping Works</Link></li>
-            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Milestone Proofs</Link></li>
-            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">WebRTC Direct Signaling</Link></li>
+            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Structured Milestones</Link></li>
+            <li><Link to="/docs" className="hover:text-[#55E6C1] transition-colors">Live Video Practice</Link></li>
             <li><Link to="/privacy" className="hover:text-[#55E6C1] transition-colors">Privacy Policy</Link></li>
           </ul>
         </div>
@@ -95,7 +95,7 @@ const Footer = () => {
         {/* Dispatch Newsletter */}
         <div className="md:col-span-4 space-y-3">
           <h4 className="font-mono text-xs uppercase tracking-wider text-[#F5F6FA] font-semibold">
-            Technical Dispatch
+            Community Newsletter
           </h4>
           <p className="text-xs text-[#A4B0BE] leading-relaxed">
             Weekly highlights of community skill swaps, project milestones, and featured members.
@@ -109,7 +109,7 @@ const Footer = () => {
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="developer@domain.com" 
+                  placeholder="you@example.com" 
                   className="input-field text-xs py-2"
                   required
                 />

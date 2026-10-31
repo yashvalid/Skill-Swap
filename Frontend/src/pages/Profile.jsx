@@ -395,7 +395,7 @@ const Profile = () => {
                 </span>
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0BE]">Commons Honor Code</span>
+                <span className="text-[#A4B0BE]">Community Guidelines</span>
                 <span className="text-[#55E6C1] font-semibold flex items-center gap-1 font-mono text-[10px]">
                   SIGNED <CheckCircle2 size={12} />
                 </span>

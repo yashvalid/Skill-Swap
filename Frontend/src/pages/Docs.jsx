@@ -25,13 +25,13 @@ const Docs = () => {
       <header className="mb-12 text-center">
         <div className="inline-flex items-center gap-1.5 tag-chip mb-3">
           <BookOpen size={14} />
-          <span>SYSTEM DOCUMENTATION</span>
+          <span>COMMUNITY GUIDELINES</span>
         </div>
         <h1 className="heading-h1 text-[#F5F6FA]">
-          Platform Architecture & Guidelines
+          How SkillSwap Works & Guidelines
         </h1>
         <p className="body-md text-sm text-[#A4B0BE] max-w-2xl mx-auto mt-2 leading-relaxed">
-          Platform philosophy, matching logic, WebRTC video calling, and community trust guidelines powering SkillSwap.
+          Learn how mutual matching, 1-on-1 video calls, and trust guidelines work across the platform.
         </p>
       </header>
 
@@ -40,9 +40,9 @@ const Docs = () => {
         <div className="md:col-span-1 hidden md:block">
           <nav className="sticky top-24 space-y-1 bg-[#353B48] p-2 rounded-none border border-[rgba(255,255,255,0.12)]">
             {[
-              { id: "introduction", title: "THE COMMONS", icon: <FileText size={15} /> },
-              { id: "product-requirements", title: "EXCHANGE LOGIC", icon: <Layout size={15} /> },
-              { id: "safety-trust", title: "TRUST & VERIFY", icon: <ShieldCheck size={15} /> }
+              { id: "introduction", title: "OUR MISSION", icon: <FileText size={15} /> },
+              { id: "product-requirements", title: "MATCHING & PRACTICE", icon: <Layout size={15} /> },
+              { id: "safety-trust", title: "SAFETY & TRUST", icon: <ShieldCheck size={15} /> }
             ].map((link) => (
               <button
                 key={link.id}
@@ -64,33 +64,33 @@ const Docs = () => {
         <div className="md:col-span-3 space-y-10">
           <section id="introduction" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
             <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 1</span>
-            <h2 className="heading-h2 text-[#F5F6FA] mb-4">The Reciprocal Commons Philosophy</h2>
+            <h2 className="heading-h2 text-[#F5F6FA] mb-4">The Peer Exchange Philosophy</h2>
             <div className="body-md text-sm text-[#A4B0BE] space-y-4 leading-relaxed">
               <p>
                 SkillSwap replaces passive tutorial watching with active peer-to-peer learning. Instead of treating skills as a paywalled commodity, members teach and learn directly from each other.
               </p>
               <p>
-                Peer accountability drives real retention: when two people give direct feedback on real code and projects, learning happens much faster than solo studying.
+                Peer accountability drives real retention: when two people give direct feedback on real projects, language practice, or creative skills, learning happens much faster than solo studying.
               </p>
             </div>
           </section>
 
           <section id="product-requirements" className="ui-card p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
             <span className="tag-chip text-[9px] mb-2 inline-block">SECTION 2</span>
-            <h2 className="heading-h2 text-[#F5F6FA] mb-4">Swap Matching Logic</h2>
+            <h2 className="heading-h2 text-[#F5F6FA] mb-4">Swap Matching & Practice</h2>
             <div className="space-y-4">
               {[
                 {
-                  title: "Double-Sided Matching",
-                  desc: "Matching algorithm pairs User A (offers X, seeks Y) with User B (offers Y, seeks X), ranking by complementary skill overlap and rating history."
+                  title: "Direct Peer Matching",
+                  desc: "Our matching system pairs Member A (teaches X, wants Y) with Member B (teaches Y, wants X), based on shared learning interests and ratings."
                 },
                 {
-                  title: "Real-Time WebRTC Video Channels",
-                  desc: "Socket.io signalling coordinates low-latency peer-to-peer video sessions with media device controls directly inside the browser."
+                  title: "Built-In 1-on-1 Video Calls",
+                  desc: "Practice live directly in your browser with screen sharing and webcam controls without downloading third-party software."
                 },
                 {
-                  title: "Proof of Exchange & Credits",
-                  desc: "Completed swaps award verified credentials and credits on the member's profile, building public reputation in the commons."
+                  title: "Verified Reviews & Credits",
+                  desc: "Completed swaps award verified reviews and credits to both members' profiles, building reputation in the community."
                 }
               ].map((item, i) => (
                 <div key={i} className="flex gap-3.5 items-start p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
@@ -114,13 +114,13 @@ const Docs = () => {
             </p>
             <ul className="space-y-2.5 text-xs text-[#A4B0BE]">
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#55E6C1] font-semibold">[VERIFIED]</span> Verified cryptographic identity badges on completed mentor profiles.
+                <span className="font-mono text-[#55E6C1] font-semibold">[VERIFIED]</span> Verified member badges on profiles with completed swaps.
               </li>
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#55E6C1] font-semibold">[RATING]</span> Double-blind reviews are published only when both members submit or after 7 days.
+                <span className="font-mono text-[#55E6C1] font-semibold">[RATING]</span> Honest reviews published only after both partners submit feedback.
               </li>
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#55E6C1] font-semibold">[REPORT]</span> 1-click community moderation and instant socket disconnect on any violation.
+                <span className="font-mono text-[#55E6C1] font-semibold">[REPORT]</span> 1-click community moderation and instant call disconnection on any violation.
               </li>
             </ul>
           </section>

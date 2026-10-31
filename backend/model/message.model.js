@@ -20,6 +20,14 @@ const messageSchema = new mongoose.Schema({
         enum: ['text', 'call'],
         default: 'text'
     },
+    isEncrypted: {
+        type: Boolean,
+        default: false
+    },
+    iv: {
+        type: String,
+        default: null
+    },
     callDetails: {
         status: {
             type: String,

@@ -139,7 +139,7 @@ const VideoCallModal = () => {
           ref={containerRef}
           className="z-[300] relative w-full h-full max-w-5xl max-h-[85vh] bg-[#1E232A] rounded-none overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] flex flex-col justify-between"
         >
-          {/* Top Status & Telemetry Bar */}
+          {/* Top Call Status Bar */}
           <div className="p-3.5 px-5 bg-[#242A32]/95 backdrop-blur-md border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between z-20">
             <div className="flex items-center gap-3 min-w-0">
               <span className={`w-2.5 h-2.5 rounded-none shrink-0 ${
@@ -226,7 +226,7 @@ const VideoCallModal = () => {
               {isVideoDisabled && (
                 <div className="w-full h-full flex flex-col items-center justify-center text-[#A4B0BE] text-[11px] font-mono bg-[#2B313A] gap-1 p-2 text-center">
                   <VideoOff size={16} className="text-[#FF7675]" />
-                  <span>Camera Muted</span>
+                  <span>Camera Off</span>
                 </div>
               )}
               <div className="absolute bottom-1 left-1.5 font-mono text-[9px] bg-black/70 px-1 py-0.5 text-white/80">
