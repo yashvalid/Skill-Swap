@@ -12,16 +12,20 @@ import {
   Cpu, 
   GitBranch, 
   Activity,
-  ArrowUpRight
+  ArrowUpRight,
+  MessageSquare,
+  Bot
 } from 'lucide-react';
 
 const SKILL_OPTIONS = [
-  'React & Next.js 15',
-  'Figma Design Systems',
-  'Distributed Go & Redis',
-  'SwiftUI & Metal Shaders',
-  'WebRTC Media Pipelines',
-  'AI Agents & RAG Architecture'
+  'Conversational Spanish',
+  'Full-Stack Web (React & Node)',
+  'UI/UX & Figma Design',
+  'Acoustic Guitar & Music',
+  'Video Editing & Motion',
+  'Python & Machine Learning',
+  'Public Speaking & Pitching',
+  'Digital Marketing & SEO'
 ];
 
 const LandingPage = () => {
@@ -181,9 +185,9 @@ const LandingPage = () => {
           <div className="md:col-span-7 space-y-5">
             <div>
               <label className="font-mono text-xs text-[#A4B0BE] block mb-2 uppercase">
-                I Can Teach (My Production Skill)
+                I Can Teach (My Skill)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {SKILL_OPTIONS.map((skill) => (
                   <button
                     key={skill}
@@ -202,9 +206,9 @@ const LandingPage = () => {
 
             <div>
               <label className="font-mono text-xs text-[#A4B0BE] block mb-2 uppercase">
-                I Want To Learn (Target Mastery)
+                I Want To Learn (Target Skill)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {SKILL_OPTIONS.map((skill) => (
                   <button
                     key={skill}
@@ -243,7 +247,7 @@ const LandingPage = () => {
             <div className="p-3 bg-[#242A32] rounded-none border border-[rgba(255,255,255,0.08)] space-y-1">
               <p className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">Suggested Cadence</p>
               <p className="text-xs text-[#A4B0BE] leading-relaxed">
-                4-week structured exchange with weekly 45-minute live pair coding sessions and milestone code reviews.
+                4-week structured exchange with weekly 45-minute live practice sessions, milestone tracking, and shared progress reviews.
               </p>
             </div>
 
@@ -394,11 +398,25 @@ const LandingPage = () => {
           <div className="md:col-span-6 space-y-4">
             <div className="tag-chip text-xs">FEATURE 3</div>
             <h2 className="heading-h1 text-[#F5F6FA]">
-              Direct WebRTC Signaling
+              Real-Time Chat & 1-on-1 Video
             </h2>
             <p className="body-md text-[#A4B0BE]">
-              No third-party links or meeting codes. Launch 1-on-1 video calls, share your screen, and practice together side-by-side right within your browser.
+              Coordinate your sessions and practice together without juggling third-party tools. Message your swap partner in real-time, get instant study guidance from your 24/7 AI tutor, and launch browser-based 1-on-1 video calls with integrated call history and screen sharing.
             </p>
+            <ul className="space-y-2 pt-1 text-sm text-[#F5F6FA]">
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0" />
+                <span>Direct real-time messaging with call records logged directly in chat</span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0" />
+                <span>24/7 AI study companion (SkillBot) to clarify concepts and suggest exercises</span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 size={16} className="text-[#55E6C1] shrink-0" />
+                <span>One-click browser video calls with screen sharing — zero downloads or meeting codes</span>
+              </li>
+            </ul>
             <div className="flex gap-3 pt-2">
               <Link to="/marketplace" className="btn btn-primary text-xs py-2.5 px-5">
                 Find a Swap Partner
@@ -411,28 +429,67 @@ const LandingPage = () => {
 
           <div className="md:col-span-6">
             <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)]">
-              <div className="p-4 bg-[#242A32] border border-[rgba(255,255,255,0.08)] flex items-center justify-between mb-4">
+              {/* Chat & Call Header Preview */}
+              <div className="p-3 bg-[#242A32] border border-[rgba(255,255,255,0.08)] flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white flex items-center justify-center font-bold">
-                    <Video size={16} />
+                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white flex items-center justify-center font-bold text-xs">
+                    SS
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-[#F5F6FA]">WebRTC Signaling Node</p>
-                    <p className="font-mono text-[10px] text-[#A4B0BE]">STUN / TURN Enabled</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-[#F5F6FA]">Sofia & Alex</p>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#55E6C1]" />
+                    </div>
+                    <p className="font-mono text-[10px] text-[#A4B0BE]">Spanish &bull; React Swap</p>
                   </div>
                 </div>
-                <span className="tag-chip text-[10px]">
-                  READY
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                  <p className="font-mono text-base font-bold text-[#F5F6FA]">&lt; 40ms</p>
-                  <p className="font-mono text-[10px] text-[#718093]">Signaling Latency</p>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-[#2B313A] border border-[rgba(255,255,255,0.1)] text-[#55E6C1]">
+                    <Video size={14} />
+                  </div>
+                  <div className="p-1.5 bg-[#2B313A] border border-[rgba(255,255,255,0.1)] text-[#A4B0BE]">
+                    <MessageSquare size={14} />
+                  </div>
                 </div>
-                <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                  <p className="font-mono text-base font-bold text-[#55E6C1]">Direct P2P</p>
-                  <p className="font-mono text-[10px] text-[#718093]">Data Flow</p>
+              </div>
+
+              {/* Chat Stream Sample */}
+              <div className="space-y-2.5 p-3 bg-[#242A32] border border-[rgba(255,255,255,0.06)] mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-[10px] font-mono text-[#55E6C1] shrink-0 font-bold">Sofia:</span>
+                  <div className="p-2 bg-[#2B313A] text-xs text-[#F5F6FA] border border-[rgba(255,255,255,0.05)] rounded-none">
+                    Ready for our session today? We can practice conversational Spanish first!
+                  </div>
+                </div>
+                <div className="flex items-start justify-end gap-2">
+                  <div className="p-2 bg-[#6C5CE7]/30 text-xs text-[#F5F6FA] border border-[#6C5CE7]/40 rounded-none text-right">
+                    Sounds great! Jumping on the video call right now.
+                  </div>
+                  <span className="text-[10px] font-mono text-[#A4B0BE] shrink-0 font-bold">Alex:</span>
+                </div>
+                <div className="flex justify-center my-1.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono bg-[#2B313A] text-[#55E6C1] border border-[rgba(85,230,193,0.3)]">
+                    <Video size={10} /> Call ended &bull; 45:12 &bull; Logged to chat
+                  </span>
+                </div>
+              </div>
+
+              {/* Feature highlight chips */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2.5 bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
+                  <MessageSquare size={14} className="mx-auto text-[#6C5CE7] mb-1" />
+                  <p className="font-mono text-[10px] font-bold text-[#F5F6FA]">Real-Time Chat</p>
+                  <p className="font-mono text-[9px] text-[#718093]">Instant sync</p>
+                </div>
+                <div className="p-2.5 bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
+                  <Bot size={14} className="mx-auto text-[#55E6C1] mb-1" />
+                  <p className="font-mono text-[10px] font-bold text-[#55E6C1]">AI SkillBot</p>
+                  <p className="font-mono text-[9px] text-[#718093]">24/7 tutor</p>
+                </div>
+                <div className="p-2.5 bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
+                  <Video size={14} className="mx-auto text-[#FFA502] mb-1" />
+                  <p className="font-mono text-[10px] font-bold text-[#F5F6FA]">1-on-1 Video</p>
+                  <p className="font-mono text-[9px] text-[#718093]">Screen share</p>
                 </div>
               </div>
             </div>
@@ -444,7 +501,7 @@ const LandingPage = () => {
       {/* CTA Bottom Banner */}
       <section className="ui-card p-8 sm:p-12 bg-[#353B48] border border-[rgba(255,255,255,0.15)] text-center relative overflow-hidden">
         <div className="max-w-2xl mx-auto space-y-4">
-          <div className="tag-chip text-xs">OPEN TECHNICAL COMMONS</div>
+          <div className="tag-chip text-xs">OPEN SKILL COMMONS</div>
           <h2 className="heading-h1 text-[#F5F6FA]">
             Start Your First Skill Swap
           </h2>
