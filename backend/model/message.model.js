@@ -13,12 +13,29 @@ const messageSchema = new mongoose.Schema({
     },
     text : {
         type : String,
+        required : true,
+    },
+    messageType: {
+        type: String,
+        enum: ['text', 'call'],
+        default: 'text'
+    },
+    callDetails: {
+        status: {
+            type: String,
+            enum: ['completed', 'missed', 'declined', 'cancelled'],
+            default: 'completed'
+        },
+        duration: {
+            type: Number,
+            default: 0
+        }
     },
     isSeen : {
         type : Boolean,
         default : false
     }
-}, {timestamps : true});
+}, { timestamps : true });
 
 const Messages = mongoose.model('message', messageSchema);
 
