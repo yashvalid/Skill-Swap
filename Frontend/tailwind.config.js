@@ -8,46 +8,77 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "var(--primary)",
-          container: "var(--primary-container)",
+          DEFAULT: "#2F3640",
+          hover: "#353B48",
+          dark: "#242A32",
         },
         secondary: {
-          DEFAULT: "var(--secondary)",
-          container: "var(--secondary-container)",
+          DEFAULT: "#6C5CE7",
+          hover: "#5b4bd8",
+          active: "#4e3ec8",
+          subtle: "rgba(108, 92, 231, 0.15)",
         },
         tertiary: {
-          DEFAULT: "var(--tertiary)",
-          container: "var(--tertiary-container)",
+          DEFAULT: "#55E6C1",
+          hover: "#45d4af",
+          subtle: "rgba(85, 230, 193, 0.15)",
         },
+        orange: {
+          DEFAULT: "#FF7675",
+          hover: "#e05a59",
+          active: "#cc4948",
+          subtle: "rgba(255, 118, 117, 0.15)",
+        },
+        background: "#2F3640",
         surface: {
-          DEFAULT: "var(--surface)",
-          container: {
-            DEFAULT: "var(--surface-container)",
-            low: "var(--surface-container-low)",
-            lowest: "var(--surface-container-lowest)",
-            high: "var(--surface-container-high)",
-          }
+          DEFAULT: "#353B48",
+          subtle: "#2B313A",
+          deep: "#242A32",
+          hover: "#3F4956",
+          dark: "#1E232A",
+          card: "rgba(255, 255, 255, 0.04)",
         },
-        background: "var(--background)",
-        "on-surface": {
-          DEFAULT: "var(--on-surface)",
-          variant: "var(--on-surface-variant)",
+        text: {
+          DEFAULT: "#F5F6FA",
+          muted: "#A4B0BE",
+          subtle: "#718093",
         },
-        outline: {
-          variant: "var(--outline-variant)",
-        }
+        border: {
+          subtle: "rgba(255, 255, 255, 0.12)",
+          hover: "rgba(108, 92, 231, 0.4)",
+          strong: "rgba(85, 230, 193, 0.4)",
+          focus: "#6C5CE7",
+        },
+        error: "#FF7675",
+        success: "#55E6C1",
+        warning: "#FFA502",
       },
       fontFamily: {
-        display: ["var(--font-display)"],
-        body: ["var(--font-body)"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "Roboto", "'Helvetica Neue'", "Arial", "sans-serif"],
+        display: ["-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "Roboto", "'Helvetica Neue'", "Arial", "sans-serif"],
+        mono: ["'JetBrains Mono'", "monospace"],
       },
       borderRadius: {
-        "3xl": "var(--radius-xl)",
-        "2xl": "var(--radius-lg)",
-        "xl": "var(--radius-md)",
+        DEFAULT: "0px",
+        none: "0px",
+        sm: "0px",
+        md: "0px",
+        lg: "0px",
+        xl: "0px",
+        "2xl": "0px",
+        "3xl": "0px",
       },
       boxShadow: {
-        ambient: "var(--shadow-ambient)",
+        card: "0 2px 12px rgba(0, 0, 0, 0.06)",
+        hover: "0 4px 14px rgba(0, 0, 0, 0.15)",
+        lift: "0 4px 14px rgba(0, 0, 0, 0.15)",
+      },
+      zIndex: {
+        base: "0",
+        'sticky-nav': "100",
+        overlay: "200",
+        modal: "300",
+        toast: "500",
       }
     },
   },

@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-
 const skillSwapSchema = new mongoose.Schema({
     fromUser: {
         type: mongoose.Schema.Types.ObjectId,
@@ -12,24 +11,31 @@ const skillSwapSchema = new mongoose.Schema({
         ref: 'user',
         required: true
     },
-    offersSkill : {
+    offersSkill: {
         type: String,
         required: true
     },
-    requestsSkill : {
+    requestsSkill: {
         type: String,
         required: true
     },
     status: {
         type: String,
-        enum: ['pending', 'accepted', 'rejected'],
+        enum: ['pending', 'accepted', 'rejected', 'completed'],
         default: 'pending'
+    },
+    milestones: [{
+        title: { type: String, required: true },
+        completed: { type: Boolean, default: false }
+    }],
+    completedAt: {
+        type: Date
     },
     createdAt: {
         type: Date,
         default: Date.now
     },
-})
+});
 
 const SkillSwap = mongoose.model('skillSwap', skillSwapSchema);
 

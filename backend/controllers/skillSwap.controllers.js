@@ -7,7 +7,11 @@ module.exports.requestSwap = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty())
         return res.status(422).json({ errors: errors.array() });
-    const { fromUser, toUser, offersSkill, requestsSkill } = req.body;
+
+    const fromUser = req.body.fromUser || req.user?._id;
+    const toUser = req.body.toUser || req.body.toUserId;
+    const offersSkill = req.body.offersSkill || req.body.skillOffered;
+    const requestsSkill = req.body.requestsSkill || req.body.skillRequested;
 
     try {
         const skillSwap = await skillSwapService.requestSwap({
@@ -57,35 +61,58 @@ module.exports.acceptSwapRequest = async (req, res) => {
     }
 }
 
-module.exports.rejectSwap = async (req, res) => {
-    const error = validationResult(req);
-    if (!error.isEmpty())
-        return res.status(404).json({ error: "id is required" });
-
-    const { requestId } = req.query;
+module.exports.completeSwap = async (req, res) => {
+    const { requestId } = req.body;
+    if (!requestId) return res.status(400).json({ message: "Request ID is required" });
 
     try {
-        const skillSwap = await skillSwapService.rejectSwap(requestId);
-        return res.status(201).json({ message: "Swap rejected" });
+        const skillSwap = await skillSwapService.completeSwap(requestId);
+
+        // Invalidate cache for accepted swaps
+        await invalidateCache([
+            `cache:swaps:accepted:${skillSwap.fromUser}`,
+            `cache:swaps:accepted:${skillSwap.toUser}`
+        ]);
+
+        return res.status(200).json({ message: "Skill swap completed successfully", skillSwap });
     } catch (err) {
-        return res.status(500).json({ error: "internal server error" });
+        return res.status(500).json({ message: err.message || "Internal server error" });
+    }
+}
+
+module.exports.rejectSwap = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
+        return res.status(422).json({ errors: errors.array() });
+    const { requestId } = req.query;
+    try {
+        const skillSwap = await skillSwapService.rejectSwap(requestId);
+        
+        await invalidateCache([
+            `cache:swaps:pending:${skillSwap.fromUser}`,
+            `cache:swaps:pending:${skillSwap.toUser}`
+        ]);
+
+        return res.status(200).json({ message: "Skill swap request rejected successfully", skillSwap });
+    } catch (err) {
+        return res.status(500).json({ message: "Internal server error" });
     }
 }
 
 module.exports.getAllAcceptedSwaps = async (req, res) => {
     try {
         const allUsers = await skillSwapService.getAllAcceptedSwaps(req.user._id);
-        return res.status(201).json({ allUsers });
+        return res.status(200).json({ allUsers });
     } catch (err) {
-        return res.status(500).json({ error: " Server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 }
 
 module.exports.getPendingSwaps = async (req, res) => {
     try {
         const pendingSwaps = await skillSwapService.getPendingSwaps(req.user._id);
-        return res.status(201).json({ pendingSwaps });
+        return res.status(200).json({ pendingSwaps });
     } catch (err) {
-        return res.status(500).json({ error: "internal server error" });
+        return res.status(500).json({ message: "Internal server error" });
     }
 }

@@ -1,29 +1,29 @@
 const Messages = require('../model/message.model');
-const {getReceiverSocketId} = require('../socket');
+const { getReceiverSocketId } = require('../socket');
 
-module.exports.getMessages = async (myId, userToChatId) =>{
-    try{
+module.exports.getMessages = async (myId, userToChatId) => {
+    try {
         const messages = await Messages.find({
-            $or : [
-                {senderId : myId, receiverId : userToChatId},
-                {senderId : userToChatId, receiverId : myId},
+            $or: [
+                { senderId: myId, receiverId: userToChatId },
+                { senderId: userToChatId, receiverId: myId },
             ],
-        });
+        }).sort({ createdAt: 1 });
         return messages;
-    } catch(err){
+    } catch (err) {
         throw new Error('Internal server error');
     }
-}
+};
 
 module.exports.sendMessage = async (text, receiverId, myId) => {
-    try{
+    try {
         const newMessage = await Messages.create({
-            senderId : myId,
+            senderId: myId,
             receiverId,
             text
-        })
+        });
         return newMessage;
-    } catch(err){
+    } catch (err) {
         throw new Error('error is sending message');
     }
-}
+};

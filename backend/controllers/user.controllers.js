@@ -7,7 +7,11 @@ module.exports.registerUser = async (req, res) => {
     if(!errors.isEmpty())
         return res.status(422).json({ errors: errors.array() });
     
-    const { fullname, email, password, role, location, bio } = req.body;
+    const { fullname, email, password, role, location, bio, agreedToPrivacyPolicy, privacyPolicyAccepted } = req.body;
+    
+    if (!agreedToPrivacyPolicy && !privacyPolicyAccepted) {
+        return res.status(422).json({ message: "You must read and agree to the Privacy Policy to create an account" });
+    }
     
     try{
         const userExists = await User.findOne({ email });
@@ -21,7 +25,10 @@ module.exports.registerUser = async (req, res) => {
             password : HashPassword,
             role : role,
             location : location,
-            bio : bio
+            bio : bio,
+            privacyPolicyAccepted: true,
+            privacyPolicyAcceptedAt: new Date(),
+            privacyPolicyVersion: '1.0'
          });
          return res.status(201).json({ message: "User registered successfully", user });
     } catch(err){
@@ -67,12 +74,11 @@ module.exports.getUserProfile = async (req, res) =>{
 
 module.exports.getAllUsers = async (req, res) => {
     try{
-        const users = await User.find({_id : { $ne: req.user._id }})
-        if(!users)
-            return res.status(404).json({message : "Could not get users"});
-        return res.status(201).json({users});
+        const filter = req.user?._id ? { _id : { $ne: req.user._id } } : {};
+        const users = await User.find(filter).select('-password -__v');
+        return res.status(200).json({ users: users || [] });
     } catch(err){
-        return res.status(500).json({error : "internal server error", err});
+        return res.status(500).json({ error : "internal server error", err });
     }
 }
 
@@ -89,7 +95,6 @@ module.exports.getUserById = async (req, res) => {
 module.exports.updateProfile = async (req, res) => {
     try {
         const updates = req.body;
-        // Don't allow password or email updates through this route
         delete updates.password;
         delete updates.email;
         
@@ -114,20 +119,16 @@ module.exports.rateUser = async (req, res) => {
         const user = await User.findById(targetUserId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        // Check if already rated
         const existingRatingIndex = user.ratings.findIndex(r => r.user.toString() === reviewerId.toString());
         
         if (existingRatingIndex >= 0) {
-            // Update existing rating
             user.ratings[existingRatingIndex].rating = rating;
             user.ratings[existingRatingIndex].review = review;
         } else {
-            // Add new rating
             user.ratings.push({ user: reviewerId, rating, review });
             user.totalRatings += 1;
         }
 
-        // Calculate average
         const totalSum = user.ratings.reduce((sum, r) => sum + r.rating, 0);
         user.averageRating = totalSum / user.ratings.length;
 
