@@ -191,7 +191,7 @@ const UserProfile = () => {
                 <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F5F6FA]">
                   {profileUser.fullname?.firstname} {profileUser.fullname?.lastname}
                 </h1>
-                <span className="tag-chip text-[10px]">COMMONS PEER</span>
+                <span className="tag-chip text-[10px]">COMMUNITY MEMBER</span>
                 <span className="tag-chip text-[10px] bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.15)]">
                   <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
                   {profileUser.averageRating?.toFixed(1) || '5.0'} RATING
@@ -394,7 +394,7 @@ const UserProfile = () => {
             </div>
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0BE]">Response Latency</span>
+                <span className="text-[#A4B0BE]">Response Time</span>
                 <span className="font-mono font-bold text-[#55E6C1]">&lt; 2 hrs</span>
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
