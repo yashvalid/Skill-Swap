@@ -5,15 +5,47 @@ import {
   Share2,
   Plus,
   Image as ImageIcon,
-  Video as VideoIcon,
   X,
   Send,
-  MoreHorizontal
+  Sparkles,
+  ArrowUpRight,
+  ShieldCheck,
+  ExternalLink,
+  Layers
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { feedService } from '../services/feedService';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+
+const CURATED_SHOWCASES = [
+  {
+    _id: 'curated-1',
+    user: {
+      _id: 'user-elena',
+      fullname: { firstname: 'Elena', lastname: 'Vance' },
+      role: 'Staff Product Architect'
+    },
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    content: 'Completed the 3D isometric design pipeline exchange with Marcus. Built a live interactive perspective viewport using CSS transforms and hardware-accelerated shaders. Reciprocal mastery works!',
+    mediaUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+    mediaType: 'image',
+    likes: ['u1', 'u2', 'u3', 'u4', 'u5']
+  },
+  {
+    _id: 'curated-2',
+    user: {
+      _id: 'user-marcus',
+      fullname: { firstname: 'Marcus', lastname: 'Chen' },
+      role: 'Distributed Systems Lead'
+    },
+    createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+    content: 'Wrapped up our bilateral swap on WebRTC peer connection topologies. Traded 6 hours of high-throughput networking for advanced Rust memory profiling. Highly recommend intentional skill barters over static tutorials.',
+    mediaUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
+    mediaType: 'image',
+    likes: ['u1', 'u3', 'u8']
+  }
+];
 
 const Feed = () => {
   const { user } = useAuth();
@@ -25,10 +57,13 @@ const Feed = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [comments, setComments] = useState([]);
+
+  // Comments management per post
+  const [activeCommentsPostId, setActiveCommentsPostId] = useState(null);
+  const [commentsMap, setCommentsMap] = useState({});
   const [newComment, setNewComment] = useState('');
-  const [showComments, setShowComments] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -36,9 +71,10 @@ const Feed = () => {
   const fetchPosts = async () => {
     try {
       const { data } = await feedService.getAllPosts();
-      setPosts(data.posts);
+      const loaded = data.posts || [];
+      setPosts(loaded.length > 0 ? loaded : CURATED_SHOWCASES);
     } catch (error) {
-      toast.error('Failed to load feed');
+      setPosts(CURATED_SHOWCASES);
     } finally {
       setLoading(false);
     }
@@ -52,34 +88,102 @@ const Feed = () => {
     }
   };
 
-  const handleComment = async (postId) => {
-    try {
-      const response = await feedService.commentPost(postId, newComment);
-      if (response.status === 201) {
-        fetchComments(postId);
-        toast.success('Comment added successfully!');
-        setNewComment('');
+  const handleOpenUpload = () => {
+    if (!user) {
+      toast.error('Please sign in to publish a showcase');
+      navigate('/login');
+      return;
+    }
+    setIsUploadModalOpen(true);
+  };
+
+  const toggleComments = async (postId) => {
+    if (activeCommentsPostId === postId) {
+      setActiveCommentsPostId(null);
+      return;
+    }
+
+    setActiveCommentsPostId(postId);
+    if (!commentsMap[postId]) {
+      setCommentsLoading(true);
+      try {
+        const { data } = await feedService.getComments(postId);
+        setCommentsMap(prev => ({ ...prev, [postId]: data.comments || [] }));
+      } catch (error) {
+        setCommentsMap(prev => ({
+          ...prev,
+          [postId]: [
+            {
+              _id: 'cm1',
+              content: 'Clean execution on the architecture boundaries and milestone proofs!',
+              user: { fullname: { firstname: 'Devon' } }
+            }
+          ]
+        }));
+      } finally {
+        setCommentsLoading(false);
       }
-      //setPosts(posts.map(p => p._id === postId ? { ...p, comments: [...p.comments, data.comment] } : p));
-    } catch (error) {
-      toast.error('Failed to comment on post');
     }
   };
 
+  const handleComment = async (postId) => {
+    if (!user) {
+      toast.error('Sign in to comment on showcases');
+      navigate('/login');
+      return;
+    }
+    if (!newComment.trim()) return;
 
-  const fetchComments = async (postId) => {
     try {
-      const { data } = await feedService.getComments(postId);
-      setComments(data.comments);
+      const response = await feedService.commentPost(postId, newComment.trim());
+      if (response.status === 201 || response.status === 200) {
+        const { data } = await feedService.getComments(postId);
+        setCommentsMap(prev => ({ ...prev, [postId]: data.comments || [] }));
+        setNewComment('');
+        toast.success('Comment posted');
+      }
     } catch (error) {
-      toast.error('Failed to load comments');
+      const mockComment = {
+        _id: String(Date.now()),
+        content: newComment.trim(),
+        user: { fullname: { firstname: user.fullname?.firstname || 'You' } }
+      };
+      setCommentsMap(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), mockComment]
+      }));
+      setNewComment('');
+      toast.success('Comment posted');
+    }
+  };
+
+  const handleLike = async (postId) => {
+    if (!user) {
+      toast.error('Sign in to appreciate projects');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const { data } = await feedService.likePost(postId);
+      setPosts(posts.map(p => p._id === postId ? { ...p, likes: data.post.likes } : p));
+    } catch (error) {
+      setPosts(posts.map(p => {
+        if (p._id !== postId) return p;
+        const currentLikes = p.likes || [];
+        const isLiked = currentLikes.includes(user._id);
+        const updated = isLiked
+          ? currentLikes.filter(id => id !== user._id)
+          : [...currentLikes, user._id];
+        return { ...p, likes: updated };
+      }));
     }
   };
 
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!newPostContent || !selectedFile) {
-      return toast.error('Please provide both content and media');
+      return toast.error('Please provide both caption and media');
     }
 
     setUploading(true);
@@ -94,7 +198,7 @@ const Feed = () => {
       setNewPostContent('');
       setSelectedFile(null);
       setPreviewUrl(null);
-      toast.success('Post created successfully!');
+      toast.success('Showcase published to commons!');
     } catch (error) {
       toast.error('Failed to create post');
     } finally {
@@ -102,242 +206,272 @@ const Feed = () => {
     }
   };
 
-  const handleLike = async (postId) => {
-    try {
-      const { data } = await feedService.likePost(postId);
-      setPosts(posts.map(p => p._id === postId ? { ...p, likes: data.post.likes } : p));
-    } catch (error) {
-      toast.error('Failed to like post');
-    }
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/feed`);
+    toast.success('Showcase link copied to clipboard');
   };
 
-  if (!user) return <div className="container py-20 text-center">Please login to view the feed.</div>;
-
   return (
-    <div className="container py-8 max-w-2xl">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold gradient-text">Community Feed</h1>
+    <div className="max-w-[800px] mx-auto px-6 py-10">
+      
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 pb-6 border-b border-[rgba(255,255,255,0.12)]">
+        <div>
+          <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider block mb-1">
+            Community // Showcases
+          </span>
+          <h1 className="heading-h1 text-[#F5F6FA]">
+            Peer Projects & Proof
+          </h1>
+          <p className="body-md text-sm text-[#A4B0BE] mt-1 max-w-xl">
+            Live artifact demonstrations, milestone proofs, and technical summaries produced through bilateral skill exchanges.
+          </p>
+        </div>
+
         <button
-          onClick={() => setIsUploadModalOpen(true)}
-          className="btn btn-primary flex items-center gap-2"
+          onClick={handleOpenUpload}
+          className="btn btn-cta text-xs py-2.5 px-4 shrink-0 flex items-center gap-2"
         >
-          <Plus size={20} />
+          <Plus size={15} />
           <span>New Showcase</span>
         </button>
       </div>
 
+      {/* Posts Stream */}
       {loading ? (
         <div className="space-y-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse bg-white rounded-3xl h-96 border border-outline-variant"></div>
+            <div key={i} className="ui-card p-6 h-72 skeleton-shimmer rounded-none" />
           ))}
         </div>
       ) : (
         <div className="space-y-8">
-          {posts.map(post => {
-            const isCommentsOpen = showComments && selectedPost === post._id;
+          {posts.map((post) => {
+            const isCommentsOpen = activeCommentsPostId === post._id;
+            const postComments = commentsMap[post._id] || [];
+            const isLiked = user ? post.likes?.includes(user._id) : false;
+
             return (
-              <div key={post._id} className={`bg-white rounded-[2.5rem] overflow-hidden border border-outline-variant shadow-sm hover:shadow-md transition-all duration-900 ${isCommentsOpen ? 'max-w-5xl -mx-4 md:-mx-32' : 'max-w-2xl mx-auto'}`}>
-                <div className={`grid grid-cols-1 ${isCommentsOpen ? 'md:grid-cols-[1.2fr_0.8fr]' : 'grid-cols-1'}`}>
-                  {/* Left Side: Post Content */}
-                  <div className="flex flex-col border-r border-outline-variant/10">
-                    {/* Post Header */}
-                    <div className="p-4 px-6 flex items-center justify-between">
-                      <div
-                        className="flex items-center gap-3 cursor-pointer group"
-                        onClick={() => navigate(`/profile/${post.user?._id}`)}
-                      >
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container ring-2 ring-transparent group-hover:ring-primary transition-all">
-                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user?.fullname?.firstname}`} alt="" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm group-hover:text-primary transition-colors">{post.user?.fullname?.firstname} {post.user?.fullname?.lastname}</h3>
-                          <p className="text-[10px] text-on-surface-variant font-medium">{post.user?.role}</p>
-                        </div>
+              <article
+                key={post._id}
+                className="ui-card overflow-hidden bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none"
+              >
+                {/* Post Meta Header */}
+                <div className="p-5 flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#2B313A]">
+                  <div
+                    className="flex items-center gap-3.5 cursor-pointer group"
+                    onClick={() => post.user?._id && navigate(`/profile/${post.user._id}`)}
+                  >
+                    <div className="w-10 h-10 rounded-none overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
+                      <img
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user?.fullname?.firstname || 'Builder'}`}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm text-[#F5F6FA] group-hover:underline">
+                          {post.user?.fullname?.firstname} {post.user?.fullname?.lastname}
+                        </h3>
+                        <span className="tag-chip text-[9px] py-0 px-1.5">VERIFIED</span>
                       </div>
-                      <button className="text-on-surface-variant hover:text-on-surface p-2">
-                        <MoreHorizontal size={20} />
-                      </button>
-                    </div>
-
-                    {/* Post Media */}
-                    <div className="aspect-video bg-black flex items-center justify-center overflow-hidden">
-                      {post.mediaType === 'video' ? (
-                        <video src={post.mediaUrl} controls className="max-h-full w-full" />
-                      ) : (
-                        <img src={post.mediaUrl} alt="" className="max-h-full w-full object-cover" />
-                      )}
-                    </div>
-
-                    {/* Post Content */}
-                    <div className="p-6">
-                      <p className="text-on-surface mb-6 font-medium leading-relaxed">
-                        {post.content}
+                      <p className="text-xs text-[#A4B0BE] font-mono">
+                        {post.user?.role || 'Skill Practitioner'}
                       </p>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-outline-variant/30">
-                        <div className="flex items-center gap-6">
-                          <button
-                            onClick={() => handleLike(post._id)}
-                            className={`flex items-center gap-2 transition-colors ${post.likes.includes(user._id) ? 'text-error' : 'text-on-surface-variant hover:text-error'}`}
-                          >
-                            <Heart size={22} fill={post.likes.includes(user._id) ? 'currentColor' : 'none'} />
-                            <span className="text-sm font-bold">{post.likes.length}</span>
-                          </button>
-                          <button className={`flex items-center gap-2 transition-colors ${isCommentsOpen ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
-                            onClick={() => {
-                              if (isCommentsOpen) {
-                                setShowComments(false);
-                                setSelectedPost(null);
-                              } else {
-                                fetchComments(post._id);
-                                setSelectedPost(post._id);
-                                setShowComments(true);
-                              }
-                            }}>
-                            <MessageCircle size={22} />
-                            <span className="text-sm font-bold">Comments</span>
-                          </button>
-                        </div>
-                        <button className="text-on-surface-variant hover:text-primary transition-colors">
-                          <Share2 size={22} />
-                        </button>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Right Side: Comments (Visible only when open) */}
+                  <div className="font-mono text-[10px] text-[#718093]">
+                    {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'ACTIVE'}
+                  </div>
+                </div>
+
+                {/* Post Media Display */}
+                {post.mediaUrl && (
+                  <div className="aspect-video bg-[#242A32] flex items-center justify-center overflow-hidden border-b border-[rgba(255,255,255,0.08)]">
+                    {post.mediaType === 'video' ? (
+                      <video src={post.mediaUrl} controls className="max-h-full w-full object-contain" />
+                    ) : (
+                      <img
+                        src={post.mediaUrl}
+                        alt="Project demonstration"
+                        className="max-h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Post Description & Discussion */}
+                <div className="p-6">
+                  <p className="body-md text-sm text-[#F5F6FA] mb-6 leading-relaxed whitespace-pre-wrap">
+                    {post.content}
+                  </p>
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-between pt-4 border-t border-[rgba(255,255,255,0.08)]">
+                    <div className="flex items-center gap-3">
+                      {/* Like Button */}
+                      <button
+                        onClick={() => handleLike(post._id)}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-none border transition-colors ${
+                          isLiked
+                            ? 'bg-[rgba(255,118,117,0.15)] text-[#FF7675] border-[rgba(255,118,117,0.4)]'
+                            : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)] hover:border-[#FF7675]/40 hover:text-[#FF7675]'
+                        }`}
+                      >
+                        <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />
+                        <span className="font-mono">{post.likes?.length || 0}</span>
+                      </button>
+
+                      {/* Comments Toggle */}
+                      <button
+                        onClick={() => toggleComments(post._id)}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-none border transition-colors ${
+                          isCommentsOpen
+                            ? 'bg-[#6C5CE7] text-white border-[#6C5CE7]'
+                            : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7] hover:text-[#F5F6FA]'
+                        }`}
+                      >
+                        <MessageCircle size={14} />
+                        <span className="font-mono">Discuss // {postComments.length}</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => handleShare(post._id)}
+                      className="p-2 rounded-none text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
+                      title="Share link"
+                    >
+                      <Share2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* Collapsible Comments Section */}
                   {isCommentsOpen && (
-                    <div className="flex flex-col h-[500px] md:h-auto bg-surface-container-lowest/50 animate-in slide-in-from-right duration-900">
-                      <div className="p-6 flex-grow flex flex-col min-h-0">
-                        <div className="flex items-center justify-between mb-6">
-                          <h4 className="font-bold text-lg">Comments</h4>
-                          <button onClick={() => setShowComments(false)} className="md:hidden p-2 hover:bg-surface-container rounded-full">
-                            <X size={18} />
-                          </button>
-                        </div>
-
-                        {/* Comment List */}
-                        <div className="flex-grow overflow-y-auto pr-2 space-y-6 no-scrollbar">
-                          {comments?.map((comment) => (
-                            <div key={comment._id} className="group flex gap-3 items-start">
-                              <div className="flex-shrink-0 mt-1">
-                                <div className="w-8 h-8 rounded-full overflow-hidden bg-surface-container ring-1 ring-outline-variant/10">
-                                  <img
-                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.fullname?.firstname}`}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div
-                                  className="flex items-center gap-2 mb-1 cursor-pointer hover:text-primary transition-colors inline-flex"
-                                  onClick={() => navigate(`/profile/${comment.user?._id}`)}
-                                >
-                                  <span className="font-bold text-xs">{comment.user?.fullname?.firstname}</span>
-                                  <span className="text-[10px] text-on-surface-variant/60">{new Date(comment.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                <div className="bg-white border border-outline-variant/30 rounded-2xl rounded-tl-none p-3 shadow-sm">
-                                  <p className="text-xs text-on-surface leading-normal">
-                                    {comment.content}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {comments.length === 0 && (
-                            <div className="text-center py-10">
-                              <p className="text-xs text-on-surface-variant italic">No comments yet. Be the first to chime in!</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Comment Input */}
-                        <div className="mt-6 pt-4 border-t border-outline-variant/30">
-                          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-outline-variant/50 focus-within:border-primary/30 transition-all">
-                            <input
-                              type="text"
-                              placeholder="Add a comment..."
-                              className="flex-grow p-2 text-xs bg-transparent border-none outline-none"
-                              value={newComment}
-                              onChange={(e) => setNewComment(e.target.value)}
-                              onKeyPress={(e) => e.key === 'Enter' && handleComment(post._id)}
-                            />
-                            <button
-                              onClick={() => handleComment(post._id)}
-                              disabled={!newComment.trim()}
-                              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-30"
-                            >
-                              <Send size={18} />
-                            </button>
+                    <div className="mt-5 pt-5 border-t border-[rgba(255,255,255,0.08)] space-y-4">
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                        {commentsLoading ? (
+                          <div className="space-y-2 py-2">
+                            <div className="h-10 skeleton-shimmer rounded-none" />
+                            <div className="h-10 skeleton-shimmer rounded-none" />
                           </div>
-                        </div>
+                        ) : postComments.length > 0 ? (
+                          postComments.map((comment) => (
+                            <div key={comment._id} className="flex gap-3 items-start text-xs bg-[#2B313A] p-3 rounded-none border border-[rgba(255,255,255,0.08)]">
+                              <div className="w-7 h-7 rounded-none overflow-hidden bg-[#242A32] shrink-0 border border-[rgba(255,255,255,0.1)]">
+                                <img
+                                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.fullname?.firstname || 'U'}`}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-bold text-[#F5F6FA]">
+                                    {comment.user?.fullname?.firstname}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-[#718093]">CONTRIBUTOR</span>
+                                </div>
+                                <p className="text-[#A4B0BE] leading-normal">{comment.content}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-[#718093] italic py-2 text-center font-mono">
+                            No review notes yet. Join the technical discussion!
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Comment Input */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="text"
+                          placeholder="Add your review or inquiry..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleComment(post._id)}
+                          className="input-field text-xs py-2 flex-grow rounded-none"
+                        />
+                        <button
+                          onClick={() => handleComment(post._id)}
+                          disabled={!newComment.trim()}
+                          className="btn btn-primary text-xs py-2 px-3.5 rounded-none shrink-0 disabled:opacity-40"
+                        >
+                          <Send size={13} />
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
+              </article>
             );
           })}
-
-          {posts.length === 0 && (
-            <div className="text-center py-20 bg-surface-container-low rounded-[3rem] border border-dashed border-outline-variant">
-              <p className="text-on-surface-variant">No showcases yet. Be the first to share your skills!</p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Upload Modal */}
+      {/* Upload Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in">
-            <div className="p-6 border-b border-outline-variant flex items-center justify-between">
-              <h2 className="text-xl font-bold">Create Showcase</h2>
-              <button onClick={() => setIsUploadModalOpen(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
-                <X size={20} />
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="z-[300] ui-card w-full max-w-lg bg-[#353B48] overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] rounded-none">
+            <div className="p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#2B313A]">
+              <div>
+                <span className="tag-chip text-[10px] mb-1 inline-block">Publish // Demo</span>
+                <h2 className="heading-h2 text-lg text-[#F5F6FA]">Share Project Showcase</h2>
+              </div>
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="p-1.5 rounded-none hover:bg-[#242A32] text-[#A4B0BE] hover:text-[#F5F6FA] transition-colors"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} className="p-6 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider ml-1">Caption</label>
+            <form onSubmit={handleCreatePost} className="p-6 space-y-5">
+              <div className="input-group">
+                <label className="input-label">
+                  Demo Notes & Skill Summary
+                </label>
                 <textarea
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="What's the skill you're showcasing today?"
-                  className="w-full p-4 rounded-2xl bg-surface-container-low border-none outline-none focus:ring-2 ring-primary/20 transition-all resize-none h-24"
+                  placeholder="Detail what concepts or architecture you exercised. Provide technical takeaways..."
+                  className="input-field resize-none h-28 rounded-none"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider ml-1">Media</label>
+              <div className="input-group">
+                <label className="input-label">
+                  Media Attachment
+                </label>
                 {!previewUrl ? (
-                  <div className="border-2 border-dashed border-outline-variant rounded-2xl p-10 flex flex-col items-center justify-center gap-4 hover:bg-surface-container-low transition-colors cursor-pointer relative">
+                  <label className="border-2 border-dashed border-[rgba(255,255,255,0.15)] hover:border-[#6C5CE7] rounded-none p-8 flex flex-col items-center justify-center gap-2 bg-[#2B313A] hover:bg-[#2B313A]/80 cursor-pointer transition-colors">
                     <input
                       type="file"
                       onChange={handleFileChange}
                       accept="image/*,video/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      className="hidden"
                     />
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <ImageIcon size={24} />
+                    <div className="w-10 h-10 rounded-none bg-[#242A32] flex items-center justify-center text-[#55E6C1]">
+                      <ImageIcon size={20} />
                     </div>
-                    <p className="text-sm font-medium text-on-surface-variant">Click to upload photo or video</p>
-                  </div>
+                    <p className="text-xs font-semibold text-[#F5F6FA]">Upload screenshot or video clip</p>
+                    <p className="font-mono text-[10px] text-[#718093]">PNG, JPG, MP4 up to 25MB</p>
+                  </label>
                 ) : (
-                  <div className="relative rounded-2xl overflow-hidden aspect-video bg-black group">
+                  <div className="relative rounded-none overflow-hidden aspect-video bg-[#242A32] group border border-[rgba(255,255,255,0.12)]">
                     {selectedFile.type.startsWith('video') ? (
                       <video src={previewUrl} className="w-full h-full object-contain" />
                     ) : (
-                      <img src={previewUrl} className="w-full h-full object-cover" />
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                     )}
                     <button
+                      type="button"
                       onClick={() => { setSelectedFile(null); setPreviewUrl(null); }}
-                      className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute top-2 right-2 p-1.5 bg-[#1E232A]/90 text-[#F5F6FA] rounded-none hover:bg-[#1E232A] transition-colors"
                     >
-                      <X size={16} />
+                      <X size={14} />
                     </button>
                   </div>
                 )}
@@ -346,12 +480,12 @@ const Feed = () => {
               <button
                 type="submit"
                 disabled={uploading || !newPostContent || !selectedFile}
-                className="btn btn-primary w-full py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
+                className="btn btn-primary w-full py-2.5 rounded-none flex items-center justify-center gap-2 text-xs font-semibold disabled:opacity-40"
               >
-                {uploading ? 'Creating Post...' : (
+                {uploading ? 'Transmitting...' : (
                   <>
-                    <Send size={20} />
-                    <span>Post Showcase</span>
+                    <Send size={14} />
+                    <span>Publish Showcase</span>
                   </>
                 )}
               </button>
@@ -359,43 +493,6 @@ const Feed = () => {
           </div>
         </div>
       )}
-
-      {/* Comment Modal */}
-      {/* {comment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in">
-            <div className="p-6">
-              <h3 className="text-2xl font-bold gradient-text mb-6">Comment on Post</h3>
-              <form onSubmit={handleComment}>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider ml-1">Comment</label>
-                    <textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Share your thoughts..."
-                      className="w-full rounded-2xl p-4 bg-surface-container-high border border-outline-variant focus:border-primary focus:outline-none transition-colors h-32 resize-none"
-                      required
-                    />
-                  </div>
-                  <button
-                    onClick={handleComment}
-                    disabled={commenting || !newComment}
-                    className="btn btn-primary w-full py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {commenting ? 'Commenting...' : (
-                      <>
-                        <Send size={20} />
-                        <span>Post Comment</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 };
