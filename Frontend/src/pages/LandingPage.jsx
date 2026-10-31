@@ -4,7 +4,6 @@ import {
   ArrowRight, 
   ArrowLeftRight, 
   CheckCircle2, 
-  Terminal, 
   Video, 
   Layers, 
   Calendar, 
@@ -292,19 +291,47 @@ const LandingPage = () => {
             <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)]">
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-[rgba(255,255,255,0.08)]">
                 <div className="flex items-center gap-2">
-                  <Terminal size={15} className="text-[#6C5CE7]" />
-                  <span className="font-mono text-xs text-[#F5F6FA]">terminal_exchange.log</span>
+                  <span className="w-2.5 h-2.5 rounded-none bg-[#55E6C1] animate-pulse" />
+                  <span className="font-mono text-xs text-[#F5F6FA] font-bold">LIVE SWAP SESSION</span>
                 </div>
-                <span className="font-mono text-[10px] text-[#55E6C1]">CONNECTED</span>
+                <span className="font-mono text-[10px] bg-[#242A32] text-[#55E6C1] px-2 py-0.5 border border-[rgba(85,230,193,0.3)]">
+                  IN PROGRESS &bull; 35:00
+                </span>
               </div>
-              <pre className="p-4 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)] font-mono text-xs text-[#A4B0BE] overflow-x-auto leading-relaxed">
-{`$ skillswap connect --peer marcus.chen
-> Starting live peer connection...
-> Handshake verified via SHA-256 session signature
-> Topic A: Distributed Go Routines & Sync Primaries
-> Topic B: Figma Token Transformer Pipeline
-> Status: Live pair coding session active`}
-              </pre>
+
+              {/* Topics exchange */}
+              <div className="space-y-2.5 mb-4">
+                <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="tag-chip text-[9px]">PART 1</span>
+                    <span className="text-xs font-semibold text-[#F5F6FA]">Conversational Spanish Practice</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-[#55E6C1]">Sofia &bull; 30 min</span>
+                </div>
+                <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="tag-chip text-[9px]">PART 2</span>
+                    <span className="text-xs font-semibold text-[#F5F6FA]">React & Web UI Architecture</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-[#6C5CE7]">Alex &bull; 30 min</span>
+                </div>
+              </div>
+
+              {/* Session Agenda Checklist */}
+              <div className="p-3.5 bg-[#242A32] border border-[rgba(255,255,255,0.08)] space-y-2 font-mono text-xs">
+                <div className="flex items-center gap-2 text-[#55E6C1]">
+                  <CheckCircle2 size={13} />
+                  <span>Introductions & weekly goal review</span>
+                </div>
+                <div className="flex items-center gap-2 text-[#55E6C1]">
+                  <CheckCircle2 size={13} />
+                  <span>Hands-on practice & live pronunciation feedback</span>
+                </div>
+                <div className="flex items-center gap-2 text-[#A4B0BE]">
+                  <span className="w-3.5 h-3.5 rounded-none border border-[rgba(255,255,255,0.3)] inline-block shrink-0" />
+                  <span>Component build review & next week milestones</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
