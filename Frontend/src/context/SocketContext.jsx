@@ -12,7 +12,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      const newSocket = io(import.meta.env.VITE_BASE_URL);
+      const newSocket = io('http://localhost:9000');
       setSocket(newSocket);
 
       newSocket.emit('join', { userId: user._id });
