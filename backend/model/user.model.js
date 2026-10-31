@@ -39,11 +39,15 @@ const userSchema = new mongoose.Schema({
     },
     role : {
         type : String,
-        requried : true
+        required : true
     },
     bio : {
         type : String,
         required : true
+    },
+    credits: {
+        type: Number,
+        default: 3
     },
     ratings: [{
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
@@ -62,7 +66,6 @@ const userSchema = new mongoose.Schema({
 
 userSchema.methods.generateToken = function() {
     const token = jwt.sign({ _id : this._id }, process.env.JWT_SECRET);
-    console.log("token generated", token);
     return token;
 }
 

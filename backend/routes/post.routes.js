@@ -15,7 +15,7 @@ router.post('/create',
 );
 
 router.get('/all',
-  authMiddleware.authUser,
+  authMiddleware.optionalAuth,
   cache(600), 
   postController.getAllPosts
 );
@@ -31,9 +31,9 @@ router.post('/comment/:postId',
   postController.commentPost
 );
 
-router.get('/comments/:postId', authMiddleware.authUser, postController.getComments);
+router.get('/comments/:postId', authMiddleware.optionalAuth, postController.getComments);
 
-router.get('/user/:userId', authMiddleware.authUser, postController.getUserPosts);
+router.get('/user/:userId', authMiddleware.optionalAuth, postController.getUserPosts);
 router.delete('/:postId', authMiddleware.authUser, postController.deletePost);
 router.put('/:postId', authMiddleware.authUser, body('content').isLength({ min: 1 }), postController.updatePost);
 

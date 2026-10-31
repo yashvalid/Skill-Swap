@@ -6,7 +6,19 @@ const redisClient = require('./services/redis.service');
 let io;
 
 const getReceiverSocketId = async (receiverId) => {
-    return await redisClient.get(receiverId);
+    try {
+        const socketId = await redisClient.get(receiverId);
+        if (socketId) return socketId;
+    } catch (err) {
+        console.warn('[Socket] Redis lookup error:', err.message);
+    }
+
+    try {
+        const user = await User.findById(receiverId).select('socketId');
+        return user?.socketId || null;
+    } catch (err) {
+        return null;
+    }
 }
 
 const initSocket = async (server) => {
@@ -20,72 +32,100 @@ const initSocket = async (server) => {
     io.on('connection', (socket) => {
 
         socket.on('join', async (data) => {
-            const { userId } = data;
-            if (!userId) return;
+            try {
+                const { userId } = data;
+                if (!userId) return;
 
-            await redisClient.set(userId, socket.id, {
-                EX: 24 * 60 * 60
-            });
+                await redisClient.set(userId, socket.id, {
+                    EX: 24 * 60 * 60
+                });
 
-            await redisClient.set(socket.id, userId, {
-                EX: 24 * 60 * 60
-            });
+                await redisClient.set(socket.id, userId, {
+                    EX: 24 * 60 * 60
+                });
 
-            await User.findOneAndUpdate({ _id: userId }, { socketId: socket.id }, { new: true });
-        })
+                await User.findOneAndUpdate({ _id: userId }, { socketId: socket.id }, { new: true });
+            } catch (err) {
+                console.warn('[Socket] Error on join:', err.message);
+            }
+        });
 
         socket.on('call-user', async (data) => {
-            const { to, offer, from } = data;
-            const receiverSocketId = await getReceiverSocketId(to);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('incoming-call', { from, offer });
+            try {
+                const { to, offer, from } = data;
+                const receiverSocketId = await getReceiverSocketId(to);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('incoming-call', { from, offer });
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on call-user:', err.message);
             }
         });
 
         socket.on('answer-call', async (data) => {
-            const { to, answer } = data;
-            const receiverSocketId = await getReceiverSocketId(to);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('call-answered', { answer });
+            try {
+                const { to, answer } = data;
+                const receiverSocketId = await getReceiverSocketId(to);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('call-answered', { answer });
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on answer-call:', err.message);
             }
         });
 
         socket.on('ice-candidate', async (data) => {
-            const { to, candidate } = data;
-            const receiverSocketId = await getReceiverSocketId(to);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('ice-candidate', { candidate });
+            try {
+                const { to, candidate } = data;
+                const receiverSocketId = await getReceiverSocketId(to);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('ice-candidate', { candidate });
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on ice-candidate:', err.message);
             }
         });
 
         socket.on('reject-call', async (data) => {
-            const { to } = data;
-            const receiverSocketId = await getReceiverSocketId(to);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('call-rejected');
+            try {
+                const { to } = data;
+                const receiverSocketId = await getReceiverSocketId(to);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('call-rejected');
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on reject-call:', err.message);
             }
         });
 
         socket.on('end-call', async (data) => {
-            const { to } = data;
-            const receiverSocketId = await getReceiverSocketId(to);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('call-ended');
+            try {
+                const { to } = data;
+                const receiverSocketId = await getReceiverSocketId(to);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('call-ended');
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on end-call:', err.message);
             }
         });
 
         socket.on('disconnect', async () => {
-            const userId = await redisClient.get(socket.id);
-            if (userId) {
-                await redisClient.del(userId);
-                await redisClient.del(socket.id);
+            try {
+                const userId = await redisClient.get(socket.id);
+                if (userId) {
+                    await redisClient.del(userId);
+                    await redisClient.del(socket.id);
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on disconnect cleanup:', err.message);
             }
         });
     })
 }
 
 async function sendMessages(socketId, message) {
-    if (io)
+    if (io && socketId)
         io.to(socketId).emit(message.event, message.data);
 }
 

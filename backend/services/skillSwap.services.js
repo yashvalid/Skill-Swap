@@ -11,7 +11,6 @@ module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSki
             requestsSkill
         });
         const toUserSocketId = getReceiverSocketId(toUser);
-        // const fromUserData = await User.findOne({ _id: fromUser })
         const swapReq = await SkillSwap.findOne({ _id: skillSwap._id }).populate('fromUser');
         sendMessages(toUserSocketId, {
             event: 'swap-request',
@@ -33,7 +32,7 @@ module.exports.acceptSwapRequest = async (requestId) => {
             { new: true }
         );
         const user = await User.findOne({ _id: acceptSwap.fromUser })
-        sendMessages(user.socketId, message = {
+        sendMessages(user.socketId, {
             event: 'swap-accepted',
             data: user,
             swapId: acceptSwap._id,
@@ -41,6 +40,27 @@ module.exports.acceptSwapRequest = async (requestId) => {
         return acceptSwap
     } catch (err) {
         throw new Error("Error accepting skill swap request");
+    }
+}
+
+module.exports.completeSwap = async (requestId) => {
+    try {
+        const swap = await SkillSwap.findById(requestId);
+        if (!swap) throw new Error("Swap not found");
+
+        swap.status = 'completed';
+        swap.completedAt = new Date();
+        await swap.save();
+
+        // Reward 1 credit to both users for completing an exchange
+        await User.updateMany(
+            { _id: { $in: [swap.fromUser, swap.toUser] } },
+            { $inc: { credits: 1 } }
+        );
+
+        return swap;
+    } catch (err) {
+        throw new Error("Error completing swap");
     }
 }
 
@@ -63,7 +83,7 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
         if (!currUserId) throw new Error("No User ID provided");
 
         const swaps = await SkillSwap.find({
-            status: 'accepted',
+            status: { $in: ['accepted', 'completed'] },
             $or: [
                 { fromUser: currUserId },
                 { toUser: currUserId }
@@ -75,20 +95,20 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
 
         const otherUsers = swaps
             .map(swap => {
-
                 if (!swap.fromUser || !swap.toUser) return null;
 
                 const isFrom = swap.fromUser._id.toString() === currUserId.toString();
                 const otherUser = isFrom ? swap.toUser : swap.fromUser;
 
                 return {
+                    swapId: swap._id,
+                    status: swap.status,
                     otherUser,
                     requestedSkill: isFrom ? swap.requestsSkill : swap.offersSkill,
                     skillOffered: isFrom ? swap.offersSkill : swap.requestsSkill
                 };
             })
             .filter(item => item !== null);
-
 
         const uniqueUsers = Array.from(
             new Map(
