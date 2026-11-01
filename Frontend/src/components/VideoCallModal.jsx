@@ -215,7 +215,7 @@ const VideoCallModal = () => {
             )}
 
             {/* Local Video Picture-in-Picture (PiP) */}
-            <div className="absolute top-4 right-4 w-36 sm:w-56 aspect-video bg-[#242A32] rounded-none overflow-hidden border border-[rgba(255,255,255,0.25)] shadow-2xl z-10">
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 w-28 sm:w-56 aspect-video bg-[#242A32] rounded-none overflow-hidden border border-[rgba(255,255,255,0.25)] shadow-2xl z-10">
               <video 
                 ref={localVideoRef} 
                 autoPlay 
@@ -224,45 +224,45 @@ const VideoCallModal = () => {
                 className={`w-full h-full object-cover scale-x-[-1] ${isVideoDisabled ? 'hidden' : 'block'}`}
               />
               {isVideoDisabled && (
-                <div className="w-full h-full flex flex-col items-center justify-center text-[#A4B0BE] text-[11px] font-mono bg-[#2B313A] gap-1 p-2 text-center">
-                  <VideoOff size={16} className="text-[#FF7675]" />
+                <div className="w-full h-full flex flex-col items-center justify-center text-[#A4B0BE] text-[10px] sm:text-[11px] font-mono bg-[#2B313A] gap-1 p-1 sm:p-2 text-center">
+                  <VideoOff size={14} className="text-[#FF7675]" />
                   <span>Camera Off</span>
                 </div>
               )}
-              <div className="absolute bottom-1 left-1.5 font-mono text-[9px] bg-black/70 px-1 py-0.5 text-white/80">
+              <div className="absolute bottom-1 left-1.5 font-mono text-[8px] sm:text-[9px] bg-black/70 px-1 py-0.5 text-white/80">
                 YOU {isMuted && '(MUTED)'} {isScreenSharing && '(SCREEN)'}
               </div>
             </div>
           </div>
 
           {/* Bottom Action Controls Bar */}
-          <div className="p-3.5 bg-[#242A32]/95 backdrop-blur-md border-t border-[rgba(255,255,255,0.1)] flex items-center justify-center gap-3 sm:gap-5 z-20 flex-wrap">
+          <div className="p-2.5 sm:p-3.5 bg-[#242A32]/95 backdrop-blur-md border-t border-[rgba(255,255,255,0.1)] flex items-center justify-center gap-2 sm:gap-4 z-20 flex-wrap">
             {/* Mic Toggle */}
             <button 
               type="button"
               onClick={toggleMic}
-              className={`w-11 h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                 isMuted 
                   ? 'bg-[#FF7675] text-[#2F3640] shadow-md font-bold' 
                   : 'bg-[#2F3640] border border-[rgba(255,255,255,0.15)] hover:bg-[#353B48] text-[#F5F6FA]'
               }`}
               title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
             >
-              {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
+              {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             {/* Camera Toggle */}
             <button 
               type="button"
               onClick={toggleVideo}
-              className={`w-11 h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                 isVideoDisabled 
                   ? 'bg-[#FF7675] text-[#2F3640] shadow-md font-bold' 
                   : 'bg-[#2F3640] border border-[rgba(255,255,255,0.15)] hover:bg-[#353B48] text-[#F5F6FA]'
               }`}
               title={isVideoDisabled ? "Enable Camera" : "Disable Camera"}
             >
-              {isVideoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
+              {isVideoDisabled ? <VideoOff size={16} /> : <Video size={16} />}
             </button>
 
             {/* Screen Share Toggle */}
@@ -270,26 +270,26 @@ const VideoCallModal = () => {
               type="button"
               onClick={toggleScreenShare}
               disabled={callStatus !== 'ongoing'}
-              className={`w-11 h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
                 isScreenSharing 
                   ? 'bg-[#55E6C1] text-[#2F3640] shadow-md font-bold' 
                   : 'bg-[#2F3640] border border-[rgba(255,255,255,0.15)] hover:bg-[#353B48] text-[#F5F6FA]'
               }`}
               title={isScreenSharing ? "Stop Sharing Screen" : "Share Screen"}
             >
-              {isScreenSharing ? <MonitorOff size={18} /> : <MonitorUp size={18} />}
+              {isScreenSharing ? <MonitorOff size={16} /> : <MonitorUp size={16} />}
             </button>
 
             {/* End / Hang Up Button */}
             <button 
               type="button"
               onClick={endCall}
-              className="h-11 px-6 rounded-none bg-[#FF7675] hover:bg-[#e05a59] text-[#2F3640] flex items-center gap-2 font-bold transition-colors shadow-md cursor-pointer ml-2"
+              className="h-10 sm:h-11 px-3 sm:px-6 rounded-none bg-[#FF7675] hover:bg-[#e05a59] text-[#2F3640] flex items-center gap-1.5 sm:gap-2 font-bold transition-colors shadow-md cursor-pointer ml-1 sm:ml-2 shrink-0"
               title="Terminate Call"
             >
-              <PhoneOff size={18} />
-              <span className="text-xs uppercase tracking-wider font-mono">
-                {callStatus === 'calling' ? 'Cancel Call' : 'Hang Up'}
+              <PhoneOff size={16} />
+              <span className="text-[11px] sm:text-xs uppercase tracking-wider font-mono">
+                {callStatus === 'calling' ? 'Cancel' : 'Hang Up'}
               </span>
             </button>
           </div>

@@ -225,7 +225,7 @@ const Feed = () => {
   };
 
   return (
-    <div className="max-w-[800px] mx-auto px-6 py-10">
+    <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 pb-6 border-b border-[rgba(255,255,255,0.12)]">

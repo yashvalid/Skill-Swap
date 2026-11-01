@@ -595,15 +595,15 @@ const Messaging = () => {
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-8">
-      <div className="ui-card bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none overflow-hidden h-[78vh] flex shadow-2xl">
+    <div className="max-w-[1280px] mx-auto px-2 sm:px-6 py-2 sm:py-8">
+      <div className="ui-card bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none overflow-hidden h-[calc(100dvh-5rem)] sm:h-[78vh] flex shadow-2xl">
         
         {/* Left Side: Channel List */}
         <div className={`w-full md:w-80 border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#2B313A] shrink-0 ${
           mobileView === 'chat' ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Header */}
-          <div className="p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#242A32]">
+          <div className="p-3 sm:p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#242A32]">
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider">
                 Conversations
@@ -726,11 +726,11 @@ const Messaging = () => {
           {activeChatUser ? (
             <>
               {/* Header */}
-              <div className="p-3.5 px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#2B313A]">
-                <div className="flex items-center gap-3">
+              <div className="p-3 px-3 sm:px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#2B313A]">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     onClick={() => setMobileView('list')}
-                    className="md:hidden p-1.5 rounded-none hover:bg-[#242A32] text-[#A4B0BE]"
+                    className="md:hidden p-1.5 rounded-none hover:bg-[#242A32] text-[#A4B0BE] shrink-0"
                     aria-label="Back"
                   >
                     <ArrowLeft size={16} />
@@ -739,18 +739,18 @@ const Messaging = () => {
                   <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {activeChatUser.isBot ? <Bot size={16} /> : (activeChatUser.fullname?.firstname?.[0] || 'U')}
                   </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-[#F5F6FA] leading-tight">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-xs sm:text-sm text-[#F5F6FA] leading-tight truncate">
                       {activeChatUser.fullname?.firstname} {activeChatUser.fullname?.lastname}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="font-mono text-[10px] text-[#55E6C1] font-medium flex items-center gap-1.5">
+                      <span className="font-mono text-[9px] sm:text-[10px] text-[#55E6C1] font-medium flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
-                        {activeChatUser.isBot ? 'AI ASSISTANT' : 'SWAP PARTNER'}
+                        {activeChatUser.isBot ? 'AI TUTOR' : 'PARTNER'}
                       </span>
                       {!activeChatUser.isBot && isE2EEActive && (
                         <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#55E6C1] bg-[#242A32] px-1.5 py-0.5 border border-[rgba(85,230,193,0.3)]">
-                          <Lock size={9} /> E2E Encrypted
+                          <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
                         </span>
                       )}
                     </div>
@@ -758,20 +758,21 @@ const Messaging = () => {
                 </div>
 
                 {!activeChatUser.isBot ? (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => startCall(activeChatUser)}
-                      className="btn btn-cta text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono"
+                      className="btn btn-cta text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono"
                     >
                       <Video size={13} />
-                      <span>Video Call</span>
+                      <span className="hidden sm:inline">Video Call</span>
+                      <span className="sm:hidden">Call</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={handleClearBotChat}
-                      className="btn btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono"
+                      className="btn btn-secondary text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono"
                       title="Reset SkillBot conversation history"
                     >
                       <RotateCcw size={13} />
@@ -785,7 +786,7 @@ const Messaging = () => {
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-grow p-4 sm:p-6 overflow-y-auto space-y-3.5 bg-[#2F3640]"
+                className="flex-grow p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-3.5 bg-[#2F3640]"
               >
                 {activeChatUser.isBot && (
                   <div className="mb-4 p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
@@ -914,7 +915,7 @@ const Messaging = () => {
               )}
 
               {/* Input Area */}
-              <div className="p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#2B313A]">
+              <div className="p-2.5 sm:p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#2B313A]">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -927,12 +928,12 @@ const Messaging = () => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={activeChatUser.isBot ? "Ask SkillBot anything..." : "Write a message..."}
-                    className="input-field text-xs sm:text-sm py-2 rounded-none bg-[#242A32]"
+                    className="input-field text-xs sm:text-sm py-2 px-3 rounded-none bg-[#242A32]"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim()}
-                    className="btn btn-primary text-xs py-2 px-4 rounded-none shrink-0 disabled:opacity-40"
+                    className="btn btn-primary text-xs py-2 px-3 sm:px-4 rounded-none shrink-0 disabled:opacity-40"
                   >
                     <Send size={14} />
                     <span className="hidden sm:inline">Send</span>

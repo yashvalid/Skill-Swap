@@ -19,10 +19,10 @@ const Docs = () => {
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-10">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Header */}
-      <header className="mb-12 text-center">
+      <header className="mb-8 sm:mb-12 text-center">
         <div className="inline-flex items-center gap-1.5 tag-chip mb-3">
           <BookOpen size={14} />
           <span>COMMUNITY GUIDELINES</span>
@@ -34,6 +34,28 @@ const Docs = () => {
           Learn how mutual matching, 1-on-1 video calls, and trust guidelines work across the platform.
         </p>
       </header>
+
+      {/* Mobile Quick-Jump Pills */}
+      <div className="md:hidden flex gap-2 overflow-x-auto pb-4 mb-6 border-b border-[rgba(255,255,255,0.08)] scrollbar-none">
+        {[
+          { id: "introduction", title: "MISSION", icon: <FileText size={13} /> },
+          { id: "product-requirements", title: "MATCHING & PRACTICE", icon: <Layout size={13} /> },
+          { id: "safety-trust", title: "SAFETY & TRUST", icon: <ShieldCheck size={13} /> }
+        ].map((link) => (
+          <button
+            key={link.id}
+            onClick={() => scrollTo(link.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-none text-xs font-mono whitespace-nowrap border transition-colors ${
+              activeSection === link.id
+                ? 'bg-[#6C5CE7] text-white border-[#6C5CE7] font-semibold'
+                : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)]'
+            }`}
+          >
+            {link.icon}
+            <span>{link.title}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Navigation Sidebar */}

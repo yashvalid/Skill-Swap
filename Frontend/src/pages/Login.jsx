@@ -93,7 +93,7 @@ const Login = () => {
         </div>
 
         {/* Form Card */}
-        <div className="ui-card rounded-none p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] shadow-2xl">
+        <div className="ui-card rounded-none p-4 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] shadow-2xl">
           
           {/* Segmented Switcher */}
           <div className="flex p-1 bg-[#242A32] rounded-none mb-6 border border-[rgba(255,255,255,0.1)]">
@@ -124,7 +124,7 @@ const Login = () => {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {!isLogin && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="input-group">
                     <label className="input-label">
                       First Name
@@ -166,7 +166,7 @@ const Login = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="input-group">
                     <label className="input-label">
                       Role / Title
@@ -403,21 +403,21 @@ const Login = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 border-t border-[rgba(255,255,255,0.1)] bg-[#242A32] flex items-center justify-between gap-3">
+            <div className="p-4 border-t border-[rgba(255,255,255,0.1)] bg-[#242A32] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <Link
                 to="/privacy"
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-[#55E6C1] hover:underline inline-flex items-center gap-1 font-mono"
+                className="text-xs text-[#55E6C1] hover:underline inline-flex items-center justify-center sm:justify-start gap-1 font-mono py-1"
               >
                 <span>Full Policy Page</span>
                 <ExternalLink size={12} />
               </Link>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowPolicyModal(false)}
-                  className="btn btn-secondary text-xs py-2 px-3"
+                  className="btn btn-secondary text-xs py-2 px-3 flex-1 sm:flex-initial justify-center"
                 >
                   Close
                 </button>
@@ -428,7 +428,7 @@ const Login = () => {
                     setShowPolicyModal(false);
                     toast.success('Privacy Policy accepted');
                   }}
-                  className="btn btn-primary text-xs py-2 px-4"
+                  className="btn btn-primary text-xs py-2 px-4 flex-1 sm:flex-initial justify-center"
                 >
                   I Read & Agree
                 </button>

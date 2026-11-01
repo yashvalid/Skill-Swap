@@ -41,7 +41,7 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-12 md:py-16 overflow-hidden">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16 overflow-hidden">
       
       {/* Hero Section: Split-screen (text left, visual right) per DESIGN.md */}
       <section className="section-gap">
@@ -63,12 +63,12 @@ const LandingPage = () => {
               SkillSwap connects developers, language speakers, designers, musicians, and creators to trade 1-on-1 mentorship. Trade code with design, Spanish with Python, or music production with digital marketing.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3.5 pt-2">
-              <Link to="/marketplace" className="btn btn-cta text-sm px-6 py-3 group">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
+              <Link to="/marketplace" className="btn btn-cta text-sm px-6 py-3 group justify-center text-center">
                 <span>Enter Marketplace</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/docs" className="btn btn-secondary text-sm px-5 py-3">
+              <Link to="/docs" className="btn btn-secondary text-sm px-5 py-3 justify-center text-center">
                 How it Works
               </Link>
             </div>
@@ -192,7 +192,7 @@ const LandingPage = () => {
                   <button
                     key={skill}
                     onClick={() => handleSimulate(skill, wantSkill)}
-                    className={`text-xs p-3 rounded-none border text-left font-medium transition-colors duration-150 ${
+                    className={`text-[11px] sm:text-xs p-2.5 sm:p-3 rounded-none border text-left font-medium leading-snug transition-colors duration-150 ${
                       mySkill === skill
                         ? 'bg-[#6C5CE7] text-white border-[#6C5CE7] font-bold shadow-sm'
                         : 'bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7]'
@@ -213,7 +213,7 @@ const LandingPage = () => {
                   <button
                     key={skill}
                     onClick={() => handleSimulate(mySkill, skill)}
-                    className={`text-xs p-3 rounded-none border text-left font-medium transition-colors duration-150 ${
+                    className={`text-[11px] sm:text-xs p-2.5 sm:p-3 rounded-none border text-left font-medium leading-snug transition-colors duration-150 ${
                       wantSkill === skill
                         ? 'bg-[#242A32] text-[#55E6C1] border-[#55E6C1] font-bold shadow-sm ring-1 ring-[#55E6C1]'
                         : 'bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.1)] hover:border-[#55E6C1]'
@@ -417,18 +417,18 @@ const LandingPage = () => {
                 <span>One-click browser video calls with screen sharing — zero downloads or meeting codes</span>
               </li>
             </ul>
-            <div className="flex gap-3 pt-2">
-              <Link to="/marketplace" className="btn btn-primary text-xs py-2.5 px-5">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Link to="/marketplace" className="btn btn-primary text-xs py-2.5 px-5 justify-center text-center">
                 Find a Swap Partner
               </Link>
-              <Link to="/feed" className="btn btn-secondary text-xs py-2.5 px-5">
+              <Link to="/feed" className="btn btn-secondary text-xs py-2.5 px-5 justify-center text-center">
                 View Showcases
               </Link>
             </div>
           </div>
 
           <div className="md:col-span-6">
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)]">
+            <div className="ui-card p-4 sm:p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)]">
               {/* Chat & Call Header Preview */}
               <div className="p-3 bg-[#242A32] border border-[rgba(255,255,255,0.08)] flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -475,7 +475,7 @@ const LandingPage = () => {
               </div>
 
               {/* Feature highlight chips */}
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
                 <div className="p-2.5 bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
                   <MessageSquare size={14} className="mx-auto text-[#6C5CE7] mb-1" />
                   <p className="font-mono text-[10px] font-bold text-[#F5F6FA]">Real-Time Chat</p>

@@ -154,7 +154,7 @@ Schedule: ${curriculumData.recommendedSessionCadence}
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-10">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Top Welcome Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 pb-6 border-b border-[rgba(255,255,255,0.12)] gap-4">

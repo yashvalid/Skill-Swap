@@ -167,7 +167,7 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-10">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Profile Header Hero */}
       <div className="ui-card p-6 sm:p-8 mb-10 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">

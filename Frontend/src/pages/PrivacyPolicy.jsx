@@ -16,7 +16,7 @@ import {
 
 const PrivacyPolicy = () => {
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-12 md:py-16">
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-8 md:py-16">
       
       {/* Top Navigation / Breadcrumbs */}
       <div className="mb-8">
@@ -30,7 +30,7 @@ const PrivacyPolicy = () => {
       </div>
 
       {/* Header Banner */}
-      <div className="ui-card p-6 sm:p-10 bg-[#353B48] border border-[rgba(255,255,255,0.12)] mb-10">
+      <div className="ui-card p-4 sm:p-10 bg-[#353B48] border border-[rgba(255,255,255,0.12)] mb-10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[rgba(255,255,255,0.08)]">
           <div>
             <div className="inline-flex items-center gap-2 tag-chip mb-2">

@@ -238,7 +238,7 @@ const Marketplace = () => {
   });
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-10">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Header */}
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-[rgba(255,255,255,0.12)]">
@@ -283,7 +283,7 @@ const Marketplace = () => {
         </div>
 
         {/* Category Pills */}
-        <div className="flex gap-1.5 p-1 bg-[#2B313A] rounded-none overflow-x-auto border border-[rgba(255,255,255,0.1)]">
+        <div className="flex gap-1.5 p-1 bg-[#2B313A] rounded-none overflow-x-auto border border-[rgba(255,255,255,0.1)] scrollbar-none touch-pan-x">
           {categories.map((cat) => (
             <button
               key={cat}
@@ -444,8 +444,8 @@ const Marketplace = () => {
 
       {/* Propose Swap Modal: z-index overlay (200), modal (300) */}
       {selectedUser && !guestModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-8 w-full max-w-lg bg-[#353B48] shadow-2xl border border-[rgba(255,255,255,0.15)] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-none p-4 sm:p-8 w-full max-w-lg bg-[#353B48] shadow-2xl border border-[rgba(255,255,255,0.15)] max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">

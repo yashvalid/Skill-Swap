@@ -66,7 +66,7 @@ const SwapFlow = () => {
   };
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-12 flex flex-col items-center">
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6 sm:py-12 flex flex-col items-center">
       <div className="w-full">
         
         {/* Header Title */}
