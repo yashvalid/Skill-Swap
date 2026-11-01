@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -26,7 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:9000/users/login', { email, password });
+      const response = await api.post('/users/login', { email, password });
       setUser(response.data.user);
       if (response.data.token) localStorage.setItem('token', response.data.token);
       toast.success('Logged in successfully');
