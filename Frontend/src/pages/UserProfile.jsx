@@ -19,42 +19,7 @@ import { swapService } from '../services/swapService';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useVideoCall } from '../context/VideoCallContext';
-
-const CURATED_FALLBACK_PEERS = {
-  'peer-1': {
-    _id: 'peer-1',
-    fullname: { firstname: 'Sarah', lastname: 'Lin' },
-    role: 'Lead Design Systems Engineer',
-    bio: 'Crafting production token systems, component libraries, and spatial micro-interactions in Figma and React.',
-    location: 'San Francisco, CA',
-    skillsOffered: ['Figma Variables', 'Design Tokens', 'Tailwind CSS', 'Accessibility'],
-    skillsNeeded: ['Next.js 15', 'TypeScript', 'State Machines'],
-    averageRating: 4.95,
-    totalRatings: 34
-  },
-  'peer-2': {
-    _id: 'peer-2',
-    fullname: { firstname: 'Marcus', lastname: 'Thorne' },
-    role: 'Principal Backend Architect',
-    bio: 'Specializing in high-throughput distributed systems, WebSocket protocols, and cloud event pipelines.',
-    location: 'Berlin / Remote',
-    skillsOffered: ['Distributed Systems', 'Redis Architecture', 'Node.js Internals', 'Docker'],
-    skillsNeeded: ['Product UI', 'SwiftUI', 'Animation Curves'],
-    averageRating: 4.9,
-    totalRatings: 48
-  },
-  'peer-3': {
-    _id: 'peer-3',
-    fullname: { firstname: 'Elena', lastname: 'Vance' },
-    role: 'Staff Product Strategist',
-    bio: 'Helping technical founders and builders shape product narratives, user retention loops, and UX research.',
-    location: 'New York, NY',
-    skillsOffered: ['Product Strategy', 'UX Architecture', 'Growth Loops', 'User Research'],
-    skillsNeeded: ['React Basics', 'Full-Stack Development', 'API Design'],
-    averageRating: 5.0,
-    totalRatings: 62
-  }
-};
+import { isUserVerified, getVerificationLabel } from '../utils/userVerification';
 
 const UserProfile = () => {
   const { id } = useParams();
@@ -66,6 +31,7 @@ const UserProfile = () => {
   const [posts, setPosts] = useState([]);
   const [offeredSkills, setOfferedSkills] = useState([]);
   const [skillsToLearn, setSkillsToLearn] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -88,24 +54,22 @@ const UserProfile = () => {
   }, [id, currentUser]);
 
   const fetchUserData = async () => {
-    if (CURATED_FALLBACK_PEERS[id]) {
-      const mock = CURATED_FALLBACK_PEERS[id];
-      setProfileUser(mock);
-      setOfferedSkills(mock.skillsOffered || []);
-      setSkillsToLearn(mock.skillsNeeded || []);
-      return;
-    }
-
+    setLoading(true);
     try {
       const userRes = await userService.getUserById(id);
       if (userRes.data?.user) {
         setProfileUser(userRes.data.user);
         setOfferedSkills(userRes.data.user.skillsOffered || []);
         setSkillsToLearn(userRes.data.user.skillsNeeded || []);
+      } else {
+        setProfileUser(null);
       }
     } catch (error) {
       console.error('Failed to fetch user data', error);
-      toast.error('Failed to load profile');
+      toast.error('User not found in database');
+      setProfileUser(null);
+    } finally {
+      setLoading(false);
     }
 
     try {
@@ -158,53 +122,64 @@ const UserProfile = () => {
     return (
       <div className="max-w-[1280px] mx-auto px-6 py-24 text-center">
         <div className="max-w-md mx-auto space-y-4">
-          <div className="h-6 w-48 mx-auto skeleton-shimmer rounded-none" />
-          <div className="h-28 w-full skeleton-shimmer rounded-none" />
-          <p className="font-mono text-xs text-[#718093]">RETRIEVING PEER IDENTITY...</p>
+          <div className="h-6 w-48 mx-auto skeleton-shimmer rounded-xl" />
+          <div className="h-28 w-full skeleton-shimmer rounded-xl" />
+          <p className="font-mono text-xs text-[#71809B]">RETRIEVING PEER IDENTITY...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-10">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Profile Header Hero */}
-      <div className="ui-card p-6 sm:p-8 mb-10 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+      <div className="ui-card p-6 sm:p-8 mb-10 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
         <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="relative group shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-none overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#242A32] shadow-md">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#171D2B] shadow-md">
                 <img
                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileUser.fullname?.firstname || 'User'}`}
                   alt={profileUser.fullname?.firstname}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#55E6C1] text-[#2F3640] rounded-none flex items-center justify-center font-bold shadow-md">
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#FFEEA8] text-[#202738] rounded-xl flex items-center justify-center font-bold shadow-md">
                 <CheckCircle2 size={15} />
               </div>
             </div>
 
             <div>
-              <div className="flex flex-wrap items-center gap-2.5 mb-2">
-                <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F5F6FA]">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F7F8FC]">
                   {profileUser.fullname?.firstname} {profileUser.fullname?.lastname}
                 </h1>
-                <span className="tag-chip text-[10px]">COMMUNITY MEMBER</span>
-                <span className="tag-chip text-[10px] bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.15)]">
-                  <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
-                  {profileUser.averageRating?.toFixed(1) || '5.0'} RATING
-                </span>
+                <span className="tag-chip text-[10px]">{getVerificationLabel(profileUser)}</span>
+                {isUserVerified(profileUser) && (
+                  <span className="tag-chip text-[10px] bg-[rgba(255,238,168,0.12)] text-[#FFEEA8] border-[rgba(255,238,168,0.3)]">
+                    <CheckCircle2 size={10} className="inline mr-1" />
+                    VERIFIED
+                  </span>
+                )}
+                {profileUser.averageRating ? (
+                  <span className="tag-chip text-[10px] bg-[#202738] text-[#F7F8FC] border-[rgba(255,255,255,0.15)]">
+                    <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
+                    {profileUser.averageRating?.toFixed(1) || '5.0'} RATING
+                  </span>
+                ) : null}
               </div>
 
-              <p className="font-mono text-xs text-[#55E6C1] uppercase tracking-wider mb-2 font-semibold">
+              <p className="font-mono text-xs text-[#FFEEA8] uppercase tracking-wider mb-2 font-semibold">
                 {profileUser.role || 'Member'}
               </p>
 
-              <div className="flex flex-wrap gap-4 text-xs text-[#A4B0BE] font-mono">
-                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {profileUser.location || 'Remote'}</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#55E6C1]" /> Identity Verified</span>
+              <div className="flex flex-wrap gap-4 text-xs text-[#A4B0C6] font-mono">
+                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#2B3F74]" /> {profileUser.location || 'Remote'}</span>
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck size={13} className={isUserVerified(profileUser) ? "text-[#FFEEA8]" : "text-[#71809B]"} />
+                  <span>{isUserVerified(profileUser) ? "Verified Swap Standing" : "Unverified (Pending 1st Swap)"}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -214,7 +189,7 @@ const UserProfile = () => {
             {hasConnection ? (
               <button
                 onClick={() => startCall(profileUser)}
-                className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5 rounded-none"
+                className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
               >
                 <Video size={14} />
                 <span>Start Call</span>
@@ -222,7 +197,7 @@ const UserProfile = () => {
             ) : (
               <button
                 onClick={handleInitiateSwap}
-                className="btn btn-cta text-xs py-2 px-4 flex items-center gap-1.5 rounded-none"
+                className="btn btn-cta text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
               >
                 <span>Propose Swap</span>
                 <ArrowRight size={14} />
@@ -231,7 +206,7 @@ const UserProfile = () => {
 
             <button
               onClick={() => navigate('/messages')}
-              className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 rounded-none"
+              className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
             >
               <MessageSquare size={14} />
               <span>Message</span>
@@ -240,7 +215,7 @@ const UserProfile = () => {
             {hasConnection && (
               <button
                 onClick={() => setShowRatingModal(true)}
-                className="btn btn-secondary text-xs py-2 px-3 rounded-none"
+                className="btn btn-secondary text-xs py-2 px-3 rounded-xl"
               >
                 <Star size={14} />
                 <span>Rate</span>
@@ -249,7 +224,7 @@ const UserProfile = () => {
 
             <button
               onClick={handleShareProfile}
-              className="btn btn-secondary text-xs p-2 rounded-none"
+              className="btn btn-secondary text-xs p-2 rounded-xl"
               title="Share Profile"
             >
               <Share2 size={15} />
@@ -262,12 +237,12 @@ const UserProfile = () => {
         <div className="lg:col-span-2 space-y-8">
           
           {/* About Section */}
-          <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+          <section className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
             <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.08)] pb-2">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">About {profileUser.fullname?.firstname}</h2>
-              <span className="font-mono text-[10px] text-[#718093]">SYNOPSIS</span>
+              <h2 className="heading-h2 text-base text-[#F7F8FC]">About {profileUser.fullname?.firstname}</h2>
+              <span className="font-mono text-[10px] text-[#71809B]">SYNOPSIS</span>
             </div>
-            <p className="body-md text-sm text-[#A4B0BE] leading-relaxed">
+            <p className="body-md text-sm text-[#A4B0C6] leading-relaxed">
               {profileUser.bio || "Passionate about learning new skills, collaborating on projects, and sharing knowledge."}
             </p>
           </section>
@@ -276,13 +251,13 @@ const UserProfile = () => {
           <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Offering Skills */}
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+            <div className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
                 <div>
                   <span className="tag-chip text-[9px] mb-1 inline-block">OFFERING</span>
-                  <h3 className="heading-h2 text-sm text-[#F5F6FA]">Teaches</h3>
+                  <h3 className="heading-h2 text-sm text-[#F7F8FC]">Teaches</h3>
                 </div>
-                <span className="font-mono text-xs font-semibold text-[#55E6C1]">
+                <span className="font-mono text-xs font-semibold text-[#FFEEA8]">
                   {offeredSkills.length} Skills
                 </span>
               </div>
@@ -293,30 +268,30 @@ const UserProfile = () => {
                   </span>
                 ))}
                 {offeredSkills.length === 0 && (
-                  <p className="text-xs text-[#718093] italic py-2 font-mono">No skills registered yet.</p>
+                  <p className="text-xs text-[#71809B] italic py-2 font-mono">No skills registered yet.</p>
                 )}
               </div>
             </div>
 
             {/* Seeking Skills */}
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+            <div className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
                 <div>
                   <span className="tag-chip text-[9px] mb-1 inline-block">SEEKING</span>
-                  <h3 className="heading-h2 text-sm text-[#F5F6FA]">Wants to Learn</h3>
+                  <h3 className="heading-h2 text-sm text-[#F7F8FC]">Wants to Learn</h3>
                 </div>
-                <span className="font-mono text-xs font-semibold text-[#55E6C1]">
+                <span className="font-mono text-xs font-semibold text-[#FFEEA8]">
                   {skillsToLearn.length} Targets
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {skillsToLearn.map((sk, i) => (
-                  <span key={i} className="px-2.5 py-1 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-xs text-[#A4B0BE] font-mono">
+                  <span key={i} className="px-2.5 py-1 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.1)] text-xs text-[#A4B0C6] font-mono">
                     {sk}
                   </span>
                 ))}
                 {skillsToLearn.length === 0 && (
-                  <p className="text-xs text-[#718093] italic py-2 font-mono">Open to all technical exchanges.</p>
+                  <p className="text-xs text-[#71809B] italic py-2 font-mono">Open to all technical exchanges.</p>
                 )}
               </div>
             </div>
@@ -325,20 +300,20 @@ const UserProfile = () => {
           {/* Showcases */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">Portfolio Showcases ({posts.length})</h2>
-              <span className="font-mono text-[10px] text-[#718093]">ARTIFACTS</span>
+              <h2 className="heading-h2 text-base text-[#F7F8FC]">Portfolio Showcases ({posts.length})</h2>
+              <span className="font-mono text-[10px] text-[#71809B]">ARTIFACTS</span>
             </div>
 
             <div className="space-y-4">
               {posts.map(post => (
-                <div key={post._id} className="ui-card p-5 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-                  <p className="font-mono text-[10px] text-[#718093] mb-2">
+                <div key={post._id} className="ui-card p-5 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
+                  <p className="font-mono text-[10px] text-[#71809B] mb-2">
                     Posted on {new Date(post.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="body-md text-sm text-[#F5F6FA] mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+                  <p className="body-md text-sm text-[#F7F8FC] mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
 
                   {post.mediaUrl && (
-                    <div className="rounded-none overflow-hidden aspect-video bg-[#242A32] max-h-64 border border-[rgba(255,255,255,0.08)]">
+                    <div className="rounded-2xl overflow-hidden aspect-video bg-[#171D2B] max-h-64 border border-[rgba(255,255,255,0.08)]">
                       {post.mediaType === 'video' ? (
                         <video src={post.mediaUrl} controls className="w-full h-full object-contain" />
                       ) : (
@@ -350,36 +325,36 @@ const UserProfile = () => {
               ))}
 
               {posts.length === 0 && (
-                <div className="p-8 text-center ui-card bg-[#2B313A] border-dashed border-[rgba(255,255,255,0.15)] rounded-none">
-                  <p className="text-xs text-[#718093] font-mono">No showcases published yet.</p>
+                <div className="p-8 text-center ui-card bg-[#202738] border-dashed border-[rgba(255,255,255,0.15)] rounded-2xl">
+                  <p className="text-xs text-[#71809B] font-mono">No showcases published yet.</p>
                 </div>
               )}
             </div>
           </section>
 
           {/* Partner Reviews */}
-          <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
+          <section className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">Peer Endorsements & Reviews</h2>
-              <span className="font-mono text-[10px] text-[#718093]">PROOF OF EXCHANGE</span>
+              <h2 className="heading-h2 text-base text-[#F7F8FC]">Peer Endorsements & Reviews</h2>
+              <span className="font-mono text-[10px] text-[#71809B]">PROOF OF EXCHANGE</span>
             </div>
 
             <div className="space-y-3">
               {profileUser.ratings?.map((r, i) => (
-                <div key={i} className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)] space-y-1">
+                <div key={i} className="p-4 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)] space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-xs text-[#F5F6FA]">{r.user?.fullname?.firstname || 'Verified Partner'}</span>
+                    <span className="font-bold text-xs text-[#F7F8FC]">{r.user?.fullname?.firstname || 'Verified Partner'}</span>
                     <div className="flex text-[#FFA502]">
                       {[...Array(5)].map((_, j) => (
                         <Star key={j} size={11} fill={j < r.rating ? "currentColor" : "none"} />
                       ))}
                     </div>
                   </div>
-                  <p className="body-md text-xs text-[#A4B0BE]">{r.review}</p>
+                  <p className="body-md text-xs text-[#A4B0C6]">{r.review}</p>
                 </div>
               ))}
               {(!profileUser.ratings || profileUser.ratings.length === 0) && (
-                <p className="text-xs text-[#718093] italic py-2 font-mono">No reviews recorded yet. Propose a swap to earn the first testimonial!</p>
+                <p className="text-xs text-[#71809B] italic py-2 font-mono">No reviews recorded yet. Propose a swap to earn the first testimonial!</p>
               )}
             </div>
           </section>
@@ -387,23 +362,23 @@ const UserProfile = () => {
 
         {/* Sidebar Standing */}
         <div className="space-y-6">
-          <div className="ui-card p-6 bg-[#2B313A] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
+          <div className="ui-card p-6 bg-[#202738] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Swap Reviews</h3>
+              <h3 className="heading-h2 text-xs text-[#F7F8FC] uppercase font-semibold">Swap Reviews</h3>
               <span className="tag-chip text-[9px]">ACTIVE</span>
             </div>
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0BE]">Response Time</span>
-                <span className="font-mono font-bold text-[#55E6C1]">&lt; 2 hrs</span>
+                <span className="text-[#A4B0C6]">Response Time</span>
+                <span className="font-mono font-bold text-[#FFEEA8]">&lt; 2 hrs</span>
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0BE]">Avg. Session Length</span>
-                <span className="font-bold text-[#F5F6FA]">45 mins</span>
+                <span className="text-[#A4B0C6]">Avg. Session Length</span>
+                <span className="font-bold text-[#F7F8FC]">45 mins</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#A4B0BE]">Connection Status</span>
-                <span className="font-mono font-semibold text-[#55E6C1] text-[10px]">
+                <span className="text-[#A4B0C6]">Connection Status</span>
+                <span className="font-mono font-semibold text-[#FFEEA8] text-[10px]">
                   {hasConnection ? 'MUTUAL PARTNER' : 'AVAILABLE'}
                 </span>
               </div>
@@ -415,13 +390,13 @@ const UserProfile = () => {
       {/* Interactive Rating Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {showRatingModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">FEEDBACK</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Rate Swap Experience</h2>
+                <h2 className="heading-h2 text-base text-[#F7F8FC]">Rate Swap Experience</h2>
               </div>
-              <button onClick={() => setShowRatingModal(false)} className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]">
+              <button onClick={() => setShowRatingModal(false)} className="p-1 rounded-xl hover:bg-[#202738] text-[#A4B0C6] hover:text-[#F7F8FC]">
                 <X size={18} />
               </button>
             </div>
@@ -459,7 +434,7 @@ const UserProfile = () => {
                   onChange={(e) => setReview(e.target.value)}
                   required
                   placeholder="Describe your session outcomes, mentoring clarity, and reciprocation..."
-                  className="input-field min-h-[90px] resize-none rounded-none"
+                  className="input-field min-h-[90px] resize-none rounded-xl"
                 />
               </div>
 
@@ -467,13 +442,13 @@ const UserProfile = () => {
                 <button
                   type="button"
                   onClick={() => setShowRatingModal(false)}
-                  className="flex-1 btn btn-secondary py-2 justify-center text-xs rounded-none"
+                  className="flex-1 btn btn-secondary py-2 justify-center text-xs rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 btn btn-primary py-2 justify-center text-xs font-semibold rounded-none"
+                  className="flex-1 btn btn-primary py-2 justify-center text-xs font-semibold rounded-xl"
                 >
                   Submit Review
                 </button>

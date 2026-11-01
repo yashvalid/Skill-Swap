@@ -131,6 +131,9 @@ module.exports.rateUser = async (req, res) => {
 
         const totalSum = user.ratings.reduce((sum, r) => sum + r.rating, 0);
         user.averageRating = totalSum / user.ratings.length;
+        if (user.ratings.length >= 1) {
+            user.isVerified = true;
+        }
 
         await user.save();
         return res.status(200).json({ message: "Rating submitted successfully", averageRating: user.averageRating });

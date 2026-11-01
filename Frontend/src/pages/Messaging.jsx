@@ -15,17 +15,21 @@ import {
   RotateCcw,
   ArrowDown,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  Calendar,
+  X,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useVideoCall } from '../context/VideoCallContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { messageService } from '../services/messageService';
 import { aiService } from '../services/aiService';
 import { swapService } from '../services/swapService';
 import { userService } from '../services/userService';
+import { formatSessionDate } from '../utils/calendar';
 import {
   getOrInitUserKeyPair,
   getOrDeriveSharedKey,
@@ -95,9 +99,19 @@ const sortByRecentMessage = (users) => {
   });
 };
 
+const TIME_SLOTS = [
+  { time: '10:00', label: '10:00 AM' },
+  { time: '11:30', label: '11:30 AM' },
+  { time: '14:00', label: '02:00 PM' },
+  { time: '16:00', label: '04:00 PM' },
+  { time: '18:00', label: '06:00 PM' },
+  { time: '19:30', label: '07:30 PM' }
+];
+
 const Messaging = () => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { socket } = useSocket();
   const { startCall } = useVideoCall();
 
@@ -111,6 +125,13 @@ const Messaging = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showScrollBottomPill, setShowScrollBottomPill] = useState(false);
+
+  // In-Chat Scheduling Modal State
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+  const [scheduleSlot, setScheduleSlot] = useState('14:00');
+  const [scheduleDuration, setScheduleDuration] = useState(45);
+  const [scheduling, setScheduling] = useState(false);
 
   // E2EE States
   const [userKeyPair, setUserKeyPair] = useState(null);
@@ -389,6 +410,15 @@ const Messaging = () => {
         })
       );
       setChatUsers(sortByRecentMessage(processedUsers));
+
+      // Auto-select partner if navigated from Dashboard
+      if (location.state?.partnerId) {
+        const found = processedUsers.find(u => u.otherUser?._id === location.state.partnerId);
+        if (found?.otherUser) {
+          handleSelectChat(found.otherUser);
+          setMobileView('chat');
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch chat users', error);
     } finally {
@@ -451,6 +481,42 @@ const Messaging = () => {
       setShowScrollBottomPill(false);
       setActiveChatUser(user);
       setMobileView('chat');
+    }
+  };
+
+  const handleOpenSchedule = () => {
+    setScheduleDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+    setScheduleSlot('14:00');
+    setScheduleDuration(45);
+    setScheduleModalOpen(true);
+  };
+
+  const handleConfirmSchedule = async (e) => {
+    e.preventDefault();
+    if (!activeChatUser || !scheduleDate) return;
+    setScheduling(true);
+    try {
+      const userSwap = chatUsers.find(u => u.otherUser?._id === activeChatUser._id);
+      const swapId = userSwap?.swapId;
+      const scheduledTime = new Date(`${scheduleDate}T${scheduleSlot}:00`).toISOString();
+
+      if (swapId) {
+        await swapService.rescheduleSwap({
+          swapId,
+          scheduledTime,
+          durationMinutes: scheduleDuration
+        });
+      }
+
+      const formatted = formatSessionDate(scheduledTime);
+      await handleSendMessage(`📅 Scheduled our next 1-on-1 swap session for ${formatted} (${scheduleDuration} mins). Added to calendar!`);
+      toast.success('Session scheduled and shared in chat!');
+      setScheduleModalOpen(false);
+    } catch (err) {
+      console.error('Failed to schedule session in chat', err);
+      toast.error('Failed to schedule session');
+    } finally {
+      setScheduling(false);
     }
   };
 
@@ -581,9 +647,9 @@ const Messaging = () => {
   if (!currentUser) {
     return (
       <div className="py-24 text-center max-w-md mx-auto px-6">
-        <div className="ui-card p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-          <h3 className="heading-h2 text-[#F5F6FA] mb-2">Authentication Required</h3>
-          <p className="body-md text-xs text-[#A4B0BE] mb-6">
+        <div className="ui-card p-8 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
+          <h3 className="heading-h2 text-[#F7F8FC] mb-2">Authentication Required</h3>
+          <p className="body-md text-xs text-[#A4B0C6] mb-6">
             Sign in to coordinate with mentors and message your active swap partners.
           </p>
           <button onClick={() => navigate('/login')} className="btn btn-primary w-full py-2.5">
@@ -595,17 +661,17 @@ const Messaging = () => {
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-8">
-      <div className="ui-card bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none overflow-hidden h-[78vh] flex shadow-2xl">
+    <div className="max-w-[1280px] mx-auto px-2 sm:px-6 py-2 sm:py-8">
+      <div className="ui-card bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl overflow-hidden h-[calc(100dvh-5rem)] sm:h-[78vh] flex shadow-2xl">
         
         {/* Left Side: Channel List */}
-        <div className={`w-full md:w-80 border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#2B313A] shrink-0 ${
+        <div className={`w-full md:w-80 border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#202738] shrink-0 ${
           mobileView === 'chat' ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Header */}
-          <div className="p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#242A32]">
+          <div className="p-3 sm:p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#171D2B]">
             <div className="flex items-center justify-between mb-3">
-              <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider">
+              <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
                 Conversations
               </span>
               <span className="tag-chip text-[9px]">
@@ -614,13 +680,13 @@ const Messaging = () => {
             </div>
             
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]" size={14} />
               <input
                 type="text"
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field pl-8 py-1.5 text-xs rounded-none bg-[#2B313A]"
+                className="input-field pl-8 py-1.5 text-xs rounded-xl bg-[#202738]"
               />
             </div>
           </div>
@@ -630,35 +696,35 @@ const Messaging = () => {
             {/* SkillBot */}
             <div
               onClick={() => handleSelectChat(SKILLBOT_USER)}
-              className={`p-3 rounded-none flex items-center gap-3 cursor-pointer transition-colors border ${
+              className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-colors border ${
                 activeChatUser?.isBot
-                  ? 'bg-[#6C5CE7] text-white border-[#6C5CE7] font-semibold'
-                  : 'hover:bg-[#242A32] border-transparent text-[#F5F6FA]'
+                  ? 'bg-[#2B3F74] text-white border-[#2B3F74] font-semibold'
+                  : 'hover:bg-[#171D2B] border-transparent text-[#F7F8FC]'
               }`}
             >
-              <div className={`w-9 h-9 rounded-none flex items-center justify-center shrink-0 font-mono font-bold text-xs ${
-                activeChatUser?.isBot ? 'bg-[#2F3640] text-[#55E6C1]' : 'bg-[#55E6C1] text-[#2F3640]'
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-mono font-bold text-xs ${
+                activeChatUser?.isBot ? 'bg-[#202738] text-[#FFEEA8]' : 'bg-[#FFEEA8] text-[#202738]'
               }`}>
                 <Bot size={18} />
               </div>
               <div className="flex-grow min-w-0">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-xs tracking-wide">SkillBot</span>
-                  <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded-none font-semibold ${
-                    activeChatUser?.isBot ? 'bg-[#2F3640] text-[#55E6C1]' : 'bg-[#242A32] text-[#55E6C1]'
+                  <span className={`font-mono text-[9px] px-2 py-0.5 rounded-full font-semibold ${
+                    activeChatUser?.isBot ? 'bg-[#202738] text-[#FFEEA8]' : 'bg-[#171D2B] text-[#FFEEA8]'
                   }`}>
                     AI BOT
                   </span>
                 </div>
                 <p className={`text-[11px] truncate ${
-                  activeChatUser?.isBot ? 'text-white/80' : 'text-[#A4B0BE]'
+                  activeChatUser?.isBot ? 'text-white/80' : 'text-[#A4B0C6]'
                 }`}>
                   Instant practice & study help
                 </p>
               </div>
             </div>
 
-            <div className="px-3 pt-3 pb-1 font-mono text-[10px] uppercase text-[#718093]">
+            <div className="px-3 pt-3 pb-1 font-mono text-[10px] uppercase text-[#71809B]">
               Swap Partners ({filteredChatUsers.length})
             </div>
 
@@ -674,31 +740,31 @@ const Messaging = () => {
                 <div
                   key={chat.swapId || partner._id}
                   onClick={() => handleSelectChat(partner)}
-                  className={`p-2.5 rounded-none flex items-center gap-3 cursor-pointer transition-colors border ${
+                  className={`p-2.5 rounded-xl flex items-center gap-3 cursor-pointer transition-colors border ${
                     isSelected
-                      ? 'bg-[#353B48] border-[#6C5CE7] text-[#F5F6FA] font-bold'
-                      : 'hover:bg-[#242A32] border-transparent text-[#A4B0BE]'
+                      ? 'bg-[#283144] border-[#2B3F74] text-[#F7F8FC] font-bold'
+                      : 'hover:bg-[#171D2B] border-transparent text-[#A4B0C6]'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {initials}
                   </div>
                   <div className="flex-grow min-w-0">
                     <div className="flex justify-between items-baseline gap-1">
-                      <p className="font-bold text-xs truncate text-[#F5F6FA]">
+                      <p className="font-bold text-xs truncate text-[#F7F8FC]">
                         {partner.fullname?.firstname} {partner.fullname?.lastname}
                       </p>
                       {lastMsgTime && (
-                        <span className="font-mono text-[9px] text-[#718093] shrink-0">
+                        <span className="font-mono text-[9px] text-[#71809B] shrink-0">
                           {lastMsgTime}
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-[#A4B0BE] truncate">
+                    <p className="text-[10px] text-[#A4B0C6] truncate">
                       {lastMsgText ? (
                         <span>
                           {chat.lastMessage?.senderId === currentUser?._id ? (
-                            <span className="text-[#55E6C1]">You: </span>
+                            <span className="text-[#FFEEA8]">You: </span>
                           ) : null}
                           {lastMsgText}
                         </span>
@@ -712,7 +778,7 @@ const Messaging = () => {
             })}
 
             {filteredChatUsers.length === 0 && !loading && (
-              <div className="p-6 text-center font-mono text-xs text-[#718093] italic">
+              <div className="p-6 text-center font-mono text-xs text-[#71809B] italic">
                 No active conversations yet.
               </div>
             )}
@@ -720,37 +786,37 @@ const Messaging = () => {
         </div>
 
         {/* Right Side: Conversation Panel */}
-        <div className={`flex-grow flex flex-col relative bg-[#2F3640] ${
+        <div className={`flex-grow flex flex-col relative bg-[#202738] ${
           mobileView === 'list' ? 'hidden md:flex' : 'flex'
         }`}>
           {activeChatUser ? (
             <>
               {/* Header */}
-              <div className="p-3.5 px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#2B313A]">
-                <div className="flex items-center gap-3">
+              <div className="p-3 px-3 sm:px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     onClick={() => setMobileView('list')}
-                    className="md:hidden p-1.5 rounded-none hover:bg-[#242A32] text-[#A4B0BE]"
+                    className="md:hidden p-1.5 rounded-lg hover:bg-[#171D2B] text-[#A4B0C6] shrink-0"
                     aria-label="Back"
                   >
                     <ArrowLeft size={16} />
                   </button>
 
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {activeChatUser.isBot ? <Bot size={16} /> : (activeChatUser.fullname?.firstname?.[0] || 'U')}
                   </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-[#F5F6FA] leading-tight">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-xs sm:text-sm text-[#F7F8FC] leading-tight truncate">
                       {activeChatUser.fullname?.firstname} {activeChatUser.fullname?.lastname}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="font-mono text-[10px] text-[#55E6C1] font-medium flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
-                        {activeChatUser.isBot ? 'AI ASSISTANT' : 'SWAP PARTNER'}
+                      <span className="font-mono text-[9px] sm:text-[10px] text-[#FFEEA8] font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFEEA8]" />
+                        {activeChatUser.isBot ? 'AI TUTOR' : 'PARTNER'}
                       </span>
                       {!activeChatUser.isBot && isE2EEActive && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#55E6C1] bg-[#242A32] px-1.5 py-0.5 border border-[rgba(85,230,193,0.3)]">
-                          <Lock size={9} /> E2E Encrypted
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255, 238, 168,0.3)]">
+                          <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
                         </span>
                       )}
                     </div>
@@ -758,20 +824,30 @@ const Messaging = () => {
                 </div>
 
                 {!activeChatUser.isBot ? (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={handleOpenSchedule}
+                      className="btn btn-secondary text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono text-[#FFEEA8] border-[rgba(255,238,168,0.25)] hover:bg-[#2B3F74]"
+                      title="Schedule 1:1 session"
+                    >
+                      <Calendar size={13} className="text-[#FFEEA8]" />
+                      <span className="hidden sm:inline">Schedule</span>
+                    </button>
+
                     <button
                       onClick={() => startCall(activeChatUser)}
-                      className="btn btn-cta text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono"
+                      className="btn btn-cta text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono"
                     >
                       <Video size={13} />
-                      <span>Video Call</span>
+                      <span className="hidden sm:inline">Video Call</span>
+                      <span className="sm:hidden">Call</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={handleClearBotChat}
-                      className="btn btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono"
+                      className="btn btn-secondary text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono"
                       title="Reset SkillBot conversation history"
                     >
                       <RotateCcw size={13} />
@@ -785,11 +861,11 @@ const Messaging = () => {
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-grow p-4 sm:p-6 overflow-y-auto space-y-3.5 bg-[#2F3640]"
+                className="flex-grow p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-3.5 bg-[#202738]"
               >
                 {activeChatUser.isBot && (
-                  <div className="mb-4 p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                    <span className="font-mono text-[10px] text-[#A4B0BE] uppercase block mb-2 font-semibold">
+                  <div className="mb-4 p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)]">
+                    <span className="font-mono text-[10px] text-[#A4B0C6] uppercase block mb-2 font-semibold">
                       Suggested Prompts
                     </span>
                     <div className="flex flex-wrap gap-2">
@@ -797,7 +873,7 @@ const Messaging = () => {
                         <button
                           key={i}
                           onClick={() => handleSendMessage(p.prompt)}
-                          className="tag-chip text-xs hover:bg-[#6C5CE7] hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+                          className="tag-chip text-xs hover:bg-[#2B3F74] hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
                         >
                           {p.icon}
                           <span>{p.label}</span>
@@ -809,8 +885,8 @@ const Messaging = () => {
 
                 {!activeChatUser.isBot && isE2EEActive && (
                   <div className="flex justify-center my-3">
-                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#242A32] border border-[rgba(85,230,193,0.25)] text-[#A4B0BE] text-[10px] font-mono max-w-md text-center">
-                      <Lock size={12} className="text-[#55E6C1] shrink-0" />
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#171D2B] rounded-full border border-[rgba(255, 238, 168,0.25)] text-[#A4B0C6] text-[10px] font-mono max-w-md text-center">
+                      <Lock size={12} className="text-[#FFEEA8] shrink-0" />
                       <span>Messages in this conversation are end-to-end encrypted. No one outside of this chat can read them.</span>
                     </div>
                   </div>
@@ -828,19 +904,19 @@ const Messaging = () => {
                                               msg.text?.includes('Declined');
                     return (
                       <div key={msg._id} className="flex justify-center my-2.5">
-                        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#242A32] border border-[rgba(255,255,255,0.12)] rounded-none shadow-sm max-w-md w-full sm:w-auto">
-                          <div className={`w-8 h-8 rounded-none flex items-center justify-center shrink-0 ${
+                        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#171D2B] border border-[rgba(255,255,255,0.12)] rounded-xl shadow-sm max-w-md w-full sm:w-auto">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                             isMissedOrDeclined 
-                              ? 'bg-[#FF7675]/20 text-[#FF7675] border border-[rgba(255,118,117,0.3)]' 
-                              : 'bg-[#55E6C1]/20 text-[#55E6C1] border border-[rgba(85,230,193,0.3)]'
+                              ? 'bg-[#D72E2B]/20 text-[#D72E2B] border border-[rgba(215, 46, 43,0.3)]' 
+                              : 'bg-[#FFEEA8]/20 text-[#FFEEA8] border border-[rgba(255, 238, 168,0.3)]'
                           }`}>
                             <Video size={15} />
                           </div>
                           <div className="flex-grow min-w-0">
-                            <p className="font-mono text-xs font-bold text-[#F5F6FA] truncate">
+                            <p className="font-mono text-xs font-bold text-[#F7F8FC] truncate">
                               {msg.text}
                             </p>
-                            <span className="font-mono text-[9px] text-[#A4B0BE] block">
+                            <span className="font-mono text-[9px] text-[#A4B0C6] block">
                               {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; {new Date(msg.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                             </span>
                           </div>
@@ -848,7 +924,7 @@ const Messaging = () => {
                             <button
                               type="button"
                               onClick={() => startCall(activeChatUser)}
-                              className="px-2.5 py-1 text-[11px] font-mono bg-[#6C5CE7] hover:bg-[#5b4bd8] text-white rounded-none shrink-0 transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-mono bg-[#2B3F74] hover:bg-[#385296] text-white rounded-lg shrink-0 transition-colors cursor-pointer"
                               title="Start Video Call"
                             >
                               Call Back
@@ -863,19 +939,19 @@ const Messaging = () => {
                     <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] sm:max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                         <div
-                          className={`px-4 py-2.5 rounded-none text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
+                          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                             isMe
-                              ? 'bg-[#6C5CE7] text-white font-medium shadow-sm'
+                              ? 'bg-[#2B3F74] text-white font-medium shadow-sm'
                               : isBotMsg
-                              ? 'bg-[#2B313A] text-[#F5F6FA] border border-[rgba(85,230,193,0.3)] shadow-xs'
-                              : 'bg-[#353B48] text-[#F5F6FA] border border-[rgba(255,255,255,0.1)] shadow-xs'
+                              ? 'bg-[#202738] text-[#F7F8FC] border border-[rgba(255, 238, 168,0.3)] shadow-xs'
+                              : 'bg-[#283144] text-[#F7F8FC] border border-[rgba(255,255,255,0.1)] shadow-xs'
                           }`}
                         >
                           {msg.text}
                         </div>
-                        <span className="font-mono text-[9px] text-[#718093] px-1 flex items-center gap-1">
+                        <span className="font-mono text-[9px] text-[#71809B] px-1 flex items-center gap-1">
                           {msg.isEncrypted && (
-                            <span className="text-[#55E6C1] inline-flex items-center" title="End-to-End Encrypted">
+                            <span className="text-[#FFEEA8] inline-flex items-center" title="End-to-End Encrypted">
                               <Lock size={9} />
                             </span>
                           )}
@@ -889,7 +965,7 @@ const Messaging = () => {
                 {/* Shimmer skeleton for bot response (no circular spinner per DESIGN.md) */}
                 {botLoading && (
                   <div className="flex justify-start w-64">
-                    <div className="p-3 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] w-full space-y-2">
+                    <div className="p-3 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.1)] w-full space-y-2">
                       <div className="h-3 w-1/3 skeleton-shimmer" />
                       <div className="h-4 w-full skeleton-shimmer" />
                       <div className="h-4 w-4/5 skeleton-shimmer" />
@@ -914,7 +990,7 @@ const Messaging = () => {
               )}
 
               {/* Input Area */}
-              <div className="p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#2B313A]">
+              <div className="p-2.5 sm:p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#202738]">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -927,12 +1003,12 @@ const Messaging = () => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={activeChatUser.isBot ? "Ask SkillBot anything..." : "Write a message..."}
-                    className="input-field text-xs sm:text-sm py-2 rounded-none bg-[#242A32]"
+                    className="input-field text-xs sm:text-sm py-2 px-3 rounded-xl bg-[#171D2B]"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim()}
-                    className="btn btn-primary text-xs py-2 px-4 rounded-none shrink-0 disabled:opacity-40"
+                    className="btn btn-primary text-xs py-2 px-3 sm:px-4 rounded-xl shrink-0 disabled:opacity-40"
                   >
                     <Send size={14} />
                     <span className="hidden sm:inline">Send</span>
@@ -941,12 +1017,105 @@ const Messaging = () => {
               </div>
             </>
           ) : (
-            <div className="flex-grow flex items-center justify-center p-6 text-center text-[#A4B0BE]">
+            <div className="flex-grow flex items-center justify-center p-6 text-center text-[#A4B0C6]">
               Select a conversation to start chatting.
             </div>
           )}
         </div>
       </div>
+
+      {/* In-Chat Schedule Modal */}
+      {scheduleModalOpen && activeChatUser && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-2xl max-w-md w-full p-6 bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.1)]">
+              <div>
+                <span className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold">Coordinate Session</span>
+                <h3 className="heading-h2 text-base text-[#F7F8FC]">
+                  Schedule with {activeChatUser.fullname?.firstname}
+                </h3>
+              </div>
+              <button
+                onClick={() => setScheduleModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-[#171D2B] text-[#A4B0C6] hover:text-[#F7F8FC]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSchedule} className="space-y-4">
+              <div>
+                <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block mb-1.5">Pick Date</label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="input-field w-full py-2 px-3 text-xs rounded-xl bg-[#171D2B]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block mb-1.5">Select Time Slot</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {TIME_SLOTS.map((s) => (
+                    <button
+                      key={s.time}
+                      type="button"
+                      onClick={() => setScheduleSlot(s.time)}
+                      className={`p-2 rounded-xl text-center border text-xs font-semibold ${
+                        scheduleSlot === s.time
+                          ? 'bg-[#2B3F74] text-white border-[#FFEEA8]'
+                          : 'bg-[#171D2B] text-[#A4B0C6] border-[rgba(255,255,255,0.08)]'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block mb-1.5">Duration</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[30, 45, 60].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setScheduleDuration(mins)}
+                      className={`p-2 rounded-xl text-center border text-xs font-semibold ${
+                        scheduleDuration === mins
+                          ? 'bg-[#2B3F74] text-white border-[#FFEEA8]'
+                          : 'bg-[#171D2B] text-[#A4B0C6] border-[rgba(255,255,255,0.08)]'
+                      }`}
+                    >
+                      {mins} mins
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScheduleModalOpen(false)}
+                  className="flex-1 btn btn-secondary text-xs py-2 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={scheduling}
+                  className="flex-1 btn btn-primary text-xs py-2 rounded-xl"
+                >
+                  {scheduling ? 'Scheduling...' : 'Confirm & Share'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -17,10 +17,20 @@ const app = express();
 
 connectDB();
 
+const configuredOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL;
+const allowedOrigins = configuredOrigins
+    ? configuredOrigins.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000'];
+
 const corsOptions = {
-    origin: 'http://localhost:5173',
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+        return callback(null, true);
+    },
     credentials: true,
-}
+};
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

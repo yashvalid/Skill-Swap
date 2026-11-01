@@ -28,7 +28,16 @@ const isSocketAlive = (socketId) => {
 const isUserInCall = (userId) => {
     if (!userId) return false;
     const uid = userId.toString();
-    for (const call of activeCalls.values()) {
+    const now = Date.now();
+    for (const [key, call] of activeCalls.entries()) {
+        if (call.status === 'ringing' && call.startedRingingAt && (now - call.startedRingingAt > 45000)) {
+            activeCalls.delete(key);
+            continue;
+        }
+        if (call.status === 'ongoing' && call.connectedAt && (now - call.connectedAt > 3 * 3600 * 1000)) {
+            activeCalls.delete(key);
+            continue;
+        }
         const callerMatch = call.callerId && call.callerId.toString() === uid;
         const receiverMatch = call.receiverId && call.receiverId.toString() === uid;
         if ((callerMatch || receiverMatch) && (call.status === 'ongoing' || call.status === 'ringing')) {
@@ -132,7 +141,7 @@ const getReceiverSocketId = async (receiverId) => {
             await redisClient.set(receiverId, user.socketId, { EX: 24 * 60 * 60 });
             return user.socketId;
         }
-    } catch (err) {}
+    } catch (err) { }
 
     // Clean up stale entries if offline
     try {
@@ -140,8 +149,7 @@ const getReceiverSocketId = async (receiverId) => {
             await redisClient.del(receiverId);
             await redisClient.del(candidateSocketId);
         }
-        await User.findByIdAndUpdate(receiverId, { socketId: null });
-    } catch (e) {}
+    } catch (e) { }
 
     return null;
 };
@@ -218,6 +226,7 @@ const initSocket = async (server) => {
 
                 // 3. Available and online: record ringing state & dispatch offer
                 const callKey = getCallKey(callerId, receiverId);
+                activeCalls.delete(callKey);
                 activeCalls.set(callKey, {
                     callerId,
                     receiverId,
@@ -300,6 +309,33 @@ const initSocket = async (server) => {
                 }
             } catch (err) {
                 console.warn('[Socket] Error on ice-candidate:', err.message);
+            }
+        });
+
+        // Stage 2: Collaborative Studio Synchronization
+        socket.on('studio-sync', async (data) => {
+            try {
+                const { to, ...payload } = data;
+                const targetId = to?._id ? to._id.toString() : to?.toString();
+                const receiverSocketId = await getReceiverSocketId(targetId);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('studio-sync', payload);
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on studio-sync:', err.message);
+            }
+        });
+
+        socket.on('studio-typing', async (data) => {
+            try {
+                const { to, isTyping, user } = data;
+                const targetId = to?._id ? to._id.toString() : to?.toString();
+                const receiverSocketId = await getReceiverSocketId(targetId);
+                if (receiverSocketId) {
+                    io.to(receiverSocketId).emit('studio-typing', { isTyping, user });
+                }
+            } catch (err) {
+                console.warn('[Socket] Error on studio-typing:', err.message);
             }
         });
 

@@ -12,13 +12,19 @@ module.exports.requestSwap = async (req, res) => {
     const toUser = req.body.toUser || req.body.toUserId;
     const offersSkill = req.body.offersSkill || req.body.skillOffered;
     const requestsSkill = req.body.requestsSkill || req.body.skillRequested;
+    const scheduledTime = req.body.scheduledTime || null;
+    const durationMinutes = req.body.durationMinutes ? Number(req.body.durationMinutes) : 30;
+    const proposalNotes = req.body.proposalNotes || '';
 
     try {
         const skillSwap = await skillSwapService.requestSwap({
             fromUser,
             toUser,
             offersSkill,
-            requestsSkill
+            requestsSkill,
+            scheduledTime,
+            durationMinutes,
+            proposalNotes
         });
 
         const receiverSocketId = await getReceiverSocketId(toUser);
@@ -34,6 +40,7 @@ module.exports.requestSwap = async (req, res) => {
 
         return res.status(201).json({ message: "Skill swap request created successfully", skillSwap });
     } catch (err) {
+        console.error("Error creating swap request:", err);
         return res.status(500).json({ message: "Internal server error" });
     }
 }
@@ -99,6 +106,33 @@ module.exports.rejectSwap = async (req, res) => {
     }
 }
 
+module.exports.rescheduleSwap = async (req, res) => {
+    const { swapId, scheduledTime, durationMinutes } = req.body;
+    if (!swapId || !scheduledTime) {
+        return res.status(400).json({ message: "Swap ID and scheduled time are required" });
+    }
+
+    try {
+        const updatedSwap = await skillSwapService.rescheduleSwap({
+            swapId,
+            userId: req.user._id,
+            scheduledTime,
+            durationMinutes: durationMinutes ? Number(durationMinutes) : 30
+        });
+
+        // Invalidate cache for both users
+        await invalidateCache([
+            `cache:swaps:accepted:${updatedSwap.fromUser}`,
+            `cache:swaps:accepted:${updatedSwap.toUser}`
+        ]);
+
+        return res.status(200).json({ message: "Session rescheduled successfully", skillSwap: updatedSwap });
+    } catch (err) {
+        console.error("Error rescheduling swap:", err);
+        return res.status(500).json({ message: err.message || "Failed to reschedule session" });
+    }
+};
+
 module.exports.getAllAcceptedSwaps = async (req, res) => {
     try {
         const allUsers = await skillSwapService.getAllAcceptedSwaps(req.user._id);
@@ -116,3 +150,28 @@ module.exports.getPendingSwaps = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 }
+
+module.exports.updateSwapWorkspace = async (req, res) => {
+    const { swapId, milestones, sessionNotes } = req.body;
+    if (!swapId) return res.status(400).json({ message: "Swap ID is required" });
+
+    try {
+        const updatedSwap = await skillSwapService.updateSwapWorkspace({
+            swapId,
+            userId: req.user._id,
+            milestones,
+            sessionNotes
+        });
+
+        // Invalidate cache for both participants
+        await invalidateCache([
+            `cache:swaps:accepted:${updatedSwap.fromUser}`,
+            `cache:swaps:accepted:${updatedSwap.toUser}`
+        ]);
+
+        return res.status(200).json({ message: "Session workspace updated successfully", skillSwap: updatedSwap });
+    } catch (err) {
+        console.error("Error updating workspace:", err);
+        return res.status(500).json({ message: err.message || "Failed to update workspace" });
+    }
+};

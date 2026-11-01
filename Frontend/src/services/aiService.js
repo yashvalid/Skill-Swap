@@ -22,6 +22,16 @@ export const aiService = {
   getCompatibility: (candidateUserId) => api.post('/ai/compatibility', { candidateUserId }),
 
   /**
+   * Fetches community members ranked by multi-factor interest & domain affinity.
+   */
+  getRecommendedMatches: () => api.get('/ai/recommended-matches'),
+
+  /**
+   * Discovers peers based on freeform natural language interest or goal query.
+   */
+  matchByInterest: (query) => api.post('/ai/match-by-interest', { query }),
+
+  /**
    * Consults the SkillBot AI learning companion tutor.
    */
   askTutor: (data) => api.post('/ai/chat-tutor', data),

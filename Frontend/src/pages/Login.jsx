@@ -75,17 +75,17 @@ const Login = () => {
         {/* Brand Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-3 group">
-            <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-bold flex items-center justify-center transition-transform group-hover:scale-105">
+            <div className="w-8 h-8 rounded-xl bg-[#2B3F74] text-white font-bold flex items-center justify-center transition-transform group-hover:scale-105">
               <ArrowLeftRight size={17} strokeWidth={2.5} />
             </div>
-            <span className="font-bold text-xl tracking-[-0.025em] text-[#F5F6FA]">
-              SKILL<span className="text-[#55E6C1]">SWAP</span>
+            <span className="font-bold text-xl tracking-[-0.025em] text-[#F7F8FC]">
+              SKILL<span className="text-[#FFEEA8]">SWAP</span>
             </span>
           </Link>
-          <h1 className="heading-h1 text-[#F5F6FA] text-2xl sm:text-3xl">
+          <h1 className="heading-h1 text-[#F7F8FC] text-2xl sm:text-3xl">
             {isLogin ? 'Sign In to Account' : 'Create Your Account'}
           </h1>
-          <p className="body-md text-xs sm:text-sm text-[#A4B0BE] mt-1.5 mx-auto">
+          <p className="body-md text-xs sm:text-sm text-[#A4B0C6] mt-1.5 mx-auto">
             {isLogin 
               ? 'Access your active swaps, study plans, and messages.' 
               : 'Exchange skills 1-on-1 for free without paying fees.'}
@@ -93,17 +93,17 @@ const Login = () => {
         </div>
 
         {/* Form Card */}
-        <div className="ui-card rounded-none p-6 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] shadow-2xl">
+        <div className="ui-card rounded-2xl p-4 sm:p-8 bg-[#283144] border border-[rgba(255,255,255,0.12)] shadow-2xl">
           
           {/* Segmented Switcher */}
-          <div className="flex p-1 bg-[#242A32] rounded-none mb-6 border border-[rgba(255,255,255,0.1)]">
+          <div className="flex p-1 bg-[#171D2B] rounded-xl mb-6 border border-[rgba(255,255,255,0.1)]">
             <button
               type="button"
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 rounded-none text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
                 isLogin
-                  ? 'bg-[#6C5CE7] text-white font-bold shadow-xs'
-                  : 'text-[#A4B0BE] hover:text-[#F5F6FA]'
+                  ? 'bg-[#2B3F74] text-white font-bold shadow-xs'
+                  : 'text-[#A4B0C6] hover:text-[#F7F8FC]'
               }`}
             >
               Sign In
@@ -111,10 +111,10 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 rounded-none text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
                 !isLogin
-                  ? 'bg-[#6C5CE7] text-white font-bold shadow-xs'
-                  : 'text-[#A4B0BE] hover:text-[#F5F6FA]'
+                  ? 'bg-[#2B3F74] text-white font-bold shadow-xs'
+                  : 'text-[#A4B0C6] hover:text-[#F7F8FC]'
               }`}
             >
               Create Account
@@ -124,13 +124,13 @@ const Login = () => {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {!isLogin && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="input-group">
                     <label className="input-label">
                       First Name
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]">
                         <User size={14} />
                       </span>
                       <input 
@@ -140,7 +140,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Alex" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -150,7 +150,7 @@ const Login = () => {
                       Last Name
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]">
                         <User size={14} />
                       </span>
                       <input 
@@ -160,19 +160,19 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Chen" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="input-group">
                     <label className="input-label">
                       Role / Title
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]">
                         <Briefcase size={14} />
                       </span>
                       <input 
@@ -182,7 +182,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Frontend Architect" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -192,7 +192,7 @@ const Login = () => {
                       Location
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]">
                         <MapPin size={14} />
                       </span>
                       <input 
@@ -202,7 +202,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Remote" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -213,7 +213,7 @@ const Login = () => {
                     Bio & Expertise Overview
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-3 text-[#718093]">
+                    <span className="absolute left-3 top-3 text-[#71809B]">
                       <AlignLeft size={14} />
                     </span>
                     <textarea 
@@ -222,7 +222,7 @@ const Login = () => {
                       onChange={handleChange}
                       required
                       placeholder="Share what skills you have mastered and what you want to learn..." 
-                      className="input-field pl-8 min-h-[70px] resize-none rounded-none"
+                      className="input-field pl-8 min-h-[70px] resize-none"
                     />
                   </div>
                 </div>
@@ -234,7 +234,7 @@ const Login = () => {
                 Email Address
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]">
                   <Mail size={14} />
                 </span>
                 <input 
@@ -244,7 +244,7 @@ const Login = () => {
                   type="email" 
                   required
                   placeholder="alex.chen@example.com" 
-                  className="input-field pl-8 rounded-none"
+                  className="input-field pl-8"
                 />
               </div>
             </div>
@@ -254,7 +254,7 @@ const Login = () => {
                 Password
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#718093]">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71809B]">
                   <Lock size={14} />
                 </span>
                 <input 
@@ -264,28 +264,28 @@ const Login = () => {
                   type="password" 
                   required
                   placeholder="••••••••" 
-                  className="input-field pl-8 rounded-none"
+                  className="input-field pl-8"
                 />
               </div>
             </div>
 
             {!isLogin && (
-              <div className="p-3 bg-[#242A32] border border-[rgba(255,255,255,0.08)] space-y-2">
+              <div className="p-3.5 bg-[#171D2B] border border-[rgba(255,255,255,0.08)] rounded-xl space-y-2">
                 <div className="flex items-start gap-2.5">
                   <input 
                     type="checkbox"
                     id="privacyPolicyConsent"
                     checked={agreedToPolicy}
                     onChange={(e) => setAgreedToPolicy(e.target.checked)}
-                    className="mt-1 w-4 h-4 rounded-none accent-[#6C5CE7] cursor-pointer shrink-0"
+                    className="mt-1 w-4 h-4 rounded accent-[#2B3F74] cursor-pointer shrink-0"
                     required
                   />
-                  <label htmlFor="privacyPolicyConsent" className="text-xs text-[#A4B0BE] leading-relaxed cursor-pointer select-none">
+                  <label htmlFor="privacyPolicyConsent" className="text-xs text-[#A4B0C6] leading-relaxed cursor-pointer select-none">
                     I have read and agree to the{' '}
                     <button
                       type="button"
                       onClick={() => setShowPolicyModal(true)}
-                      className="text-[#55E6C1] underline font-medium hover:text-[#55E6C1]/80 inline-flex items-center gap-0.5"
+                      className="text-[#FFEEA8] underline font-medium hover:text-[#FFEEA8]/80 inline-flex items-center gap-0.5"
                     >
                       Privacy Policy
                     </button>
@@ -293,12 +293,12 @@ const Login = () => {
                   </label>
                 </div>
                 
-                <div className="flex items-center justify-between pl-6 text-[11px] font-mono text-[#718093]">
+                <div className="flex items-center justify-between pl-6 text-[11px] font-mono text-[#71809B]">
                   <span>Status: {agreedToPolicy ? 'Agreed' : 'Agreement required'}</span>
                   <button
                     type="button"
                     onClick={() => setShowPolicyModal(true)}
-                    className="text-[#55E6C1] hover:underline"
+                    className="text-[#FFEEA8] hover:underline"
                   >
                     Read Policy
                   </button>
@@ -308,15 +308,15 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-none"
+              className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-xl"
             >
               <span>{isLogin ? 'Sign In to Account' : 'Create Your Account'}</span>
               <ArrowRight size={15} />
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-[rgba(255,255,255,0.08)] flex items-center justify-center gap-2 text-xs font-mono text-[#A4B0BE]">
-            <ShieldCheck size={14} className="text-[#55E6C1]" />
+          <div className="mt-6 pt-4 border-t border-[rgba(255,255,255,0.08)] flex items-center justify-center gap-2 text-xs font-mono text-[#A4B0C6]">
+            <ShieldCheck size={14} className="text-[#FFEEA8]" />
             <span>Free 1-on-1 learning. Earn credits as you teach and learn.</span>
           </div>
         </div>
@@ -325,17 +325,17 @@ const Login = () => {
       {/* Privacy Policy Reader Modal */}
       {showPolicyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="relative w-full max-w-2xl bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl rounded-2xl flex flex-col max-h-[85vh]">
             
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#242A32]">
+            <div className="p-4 sm:p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#171D2B]">
               <div className="flex items-center gap-2.5">
-                <ShieldCheck size={18} className="text-[#55E6C1]" />
+                <ShieldCheck size={18} className="text-[#FFEEA8]" />
                 <div>
-                  <h3 className="text-sm font-bold text-[#F5F6FA] uppercase tracking-wide">
+                  <h3 className="text-sm font-bold text-[#F7F8FC] uppercase tracking-wide">
                     SkillSwap Privacy Policy
                   </h3>
-                  <p className="font-mono text-[10px] text-[#A4B0BE]">
+                  <p className="font-mono text-[10px] text-[#A4B0C6]">
                     Version 1.0 &bull; Effective October 2026
                   </p>
                 </div>
@@ -343,7 +343,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPolicyModal(false)}
-                className="p-1.5 text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2F3640] transition-colors"
+                className="p-1.5 rounded-lg text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#202738] transition-colors"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -351,13 +351,13 @@ const Login = () => {
             </div>
 
             {/* Scrollable Policy Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-[#A4B0BE] leading-relaxed">
-              <div className="p-3 bg-[#242A32] border-l-2 border-[#55E6C1] text-[#F5F6FA] font-medium">
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-[#A4B0C6] leading-relaxed">
+              <div className="p-3.5 bg-[#171D2B] border-l-2 border-[#FFEEA8] rounded-r-xl text-[#F7F8FC] font-medium">
                 Summary: We respect your privacy. Video calls connect directly between devices, we do not record audio/video, and we never sell your personal data.
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-[#F7F8FC] uppercase tracking-wider">
                   1. Information We Collect
                 </h4>
                 <p>
@@ -366,7 +366,7 @@ const Login = () => {
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-[#F7F8FC] uppercase tracking-wider">
                   2. Direct 1-on-1 Video & Audio
                 </h4>
                 <p>
@@ -375,7 +375,7 @@ const Login = () => {
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-[#F7F8FC] uppercase tracking-wider">
                   3. SkillBot AI Tutor
                 </h4>
                 <p>
@@ -384,7 +384,7 @@ const Login = () => {
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-[#F7F8FC] uppercase tracking-wider">
                   4. Security & Encryption
                 </h4>
                 <p>
@@ -393,7 +393,7 @@ const Login = () => {
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-[#F7F8FC] uppercase tracking-wider">
                   5. Recording of Acceptance
                 </h4>
                 <p>
@@ -403,21 +403,21 @@ const Login = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 border-t border-[rgba(255,255,255,0.1)] bg-[#242A32] flex items-center justify-between gap-3">
+            <div className="p-4 border-t border-[rgba(255,255,255,0.1)] bg-[#171D2B] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <Link
                 to="/privacy"
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-[#55E6C1] hover:underline inline-flex items-center gap-1 font-mono"
+                className="text-xs text-[#FFEEA8] hover:underline inline-flex items-center justify-center sm:justify-start gap-1 font-mono py-1"
               >
                 <span>Full Policy Page</span>
                 <ExternalLink size={12} />
               </Link>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setShowPolicyModal(false)}
-                  className="btn btn-secondary text-xs py-2 px-3"
+                  className="btn btn-secondary text-xs py-2 px-3 flex-1 sm:flex-initial justify-center"
                 >
                   Close
                 </button>
@@ -428,7 +428,7 @@ const Login = () => {
                     setShowPolicyModal(false);
                     toast.success('Privacy Policy accepted');
                   }}
-                  className="btn btn-primary text-xs py-2 px-4"
+                  className="btn btn-primary text-xs py-2 px-4 flex-1 sm:flex-initial justify-center"
                 >
                   I Read & Agree
                 </button>
