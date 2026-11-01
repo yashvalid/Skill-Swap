@@ -31,101 +31,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { isUserVerified } from '../utils/userVerification';
 
-const CURATED_SHOWCASES = [
-  {
-    _id: 'curated-1',
-    user: {
-      _id: 'user-elena',
-      fullname: { firstname: 'Elena', lastname: 'Vance' },
-      role: 'Product Strategist'
-    },
-    exchange: {
-      partnerName: 'Sofia Morales',
-      taught: 'Pitch Deck Coaching',
-      learned: 'Conversational Spanish',
-      duration: '4-Week Milestone',
-      category: 'Languages'
-    },
-    tags: ['SpanishFluency', 'PitchCoaching', 'PresentationProof'],
-    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-    content: 'Just completed 4 weeks of conversational Spanish with Sofia in exchange for pitch deck coaching. Delivered my first client presentation in Spanish today! Direct reciprocal learning is unmatched.',
-    mediaUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
-    mediaType: 'image',
-    likes: ['u1', 'u2', 'u3', 'u4', 'u5']
-  },
-  {
-    _id: 'curated-2',
-    user: {
-      _id: 'user-marcus',
-      fullname: { firstname: 'Marcus', lastname: 'Chen' },
-      role: 'Backend Architect'
-    },
-    exchange: {
-      partnerName: 'Lucas Mendes',
-      taught: 'Python Automation',
-      learned: 'Premiere & Motion Design',
-      duration: '4-Week Milestone',
-      category: 'Code & Tech'
-    },
-    tags: ['PythonAutomation', 'MotionDesign', 'VideoEditing'],
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    content: 'Wrapped up our 4-week peer swap on Video Editing and Python automation with Lucas. Traded creative motion skills for Python scripting and automated video rendering pipelines!',
-    mediaUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
-    mediaType: 'image',
-    likes: ['u1', 'u3', 'u8']
-  },
-  {
-    _id: 'curated-3',
-    user: {
-      _id: 'user-david',
-      fullname: { firstname: 'David', lastname: 'Kim' },
-      role: 'Music Producer'
-    },
-    exchange: {
-      partnerName: 'Sarah Lin',
-      taught: 'Ableton Vocal Mixing',
-      learned: 'React Design System',
-      duration: 'Milestone Demo',
-      category: 'Music & Audio'
-    },
-    tags: ['AbletonLive', 'AudioProduction', 'ReactPortfolio'],
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    content: 'Traded Ableton vocal mixing techniques for React web portfolio guidance with Sarah. Both launched our milestone projects this weekend! Here is the responsive portfolio we built during pair sessions.',
-    mediaUrl: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80',
-    mediaType: 'image',
-    likes: ['u2', 'u4', 'u6', 'u7']
-  },
-  {
-    _id: 'curated-4',
-    user: {
-      _id: 'user-amara',
-      fullname: { firstname: 'Amara', lastname: 'Okonkwo' },
-      role: 'Content Strategist'
-    },
-    exchange: {
-      partnerName: 'Alex Chen',
-      taught: 'SEO Copywriting',
-      learned: 'Figma Prototyping',
-      duration: '2-Week Sprint',
-      category: 'Design & Creative'
-    },
-    tags: ['FigmaWireframes', 'Copywriting', 'DesignTokens'],
-    createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-    content: 'Alex taught me interactive Figma prototyping while I helped him optimize landing page messaging for his indie project. Finished our wireframe prototype in under 2 weeks!',
-    mediaUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
-    mediaType: 'image',
-    likes: ['u1', 'u2', 'u5']
-  }
-];
-
 const CATEGORIES = ['All', 'Code & Tech', 'Design & Creative', 'Languages', 'Music & Audio', 'Milestones'];
-
-const TRENDING_PAIRS = [
-  { teach: 'Modern React & Next.js', learn: 'Figma Design Systems', activePairs: 38, category: 'Code & Tech' },
-  { teach: 'Conversational Spanish', learn: 'Python & Data Science', activePairs: 29, category: 'Languages' },
-  { teach: 'Ableton Vocal Mixing', learn: 'SEO & Copywriting', activePairs: 21, category: 'Music & Audio' },
-  { teach: 'Video Editing & Motion', learn: 'TypeScript & APIs', activePairs: 17, category: 'Design & Creative' }
-];
 
 const Feed = () => {
   const { user } = useAuth();
@@ -150,12 +56,13 @@ const Feed = () => {
   }, []);
 
   const fetchPosts = async () => {
+    setLoading(true);
     try {
       const { data } = await feedService.getAllPosts();
-      const loaded = data.posts || [];
-      setPosts(loaded.length > 0 ? loaded : CURATED_SHOWCASES);
+      setPosts(data.posts || []);
     } catch (error) {
-      setPosts(CURATED_SHOWCASES);
+      console.error('Failed to load posts from database', error);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -654,23 +561,28 @@ const Feed = () => {
             </div>
 
             <div className="space-y-2.5">
-              {TRENDING_PAIRS.map((pair, idx) => (
+              {posts.slice(0, 4).map((p, idx) => (
                 <div
                   key={idx}
                   onClick={() => navigate('/marketplace')}
                   className="p-3 bg-[#202738] hover:bg-[#171D2B] rounded-xl border border-[rgba(255,255,255,0.06)] hover:border-[#2B3F74] transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center justify-between text-xs font-semibold text-[#F7F8FC] mb-1">
-                    <span className="truncate group-hover:text-[#FFEEA8] transition-colors">{pair.teach}</span>
-                    <ArrowLeftRight size={12} className="text-[#FFEEA8] shrink-0 mx-2" />
-                    <span className="truncate group-hover:text-[#FFEEA8] transition-colors">{pair.learn}</span>
+                    <span className="truncate group-hover:text-[#FFEEA8] transition-colors">
+                      {p.user?.fullname?.firstname} {p.user?.fullname?.lastname}
+                    </span>
+                    <span className="text-[10px] text-[#FFEEA8] font-mono shrink-0">
+                      {p.likes?.length || 0} likes
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-[#71809B]">
-                    <span>{pair.category}</span>
-                    <span className="text-[#FFEEA8]">{pair.activePairs} active pairs</span>
+                  <div className="text-[10px] font-mono text-[#71809B] truncate">
+                    {p.user?.role || 'Community Exchange'}
                   </div>
                 </div>
               ))}
+              {posts.length === 0 && !loading && (
+                <p className="text-xs text-[#71809B] text-center py-2">No active showcases yet</p>
+              )}
             </div>
 
             <Link

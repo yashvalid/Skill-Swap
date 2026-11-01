@@ -12,7 +12,10 @@ import {
   UserCheck,
   Filter,
   Layers,
-  Inbox
+  Inbox,
+  Compass,
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import { userService } from '../services/userService';
 import { swapService } from '../services/swapService';
@@ -22,124 +25,50 @@ import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { isUserVerified } from '../utils/userVerification';
 
-// Curated default mentors spanning both technical and non-technical disciplines
-const CURATED_PEERS = [
-  {
-    _id: 'peer-1',
-    fullname: { firstname: 'Sarah', lastname: 'Lin' },
-    role: 'Lead UI/UX Designer',
-    category: 'Design & Creative',
-    bio: 'Crafting production design systems, responsive wireframes, and interactive prototypes in Figma.',
-    location: 'San Francisco, CA',
-    skillsOffered: ['Figma Design', 'UI/UX Architecture', 'Design Systems', 'User Research'],
-    skillsNeeded: ['React & Next.js', 'TypeScript', 'Web Development'],
-    averageRating: 4.95,
-    totalRatings: 34
-  },
-  {
-    _id: 'peer-2',
-    fullname: { firstname: 'Marcus', lastname: 'Thorne' },
-    role: 'Backend Architect',
-    category: 'Coding & Tech',
-    bio: 'Specializing in high-throughput distributed systems, WebSocket APIs, and database optimization.',
-    location: 'Berlin / Remote',
-    skillsOffered: ['Distributed Systems', 'Redis Architecture', 'Node.js & Express', 'Docker'],
-    skillsNeeded: ['UI/UX Design', 'Conversational Spanish', 'Video Editing'],
-    averageRating: 4.9,
-    totalRatings: 48
-  },
-  {
-    _id: 'peer-3',
-    fullname: { firstname: 'Sofia', lastname: 'Morales' },
-    role: 'Language Coach & Polyglot',
-    category: 'Languages',
-    bio: 'Native Spanish and fluent French speaker helping peers achieve conversational fluency and professional confidence.',
-    location: 'Madrid / Remote',
-    skillsOffered: ['Conversational Spanish', 'Business French', 'Accent & Pronunciation', 'Grammar'],
-    skillsNeeded: ['Python for Data', 'Web Development', 'Figma Basics'],
-    averageRating: 4.98,
-    totalRatings: 52
-  },
-  {
-    _id: 'peer-4',
-    fullname: { firstname: 'David', lastname: 'Kim' },
-    role: 'Music Producer & Audio Engineer',
-    category: 'Music & Audio',
-    bio: 'Music producer and guitarist. Teaching Ableton Live production, vocal mixing, beat making, and acoustic guitar.',
-    location: 'Seoul / Remote',
-    skillsOffered: ['Ableton Live', 'Vocal Mixing', 'Acoustic Guitar', 'Sound Design'],
-    skillsNeeded: ['React Web Basics', 'SEO Strategy', 'Content Writing'],
-    averageRating: 4.91,
-    totalRatings: 29
-  },
-  {
-    _id: 'peer-5',
-    fullname: { firstname: 'Elena', lastname: 'Vance' },
-    role: 'Product Strategist & Speaker',
-    category: 'Business & Growth',
-    bio: 'Helping builders shape compelling pitch decks, public speaking confidence, and product positioning.',
-    location: 'New York, NY',
-    skillsOffered: ['Public Speaking', 'Pitch Deck Storytelling', 'Product Strategy', 'Brand Positioning'],
-    skillsNeeded: ['React Basics', 'Graphic Design', 'Video Editing'],
-    averageRating: 5.0,
-    totalRatings: 62
-  },
-  {
-    _id: 'peer-6',
-    fullname: { firstname: 'Lucas', lastname: 'Mendes' },
-    role: 'Video Editor & Motion Designer',
-    category: 'Design & Creative',
-    bio: 'Commercial video creator. Teaching Premiere Pro cutting, After Effects animations, and visual storytelling.',
-    location: 'S?o Paulo / Remote',
-    skillsOffered: ['Video Editing', 'After Effects', 'Storyboarding', 'Color Grading'],
-    skillsNeeded: ['TypeScript', 'Full-Stack Development', 'PostgreSQL'],
-    averageRating: 4.89,
-    totalRatings: 37
-  },
-  {
-    _id: 'peer-7',
-    fullname: { firstname: 'Chloe', lastname: 'Dupont' },
-    role: 'AI & Data Science Researcher',
-    category: 'Coding & Tech',
-    bio: 'Implementing practical Python machine learning models, retrieval pipelines, and data analytics.',
-    location: 'Paris, France',
-    skillsOffered: ['Python & ML', 'Data Visualization', 'SQL Analytics', 'AI Prompting'],
-    skillsNeeded: ['Conversational French', 'Audio Podcast Editing', 'UI Design'],
-    averageRating: 4.92,
-    totalRatings: 41
-  },
-  {
-    _id: 'peer-8',
-    fullname: { firstname: 'Amara', lastname: 'Okonkwo' },
-    role: 'Content Strategist & Copywriter',
-    category: 'Writing',
-    bio: 'Direct-response copywriter and editor helping founders write engaging articles, newsletters, and landing pages.',
-    location: 'London / Remote',
-    skillsOffered: ['Copywriting', 'SEO Articles', 'Creative Writing', 'Brand Voice'],
-    skillsNeeded: ['Webflow & HTML/CSS', 'Basic JavaScript', 'Figma'],
-    averageRating: 4.96,
-    totalRatings: 44
-  }
-];
-
 const CATEGORY_MAP = {
-  'Coding & Tech': ['developer', 'engineer', 'backend', 'frontend', 'full-stack', 'system', 'python', 'react', 'code', 'docker', 'ai', 'data', 'sql', 'typescript'],
-  'Design & Creative': ['design', 'figma', 'ui', 'ux', 'video', 'motion', 'animation', 'creative', 'art', 'color grading'],
-  'Languages': ['language', 'spanish', 'french', 'german', 'japanese', 'mandarin', 'polyglot', 'linguist', 'accent', 'pronunciation'],
-  'Music & Audio': ['music', 'audio', 'sound', 'guitar', 'piano', 'ableton', 'vocal', 'production'],
-  'Business & Growth': ['business', 'product', 'strategy', 'finance', 'marketing', 'leadership', 'sales', 'speaking', 'pitch'],
-  'Writing': ['writing', 'copywriting', 'content', 'seo', 'storytelling', 'article', 'editorial']
+  'Coding & Tech': [
+    'developer', 'engineer', 'backend', 'frontend', 'full stack', 'fullstack',
+    'system', 'python', 'react', 'code', 'docker', 'ai', 'data', 'sql', 'typescript',
+    'golang', 'go', 'cloud', 'kubernetes', 'node', 'javascript', 'dev'
+  ],
+  'Design & Creative': [
+    'design', 'figma', 'ui', 'ux', 'ui/ux', 'video', 'motion', 'animation', 'creative',
+    'art', 'color grading', 'typography', 'tokens', 'prototyping', 'blender', '3d'
+  ],
+  'Languages': [
+    'language', 'spanish', 'french', 'german', 'japanese', 'mandarin', 'polyglot',
+    'linguist', 'accent', 'pronunciation', 'translation', 'jlpt', 'culture', 'tutor'
+  ],
+  'Music & Audio': [
+    'music', 'audio', 'sound', 'guitar', 'piano', 'ableton', 'vocal', 'production',
+    'mixing', 'mastering', 'synth', 'foley', 'acoustics'
+  ],
+  'Business & Growth': [
+    'business', 'product', 'strategy', 'finance', 'marketing', 'leadership', 'sales',
+    'speaking', 'pitch', 'pitching', 'founder', 'growth'
+  ],
+  'Writing': [
+    'writing', 'copywriting', 'content', 'seo', 'storytelling', 'article', 'editorial',
+    'technical writing', 'documentation'
+  ]
 };
 
 const Marketplace = () => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
-  const [users, setUsers] = useState(CURATED_PEERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [swapData, setSwapData] = useState({ offersSkill: '', requestsSkill: '' });
   const [guestModalOpen, setGuestModalOpen] = useState(false);
+
+  // Interest-based matching state
+  const [discoveryMode, setDiscoveryMode] = useState('all'); // 'all' | 'affinity'
+  const [affinityMatches, setAffinityMatches] = useState([]);
+  const [loadingAffinity, setLoadingAffinity] = useState(false);
+  const [interestSearchActive, setInterestSearchActive] = useState(false);
 
   // AI Pitch state
   const [pitchData, setPitchData] = useState(null);
@@ -150,17 +79,96 @@ const Marketplace = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentUser]);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const { data } = await userService.getAllUsers();
-      const serverUsers = data.users || [];
-      if (serverUsers.length > 0) {
-        setUsers(serverUsers);
+      // 1. Fetch real users from MongoDB and recommended affinity ranking in parallel
+      const [usersRes, affinityRes] = await Promise.allSettled([
+        userService.getAllUsers(),
+        aiService.getRecommendedMatches()
+      ]);
+
+      let serverUsers = [];
+      if (usersRes.status === 'fulfilled' && usersRes.value.data?.users) {
+        serverUsers = usersRes.value.data.users;
       }
+
+      let affinityMap = {};
+      if (affinityRes.status === 'fulfilled' && affinityRes.value.data?.matches) {
+        affinityRes.value.data.matches.forEach(m => {
+          if (m.user?._id) {
+            affinityMap[m.user._id] = m.affinity;
+          }
+        });
+      }
+
+      // 2. Attach affinity data to each user
+      const enrichedUsers = serverUsers.map(u => ({
+        ...u,
+        affinity: affinityMap[u._id] || null
+      }));
+
+      // Sort 'All Mentors' directory: Verified mentors and active profiles with skills first
+      const sortedUsers = [...enrichedUsers].sort((a, b) => {
+        if (Boolean(a.isVerified) !== Boolean(b.isVerified)) {
+          return a.isVerified ? -1 : 1;
+        }
+        const aSkills = (a.skillsOffered?.length || 0);
+        const bSkills = (b.skillsOffered?.length || 0);
+        if (aSkills !== bSkills) return bSkills - aSkills;
+        return (b.totalRatings || 0) - (a.totalRatings || 0);
+      });
+
+      setUsers(sortedUsers);
+
+      // 3. Populate affinityMatches sorted strictly descending by highest match score
+      const ranked = [...enrichedUsers]
+        .filter(u => u.affinity?.matchScore)
+        .sort((a, b) => (b.affinity?.matchScore || 0) - (a.affinity?.matchScore || 0));
+
+      setAffinityMatches(ranked);
     } catch (error) {
-      // Keep curated fallback
+      console.error('Failed to load marketplace users from database', error);
+      setUsers([]);
+      setAffinityMatches([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleDiscoveryMode = (mode) => {
+    setDiscoveryMode(mode);
+    setInterestSearchActive(false);
+  };
+
+  const handleInterestSearch = async (e) => {
+    if (e) e.preventDefault();
+    if (!searchTerm.trim()) {
+      setInterestSearchActive(false);
+      return;
+    }
+
+    setLoadingAffinity(true);
+    setInterestSearchActive(true);
+    try {
+      const res = await aiService.matchByInterest(searchTerm.trim());
+      if (res.data?.matches && res.data.matches.length > 0) {
+        const formatted = res.data.matches.map(m => ({
+          ...m.user,
+          affinity: m.affinity
+        }));
+        setAffinityMatches(formatted);
+        setDiscoveryMode('affinity');
+      } else {
+        toast('No direct domain match found for that query, showing all peers.', { icon: 'ℹ️' });
+      }
+    } catch (err) {
+      console.error('Search by interest failed', err);
+      toast.error('Search by interest failed');
+    } finally {
+      setLoadingAffinity(false);
     }
   };
 
@@ -175,6 +183,14 @@ const Marketplace = () => {
       offersSkill: '',
       requestsSkill: targetUser.skillsOffered?.[0] || ''
     });
+    if (targetUser.affinity?.icebreaker) {
+      setPitchData({
+        hook: `Mutual Interest in ${targetUser.affinity.sharedDomains?.[0] || targetUser.role}`,
+        pitch: targetUser.affinity.icebreaker
+      });
+    } else {
+      setPitchData(null);
+    }
   };
 
   const handleRequestSwap = async (e) => {
@@ -224,73 +240,143 @@ const Marketplace = () => {
     setTimeout(() => setCopiedPitch(false), 2000);
   };
 
-  const filteredUsers = users.filter(u => {
+  // Determine active display pool
+  const activePool = (discoveryMode === 'affinity' && affinityMatches.length > 0)
+    ? affinityMatches
+    : users;
+
+  const filteredUsers = activePool.filter(u => {
     if (currentUser && u._id === currentUser._id) return false;
-    const matchesCategory = activeCategory === 'All' || u.role?.toLowerCase().includes(activeCategory.toLowerCase());
-    const query = searchTerm.toLowerCase();
-    const matchesSearch = !query ||
+
+    // 1. Category filter matching keywords
+    if (activeCategory !== 'All') {
+      const categoryKeywords = CATEGORY_MAP[activeCategory] || [];
+      const userText = [
+        u.role || '',
+        u.bio || '',
+        ...(u.skillsOffered || []),
+        ...(u.skillsNeeded || []),
+        ...(u.affinity?.sharedDomains || [])
+      ].join(' ').toLowerCase();
+
+      const matchesCat = categoryKeywords.some(kw => userText.includes(kw.toLowerCase()));
+      if (!matchesCat) return false;
+    }
+
+    // 2. If in semantic interest search, pool is already sorted by semantic score
+    if (discoveryMode === 'affinity' && interestSearchActive) {
+      return true;
+    }
+
+    // 3. Normal text query filter
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+
+    const matchesSearch =
       u.fullname?.firstname?.toLowerCase().includes(query) ||
       u.fullname?.lastname?.toLowerCase().includes(query) ||
       u.role?.toLowerCase().includes(query) ||
       u.bio?.toLowerCase().includes(query) ||
       (u.skillsOffered && u.skillsOffered.some(s => s.toLowerCase().includes(query))) ||
-      (u.skillsNeeded && u.skillsNeeded.some(s => s.toLowerCase().includes(query)));
-    return matchesCategory && matchesSearch;
+      (u.skillsNeeded && u.skillsNeeded.some(s => s.toLowerCase().includes(query))) ||
+      (u.affinity?.sharedDomains && u.affinity.sharedDomains.some(d => d.toLowerCase().includes(query))) ||
+      (u.affinity?.synergyTags && u.affinity.synergyTags.some(t => t.toLowerCase().includes(query)));
+
+    return matchesSearch;
   });
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Header */}
-      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-[rgba(255,255,255,0.12)]">
+      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-[rgba(255,255,255,0.12)] gap-4">
         <div>
-          <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
-            Mentor Directory
-          </span>
-          <h1 className="heading-h1 text-[#F7F8FC] mt-1">
-            Skill Marketplace
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
+              Peer Discovery
+            </span>
+            <span className="tag-chip text-[9px] py-0 px-1.5 font-mono bg-[#2B3F74]/60 text-[#FFEEA8]">
+              ALGO MATCH
+            </span>
+          </div>
+          <h1 className="heading-h1 text-[#F7F8FC] mt-0.5">
+            Skill & Interest Marketplace
           </h1>
           <p className="body-md text-sm text-[#A4B0C6] mt-1 max-w-xl">
-            Browse mentors offering direct 1-on-1 sessions. Propose a swap with your skills.
+            Meet peers by complementary skills or shared domain interests. Connect 1-on-1 for verified reciprocal swaps.
           </p>
         </div>
 
-        <div className="mt-4 md:mt-0 flex items-center gap-2">
-          <span className="tag-chip text-xs">
-            {filteredUsers.length} Mentors Active
-          </span>
+        {/* Discovery Mode Switcher */}
+        <div className="flex items-center gap-2 p-1.5 bg-[#202738] rounded-2xl border border-[rgba(255,255,255,0.1)] self-start md:self-auto">
+          <button
+            onClick={() => handleToggleDiscoveryMode('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              discoveryMode === 'all'
+                ? 'bg-[#2B3F74] text-white shadow-xs'
+                : 'text-[#A4B0C6] hover:text-[#F7F8FC]'
+            }`}
+          >
+            <Compass size={14} />
+            <span>All Mentors ({users.length})</span>
+          </button>
+          
+          <button
+            onClick={() => handleToggleDiscoveryMode('affinity')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              discoveryMode === 'affinity'
+                ? 'bg-[#FFEEA8] text-[#171D2B] font-bold shadow-xs'
+                : 'text-[#FFEEA8] hover:text-white'
+            }`}
+          >
+            <Sparkles size={14} className={discoveryMode === 'affinity' ? 'text-[#171D2B]' : 'text-[#FFEEA8]'} />
+            <span>Matched For You</span>
+          </button>
         </div>
       </header>
 
       {/* Spotlight Search & Category Filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-8 items-stretch md:items-center justify-between">
-        <div className="relative w-full md:max-w-md">
+        <form onSubmit={handleInterestSearch} className="relative w-full md:max-w-lg flex items-center">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71809B]" size={16} />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by skill (e.g. React, Spanish, Video Editing, Guitar)..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.15)] focus:border-[#2B3F74] focus:ring-2 focus:ring-[#2B3F74] focus:ring-offset-2 focus:ring-offset-[#202738] text-sm text-[#F7F8FC] placeholder-[#71809B] outline-none transition-colors"
+            placeholder="Search by skill or interest (e.g. creative audio, indie tools, Japanese)..."
+            className="w-full pl-10 pr-24 py-2.5 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.15)] focus:border-[#2B3F74] focus:ring-2 focus:ring-[#2B3F74] focus:ring-offset-2 focus:ring-offset-[#202738] text-sm text-[#F7F8FC] placeholder-[#71809B] outline-none transition-colors"
           />
-          {searchTerm && (
+          
+          <div className="absolute right-2 flex items-center gap-1">
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => { setSearchTerm(''); setInterestSearchActive(false); }}
+                className="p-1 text-[#A4B0C6] hover:text-[#F7F8FC]"
+                title="Clear"
+              >
+                <X size={14} />
+              </button>
+            )}
             <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A4B0C6] hover:text-[#F7F8FC]"
+              type="submit"
+              className="btn btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1 font-mono rounded-lg"
+              title="Run semantic interest match"
             >
-              <X size={14} />
+              <Sparkles size={11} className="text-[#FFEEA8]" />
+              <span>Match</span>
             </button>
-          )}
-        </div>
+          </div>
+        </form>
 
         {/* Category Pills */}
         <div className="flex gap-1.5 p-1 bg-[#202738] rounded-xl overflow-x-auto border border-[rgba(255,255,255,0.1)] scrollbar-none touch-pan-x">
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => { setActiveCategory(cat); setInterestSearchActive(false); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight transition-colors whitespace-nowrap ${
-                activeCategory === cat
+                activeCategory === cat && !interestSearchActive
                   ? 'bg-[#2B3F74] text-white font-semibold shadow-xs'
                   : 'text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#171D2B]'
               }`}
@@ -301,41 +387,93 @@ const Marketplace = () => {
         </div>
       </div>
 
-      {/* Grid of Mentors */}
-      {filteredUsers.length === 0 ? (
+      {/* Discovery Mode Notification Banner */}
+      {discoveryMode === 'affinity' && (
+        <div className="mb-6 p-4 rounded-2xl bg-[#202738] border border-[rgba(255,238,168,0.3)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#2B3F74] text-[#FFEEA8] flex items-center justify-center shrink-0">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-[#F7F8FC]">
+                  Semantic Affinity Match Engine Active
+                </h3>
+                <span className="tag-chip text-[9px] py-0 px-2 font-mono bg-[#171D2B] text-[#FFEEA8]">
+                  MULTI-FACTOR
+                </span>
+              </div>
+              <p className="text-xs text-[#A4B0C6] mt-0.5">
+                {interestSearchActive
+                  ? `Showing peers ranked by relevance to your interest query: "${searchTerm}"`
+                  : 'Ranking mentors by shared domain clusters, bio context, and reciprocal learning trajectory.'}
+              </p>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => { setDiscoveryMode('all'); setInterestSearchActive(false); }}
+            className="text-xs font-mono text-[#FFEEA8] hover:underline self-end sm:self-auto shrink-0"
+          >
+            Switch to All Mentors →
+          </button>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loading || loadingAffinity ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
+          {[1, 2, 3, 4, 5, 6].map((idx) => (
+            <div key={idx} className="ui-card p-6 rounded-2xl bg-[#283144] border border-[rgba(255,255,255,0.08)] space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full skeleton-shimmer" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-3/4 skeleton-shimmer rounded-md" />
+                  <div className="h-3 w-1/2 skeleton-shimmer rounded-md" />
+                </div>
+              </div>
+              <div className="h-14 w-full skeleton-shimmer rounded-xl" />
+              <div className="h-10 w-full skeleton-shimmer rounded-xl" />
+            </div>
+          ))}
+        </div>
+      ) : filteredUsers.length === 0 ? (
+        /* Empty State */
         <div className="ui-card p-12 text-center max-w-md mx-auto my-12 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
           <div className="w-12 h-12 rounded-xl bg-[#171D2B] text-[#FFEEA8] flex items-center justify-center mx-auto mb-3">
             <Inbox size={22} />
           </div>
-          <h3 className="font-bold text-base text-[#F7F8FC] mb-1">No Mentors Found</h3>
+          <h3 className="font-bold text-base text-[#F7F8FC] mb-1">No Matches Found in Database</h3>
           <p className="text-xs text-[#A4B0C6] mb-4">
-            Try adjusting your search criteria or explore other categories.
+            Try adjusting your search query or explore all community disciplines.
           </p>
           <button
-            onClick={() => { setSearchTerm(''); setActiveCategory('All'); }}
+            onClick={() => { setSearchTerm(''); setActiveCategory('All'); setDiscoveryMode('all'); setInterestSearchActive(false); }}
             className="btn btn-secondary text-xs py-2 px-4"
           >
             Reset Filters
           </button>
         </div>
       ) : (
+        /* Grid of Mentors */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredUsers.map((u) => {
             const initials = `${u.fullname?.firstname?.[0] || 'U'}${u.fullname?.lastname?.[0] || 'P'}`;
+            const affinity = u.affinity;
 
             return (
               <div
                 key={u._id}
-                className="ui-card p-6 flex flex-col justify-between group bg-[#283144] border border-[rgba(255,255,255,0.12)] hover:border-[#2B3F74] rounded-2xl"
+                className="ui-card p-6 flex flex-col justify-between group bg-[#283144] border border-[rgba(255,255,255,0.12)] hover:border-[#2B3F74] rounded-2xl transition-all shadow-md"
               >
                 <div>
-                  {/* Header: Avatar, Name, Rating */}
-                  <div className="flex items-start justify-between mb-4">
+                  {/* Top Bar: Avatar, Names, Rating & Affinity Score */}
+                  <div className="flex items-start justify-between mb-3.5">
                     <div
                       className="flex items-center gap-3 cursor-pointer"
                       onClick={() => navigate(`/profile/${u._id}`)}
                     >
-                      <div className="w-11 h-11 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-sm flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-sm flex items-center justify-center shrink-0 border border-[rgba(255,255,255,0.15)]">
                         {initials}
                       </div>
                       <div>
@@ -344,7 +482,7 @@ const Marketplace = () => {
                             {u.fullname?.firstname} {u.fullname?.lastname}
                           </h3>
                           {isUserVerified(u) && (
-                            <span className="tag-chip text-[9px] py-0 px-1.5 font-mono">
+                            <span className="tag-chip text-[9px] py-0 px-1.5 font-mono" title="Verified Swap Member">
                               VERIFIED
                             </span>
                           )}
@@ -355,11 +493,55 @@ const Marketplace = () => {
                       </div>
                     </div>
 
-                    <span className="font-mono text-xs font-semibold text-[#FFEEA8] bg-[#171D2B] px-2.5 py-0.5 rounded-full border border-[rgba(255, 238, 168,0.3)] flex items-center gap-1">
-                      <Star size={11} fill="currentColor" className="text-[#FFA502]" />
-                      <span>{u.averageRating?.toFixed(1) || '5.0'}</span>
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      {affinity?.matchScore && (discoveryMode === 'affinity' || affinity.matchScore >= 60) && (
+                        <span className={`tag-chip text-[10px] font-bold flex items-center gap-1 shadow-xs ${
+                          affinity.matchScore >= 80
+                            ? 'text-[#FFEEA8] bg-[#2B3F74] border-[rgba(255,238,168,0.4)]'
+                            : affinity.matchScore >= 60
+                            ? 'text-[#F7F8FC] bg-[#171D2B] border-[rgba(255,255,255,0.15)]'
+                            : 'text-[#A4B0C6] bg-[#171D2B]/80 border-[rgba(255,255,255,0.08)]'
+                        }`}>
+                          <Sparkles size={11} className={affinity.matchScore >= 80 ? 'text-[#FFEEA8]' : 'text-[#A4B0C6]'} />
+                          <span>{affinity.matchScore}% Match</span>
+                        </span>
+                      )}
+                      
+                      {u.totalRatings > 0 ? (
+                        <span className="font-mono text-xs font-semibold text-[#FFEEA8] bg-[#171D2B] px-2.5 py-0.5 rounded-full border border-[rgba(255,238,168,0.3)] flex items-center gap-1">
+                          <Star size={11} fill="currentColor" className="text-[#FFA502]" />
+                          <span>{u.averageRating?.toFixed(1) || '5.0'}</span>
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[10px] text-[#A4B0C6] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255,255,255,0.08)]">
+                          NEW
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Why Connect Insight (shown in Matched For You or when high compatibility) */}
+                  {affinity?.whyConnect && (discoveryMode === 'affinity' || affinity.matchScore >= 70) && (
+                    <div className="mb-3 p-2.5 rounded-xl bg-[#171D2B] border border-[rgba(255,238,168,0.2)]">
+                      <div className="flex items-center gap-1 text-[10px] font-mono text-[#FFEEA8] uppercase font-semibold mb-0.5">
+                        <Zap size={10} /> Why Connect
+                      </div>
+                      <p className="text-[11px] text-[#F7F8FC] leading-relaxed">
+                        {affinity.whyConnect}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Synergy Hashtags */}
+                  {affinity?.synergyTags && affinity.synergyTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {affinity.synergyTags.map((tag, i) => (
+                        <span key={i} className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-[#202738] text-[#FFEEA8] border border-[rgba(255,238,168,0.15)]">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Bio */}
                   <p className="body-md text-xs text-[#A4B0C6] line-clamp-2 leading-relaxed mb-4">
@@ -369,14 +551,18 @@ const Marketplace = () => {
                   {/* Offers Section */}
                   <div className="space-y-1.5 mb-3 bg-[#202738] p-3 rounded-xl border border-[rgba(255,255,255,0.08)]">
                     <span className="font-mono text-[10px] uppercase font-bold text-[#FFEEA8] block">
-                      Teaches
+                      Offers & Expertise
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {u.skillsOffered?.slice(0, 3).map((sk, i) => (
-                        <span key={i} className="tag-chip text-[10px]">
-                          {sk}
-                        </span>
-                      ))}
+                      {u.skillsOffered && u.skillsOffered.length > 0 ? (
+                        u.skillsOffered.slice(0, 3).map((sk, i) => (
+                          <span key={i} className="tag-chip text-[10px]">
+                            {sk}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-[#71809B] font-mono">Exploring options</span>
+                      )}
                       {u.skillsOffered?.length > 3 && (
                         <span className="font-mono text-[10px] text-[#A4B0C6] px-1.5 py-0.5">
                           +{u.skillsOffered.length - 3}
@@ -389,7 +575,7 @@ const Marketplace = () => {
                   {u.skillsNeeded && u.skillsNeeded.length > 0 && (
                     <div className="space-y-1 mb-5">
                       <span className="font-mono text-[10px] uppercase font-bold text-[#71809B] block">
-                        Wants to Learn
+                        Interested in Learning
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {u.skillsNeeded.slice(0, 2).map((sk, i) => (
@@ -410,7 +596,7 @@ const Marketplace = () => {
 
                   <button
                     onClick={() => handleOpenSwapModal(u)}
-                    className="btn btn-primary text-xs py-1.5 px-3.5 flex items-center gap-1"
+                    className="btn btn-primary text-xs py-1.5 px-3.5 flex items-center gap-1 rounded-xl"
                   >
                     <span>Propose Swap</span>
                     <ArrowUpRight size={13} />
@@ -501,7 +687,7 @@ const Marketplace = () => {
                 />
               </div>
 
-              {/* AI Proposal Pitch Helper */}
+              {/* AI Proposal Pitch & Icebreaker Helper */}
               <div className="p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.1)] space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-semibold text-[#F7F8FC] flex items-center gap-1.5">

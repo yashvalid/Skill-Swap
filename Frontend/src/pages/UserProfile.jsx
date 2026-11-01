@@ -21,42 +21,6 @@ import { useAuth } from '../context/AuthContext';
 import { useVideoCall } from '../context/VideoCallContext';
 import { isUserVerified, getVerificationLabel } from '../utils/userVerification';
 
-const CURATED_FALLBACK_PEERS = {
-  'peer-1': {
-    _id: 'peer-1',
-    fullname: { firstname: 'Sarah', lastname: 'Lin' },
-    role: 'Lead Design Systems Engineer',
-    bio: 'Crafting production token systems, component libraries, and spatial micro-interactions in Figma and React.',
-    location: 'San Francisco, CA',
-    skillsOffered: ['Figma Variables', 'Design Tokens', 'Tailwind CSS', 'Accessibility'],
-    skillsNeeded: ['Next.js 15', 'TypeScript', 'State Machines'],
-    averageRating: 4.95,
-    totalRatings: 34
-  },
-  'peer-2': {
-    _id: 'peer-2',
-    fullname: { firstname: 'Marcus', lastname: 'Thorne' },
-    role: 'Principal Backend Architect',
-    bio: 'Specializing in high-throughput distributed systems, WebSocket protocols, and cloud event pipelines.',
-    location: 'Berlin / Remote',
-    skillsOffered: ['Distributed Systems', 'Redis Architecture', 'Node.js Internals', 'Docker'],
-    skillsNeeded: ['Product UI', 'SwiftUI', 'Animation Curves'],
-    averageRating: 4.9,
-    totalRatings: 48
-  },
-  'peer-3': {
-    _id: 'peer-3',
-    fullname: { firstname: 'Elena', lastname: 'Vance' },
-    role: 'Staff Product Strategist',
-    bio: 'Helping technical founders and builders shape product narratives, user retention loops, and UX research.',
-    location: 'New York, NY',
-    skillsOffered: ['Product Strategy', 'UX Architecture', 'Growth Loops', 'User Research'],
-    skillsNeeded: ['React Basics', 'Full-Stack Development', 'API Design'],
-    averageRating: 5.0,
-    totalRatings: 62
-  }
-};
-
 const UserProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,6 +31,7 @@ const UserProfile = () => {
   const [posts, setPosts] = useState([]);
   const [offeredSkills, setOfferedSkills] = useState([]);
   const [skillsToLearn, setSkillsToLearn] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Rating state
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -89,24 +54,22 @@ const UserProfile = () => {
   }, [id, currentUser]);
 
   const fetchUserData = async () => {
-    if (CURATED_FALLBACK_PEERS[id]) {
-      const mock = CURATED_FALLBACK_PEERS[id];
-      setProfileUser(mock);
-      setOfferedSkills(mock.skillsOffered || []);
-      setSkillsToLearn(mock.skillsNeeded || []);
-      return;
-    }
-
+    setLoading(true);
     try {
       const userRes = await userService.getUserById(id);
       if (userRes.data?.user) {
         setProfileUser(userRes.data.user);
         setOfferedSkills(userRes.data.user.skillsOffered || []);
         setSkillsToLearn(userRes.data.user.skillsNeeded || []);
+      } else {
+        setProfileUser(null);
       }
     } catch (error) {
       console.error('Failed to fetch user data', error);
-      toast.error('Failed to load profile');
+      toast.error('User not found in database');
+      setProfileUser(null);
+    } finally {
+      setLoading(false);
     }
 
     try {

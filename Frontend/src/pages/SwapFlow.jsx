@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -25,15 +25,22 @@ const SwapFlow = () => {
   const passedPartner = location.state?.partner;
   const partner = passedPartner ? {
     _id: passedPartner._id,
-    name: `${passedPartner.fullname?.firstname} ${passedPartner.fullname?.lastname}`,
+    name: `${passedPartner.fullname?.firstname || ''} ${passedPartner.fullname?.lastname || ''}`.trim() || 'Partner',
     skill: passedPartner.skillsOffered?.[0] || 'Technical Mentorship',
     seeking: passedPartner.skillsNeeded?.[0] || 'Peer Exchange'
   } : {
-    _id: 'peer-3',
-    name: "Elena Vance",
-    skill: "Product Design & Spatial UX",
-    seeking: "React Basics & State Architecture"
+    _id: null,
+    name: "Partner",
+    skill: "Mentorship",
+    seeking: "Skill Exchange"
   };
+
+  useEffect(() => {
+    if (!passedPartner) {
+      toast('Please choose a partner from the marketplace to propose a swap.', { icon: '🔍' });
+      navigate('/marketplace');
+    }
+  }, [passedPartner, navigate]);
 
   const [selectedOffering, setSelectedOffering] = useState("Web Development (React & Node)");
   const [proposalNotes, setProposalNotes] = useState(
@@ -51,19 +58,20 @@ const SwapFlow = () => {
   ];
 
   const handleFinish = async () => {
-    if (partner._id && !partner._id.startsWith('peer-')) {
+    if (partner._id) {
       try {
         await swapService.requestSwap({
           toUserId: partner._id,
           offersSkill: selectedOffering,
           requestsSkill: partner.skill
         });
+        toast.success(`Swap proposal sent to ${partner.name}!`);
+        navigate('/dashboard');
       } catch (err) {
         console.error('Swap request error', err);
+        toast.error(err.response?.data?.message || 'Failed to send proposal');
       }
     }
-    toast.success(`Swap proposal sent to ${partner.name}!`);
-    navigate('/dashboard');
   };
 
   return (

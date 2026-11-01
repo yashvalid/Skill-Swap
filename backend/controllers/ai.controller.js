@@ -1,4 +1,5 @@
 const aiService = require('../services/ai.service');
+const matchingService = require('../services/matching.services');
 const User = require('../model/user.model');
 
 module.exports.generateCurriculum = async (req, res) => {
@@ -96,20 +97,93 @@ module.exports.getCompatibility = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const compatibility = await aiService.calculateCompatibility({
-            currentUser,
-            candidateUser
-        });
+        const affinity = matchingService.calculatePairAffinity(currentUser, candidateUser);
 
         return res.status(200).json({
             success: true,
-            compatibility
+            compatibility: {
+                score: affinity.matchScore,
+                reason: affinity.whyConnect,
+                synergyTags: affinity.synergyTags,
+                sharedDomains: affinity.sharedDomains,
+                icebreaker: affinity.icebreaker,
+                breakdown: affinity.breakdown
+            }
         });
     } catch (error) {
         console.error('Error calculating compatibility:', error);
         return res.status(500).json({
             success: false,
             message: 'Failed to calculate compatibility'
+        });
+    }
+};
+
+module.exports.getRecommendedMatches = async (req, res) => {
+    try {
+        const currentUserId = req.user?._id;
+        let currentUser = null;
+        if (currentUserId) {
+            currentUser = await User.findById(currentUserId).lean();
+        }
+
+        const filter = currentUserId ? { _id: { $ne: currentUserId } } : {};
+        const candidateUsers = await User.find(filter)
+            .select('-password -__v')
+            .lean();
+
+        const referenceUser = currentUser || {
+            _id: 'guest',
+            role: 'Skill Explorer',
+            bio: 'Passionate about reciprocal skill mastery, creative design, and knowledge exchange across diverse disciplines.',
+            skillsOffered: ['Full Stack Development', 'Creative Collaboration'],
+            skillsNeeded: ['UI/UX Design', 'Languages', 'Music Production', 'Mobile Development', 'Cloud Architecture']
+        };
+
+        const matches = matchingService.rankRecommendedPeers(referenceUser, candidateUsers, { limit: 25 });
+
+        return res.status(200).json({
+            success: true,
+            isGuest: !currentUser,
+            matches
+        });
+    } catch (error) {
+        console.error('Error in getRecommendedMatches:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to compute recommended matches'
+        });
+    }
+};
+
+module.exports.matchByInterest = async (req, res) => {
+    try {
+        const { query } = req.body;
+        if (!query || !query.trim()) {
+            return res.status(400).json({ message: 'Search query is required' });
+        }
+
+        const currentUserId = req.user?._id;
+        let currentUser = null;
+        if (currentUserId) {
+            currentUser = await User.findById(currentUserId);
+        }
+
+        const filter = currentUserId ? { _id: { $ne: currentUserId } } : {};
+        const allUsers = await User.find(filter).select('-password -__v').lean();
+
+        const matches = matchingService.matchByInterestQuery(query, allUsers, currentUser);
+
+        return res.status(200).json({
+            success: true,
+            query,
+            matches
+        });
+    } catch (error) {
+        console.error('Error in matchByInterest:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to search by interest'
         });
     }
 };
