@@ -15,17 +15,21 @@ import {
   RotateCcw,
   ArrowDown,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  Calendar,
+  X,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useVideoCall } from '../context/VideoCallContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { messageService } from '../services/messageService';
 import { aiService } from '../services/aiService';
 import { swapService } from '../services/swapService';
 import { userService } from '../services/userService';
+import { formatSessionDate } from '../utils/calendar';
 import {
   getOrInitUserKeyPair,
   getOrDeriveSharedKey,
@@ -95,9 +99,19 @@ const sortByRecentMessage = (users) => {
   });
 };
 
+const TIME_SLOTS = [
+  { time: '10:00', label: '10:00 AM' },
+  { time: '11:30', label: '11:30 AM' },
+  { time: '14:00', label: '02:00 PM' },
+  { time: '16:00', label: '04:00 PM' },
+  { time: '18:00', label: '06:00 PM' },
+  { time: '19:30', label: '07:30 PM' }
+];
+
 const Messaging = () => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { socket } = useSocket();
   const { startCall } = useVideoCall();
 
@@ -111,6 +125,13 @@ const Messaging = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showScrollBottomPill, setShowScrollBottomPill] = useState(false);
+
+  // In-Chat Scheduling Modal State
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+  const [scheduleSlot, setScheduleSlot] = useState('14:00');
+  const [scheduleDuration, setScheduleDuration] = useState(45);
+  const [scheduling, setScheduling] = useState(false);
 
   // E2EE States
   const [userKeyPair, setUserKeyPair] = useState(null);
@@ -389,6 +410,15 @@ const Messaging = () => {
         })
       );
       setChatUsers(sortByRecentMessage(processedUsers));
+
+      // Auto-select partner if navigated from Dashboard
+      if (location.state?.partnerId) {
+        const found = processedUsers.find(u => u.otherUser?._id === location.state.partnerId);
+        if (found?.otherUser) {
+          handleSelectChat(found.otherUser);
+          setMobileView('chat');
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch chat users', error);
     } finally {
@@ -451,6 +481,42 @@ const Messaging = () => {
       setShowScrollBottomPill(false);
       setActiveChatUser(user);
       setMobileView('chat');
+    }
+  };
+
+  const handleOpenSchedule = () => {
+    setScheduleDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+    setScheduleSlot('14:00');
+    setScheduleDuration(45);
+    setScheduleModalOpen(true);
+  };
+
+  const handleConfirmSchedule = async (e) => {
+    e.preventDefault();
+    if (!activeChatUser || !scheduleDate) return;
+    setScheduling(true);
+    try {
+      const userSwap = chatUsers.find(u => u.otherUser?._id === activeChatUser._id);
+      const swapId = userSwap?.swapId;
+      const scheduledTime = new Date(`${scheduleDate}T${scheduleSlot}:00`).toISOString();
+
+      if (swapId) {
+        await swapService.rescheduleSwap({
+          swapId,
+          scheduledTime,
+          durationMinutes: scheduleDuration
+        });
+      }
+
+      const formatted = formatSessionDate(scheduledTime);
+      await handleSendMessage(`📅 Scheduled our next 1-on-1 swap session for ${formatted} (${scheduleDuration} mins). Added to calendar!`);
+      toast.success('Session scheduled and shared in chat!');
+      setScheduleModalOpen(false);
+    } catch (err) {
+      console.error('Failed to schedule session in chat', err);
+      toast.error('Failed to schedule session');
+    } finally {
+      setScheduling(false);
     }
   };
 
@@ -758,7 +824,16 @@ const Messaging = () => {
                 </div>
 
                 {!activeChatUser.isBot ? (
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={handleOpenSchedule}
+                      className="btn btn-secondary text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono text-[#FFEEA8] border-[rgba(255,238,168,0.25)] hover:bg-[#2B3F74]"
+                      title="Schedule 1:1 session"
+                    >
+                      <Calendar size={13} className="text-[#FFEEA8]" />
+                      <span className="hidden sm:inline">Schedule</span>
+                    </button>
+
                     <button
                       onClick={() => startCall(activeChatUser)}
                       className="btn btn-cta text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5 font-mono"
@@ -948,6 +1023,99 @@ const Messaging = () => {
           )}
         </div>
       </div>
+
+      {/* In-Chat Schedule Modal */}
+      {scheduleModalOpen && activeChatUser && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-2xl max-w-md w-full p-6 bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.1)]">
+              <div>
+                <span className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold">Coordinate Session</span>
+                <h3 className="heading-h2 text-base text-[#F7F8FC]">
+                  Schedule with {activeChatUser.fullname?.firstname}
+                </h3>
+              </div>
+              <button
+                onClick={() => setScheduleModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-[#171D2B] text-[#A4B0C6] hover:text-[#F7F8FC]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSchedule} className="space-y-4">
+              <div>
+                <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block mb-1.5">Pick Date</label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="input-field w-full py-2 px-3 text-xs rounded-xl bg-[#171D2B]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block mb-1.5">Select Time Slot</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {TIME_SLOTS.map((s) => (
+                    <button
+                      key={s.time}
+                      type="button"
+                      onClick={() => setScheduleSlot(s.time)}
+                      className={`p-2 rounded-xl text-center border text-xs font-semibold ${
+                        scheduleSlot === s.time
+                          ? 'bg-[#2B3F74] text-white border-[#FFEEA8]'
+                          : 'bg-[#171D2B] text-[#A4B0C6] border-[rgba(255,255,255,0.08)]'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block mb-1.5">Duration</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[30, 45, 60].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setScheduleDuration(mins)}
+                      className={`p-2 rounded-xl text-center border text-xs font-semibold ${
+                        scheduleDuration === mins
+                          ? 'bg-[#2B3F74] text-white border-[#FFEEA8]'
+                          : 'bg-[#171D2B] text-[#A4B0C6] border-[rgba(255,255,255,0.08)]'
+                      }`}
+                    >
+                      {mins} mins
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScheduleModalOpen(false)}
+                  className="flex-1 btn btn-secondary text-xs py-2 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={scheduling}
+                  className="flex-1 btn btn-primary text-xs py-2 rounded-xl"
+                >
+                  {scheduling ? 'Scheduling...' : 'Confirm & Share'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

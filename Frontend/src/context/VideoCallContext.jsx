@@ -19,6 +19,7 @@ export const VideoCallProvider = ({ children }) => {
   const [isVideoDisabled, setIsVideoDisabled] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [isAnswering, setIsAnswering] = useState(false);
 
   // Live mutable refs to eliminate stale closure bugs in callbacks/timers
   const callStatusRef = useRef(callStatus);
@@ -44,12 +45,8 @@ export const VideoCallProvider = ({ children }) => {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ],
-    iceCandidatePoolSize: 10
+      { urls: 'stun:stun2.l.google.com:19302' }
+    ]
   };
 
   // Web Audio API Ringtone & Ringback Synthesizer
@@ -161,6 +158,7 @@ export const VideoCallProvider = ({ children }) => {
     setLocalStream(null);
     setRemoteStream(null);
     setCallStatus('idle');
+    setIsAnswering(false);
     setRemoteUser(null);
     setIncomingSignal(null);
     pendingCandidates.current = [];
@@ -168,37 +166,32 @@ export const VideoCallProvider = ({ children }) => {
 
   // Acquire media stream with robust fallback
   const getMediaStream = async () => {
-    const fullConstraints = {
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      },
-      video: {
-        width: { ideal: 1280, max: 1920 },
-        height: { ideal: 720, max: 1080 },
-        facingMode: 'user'
-      }
-    };
-
     try {
-      return await navigator.mediaDevices.getUserMedia(fullConstraints);
+      return await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        }
+      });
     } catch (err) {
-      console.warn('[WebRTC] Full audio/video acquisition failed, attempting audio-only fallback:', err.name);
+      console.warn('[WebRTC] Standard video acquisition failed, attempting simple video/audio:', err.name);
       if (err.name === 'NotAllowedError') {
         throw new Error('Camera and microphone permissions were denied in browser');
       }
 
-      // Fallback: Audio-only stream
       try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true },
-          video: false
-        });
-        toast('Connected in audio-only mode (camera unavailable)', { icon: '🎙️' });
-        return audioStream;
-      } catch (audioErr) {
-        throw new Error('Could not access microphone or camera input device');
+        return await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch (err2) {
+        console.warn('[WebRTC] Video fallback failed, acquiring audio only:', err2.name);
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          toast('Connected in audio-only mode (camera unavailable)', { icon: '🎙️' });
+          return audioStream;
+        } catch (audioErr) {
+          throw new Error('Could not access microphone or camera device');
+        }
       }
     }
   };
@@ -219,6 +212,12 @@ export const VideoCallProvider = ({ children }) => {
     pc.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
+      } else if (event.track) {
+        setRemoteStream(prev => {
+          const stream = prev ? prev : new MediaStream();
+          stream.addTrack(event.track);
+          return stream;
+        });
       }
     };
 
@@ -249,9 +248,13 @@ export const VideoCallProvider = ({ children }) => {
   }, [socket, cleanupCall]);
 
   const addCandidateSafely = async (candidate) => {
-    if (!peerConnection.current) return;
+    if (!peerConnection.current || !candidate) return;
     try {
-      await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+      if (peerConnection.current.remoteDescription && peerConnection.current.remoteDescription.type) {
+        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } else {
+        pendingCandidates.current.push(candidate);
+      }
     } catch (err) {
       console.warn('[WebRTC] Ignored ICE candidate timing error:', err.message);
     }
@@ -312,6 +315,7 @@ export const VideoCallProvider = ({ children }) => {
   // Accept incoming call
   const acceptCall = async () => {
     stopAudioTone();
+    setIsAnswering(true);
     if (ringTimeoutRef.current) {
       clearTimeout(ringTimeoutRef.current);
       ringTimeoutRef.current = null;
@@ -319,6 +323,7 @@ export const VideoCallProvider = ({ children }) => {
 
     const targetUser = remoteUserRef.current;
     if (!incomingSignal || !targetUser?._id) {
+      setIsAnswering(false);
       cleanupCall();
       return;
     }
@@ -353,6 +358,8 @@ export const VideoCallProvider = ({ children }) => {
       console.error('Error accepting call:', err);
       toast.error(err.message || 'Could not accept call');
       cleanupCall();
+    } finally {
+      setIsAnswering(false);
     }
   };
 
@@ -584,6 +591,7 @@ export const VideoCallProvider = ({ children }) => {
       isScreenSharing,
       callDuration,
       formatDuration,
+      isAnswering,
       startCall,
       acceptCall,
       rejectCall,

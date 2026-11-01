@@ -4,13 +4,16 @@ const User = require('../model/user.model');
 const Messages = require('../model/message.model');
 const { sendMessages, getReceiverSocketId } = require('../socket');
 
-module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSkill }) => {
+module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSkill, scheduledTime, durationMinutes, proposalNotes }) => {
     try {
         const skillSwap = await SkillSwap.create({
             fromUser,
             toUser,
             offersSkill,
-            requestsSkill
+            requestsSkill,
+            scheduledTime: scheduledTime ? new Date(scheduledTime) : null,
+            durationMinutes: durationMinutes ? Number(durationMinutes) : 30,
+            proposalNotes: proposalNotes || ''
         });
         const toUserSocketId = getReceiverSocketId(toUser);
         const swapReq = await SkillSwap.findOne({ _id: skillSwap._id }).populate('fromUser');
@@ -22,6 +25,7 @@ module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSki
         });
         return skillSwap;
     } catch (err) {
+        console.error("Error creating skill swap request:", err);
         throw new Error("Error creating skill swap request");
     }
 }
@@ -83,6 +87,40 @@ module.exports.rejectSwap = async (requestId) => {
     }
 }
 
+module.exports.rescheduleSwap = async ({ swapId, userId, scheduledTime, durationMinutes }) => {
+    try {
+        const swap = await SkillSwap.findById(swapId);
+        if (!swap) throw new Error("Swap not found");
+
+        // Verify user is a participant
+        const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
+        if (!isParticipant) throw new Error("Unauthorized to reschedule this swap");
+
+        swap.scheduledTime = new Date(scheduledTime);
+        if (durationMinutes) swap.durationMinutes = Number(durationMinutes);
+        await swap.save();
+
+        // Notify other user via socket
+        const otherUserId = swap.fromUser.toString() === userId.toString() ? swap.toUser : swap.fromUser;
+        const otherSocketId = getReceiverSocketId(otherUserId);
+        if (otherSocketId) {
+            sendMessages(otherSocketId, {
+                event: 'swap-rescheduled',
+                data: {
+                    swapId: swap._id,
+                    scheduledTime: swap.scheduledTime,
+                    durationMinutes: swap.durationMinutes
+                }
+            });
+        }
+
+        return swap;
+    } catch (err) {
+        console.error("Error in rescheduleSwap:", err);
+        throw err;
+    }
+};
+
 module.exports.getAllAcceptedSwaps = async (currUserId) => {
     try {
         if (!currUserId) throw new Error("No User ID provided");
@@ -110,7 +148,11 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
                     status: swap.status,
                     otherUser,
                     requestedSkill: isFrom ? swap.requestsSkill : swap.offersSkill,
-                    skillOffered: isFrom ? swap.offersSkill : swap.requestsSkill
+                    skillOffered: isFrom ? swap.offersSkill : swap.requestsSkill,
+                    scheduledTime: swap.scheduledTime || null,
+                    durationMinutes: swap.durationMinutes || 30,
+                    proposalNotes: swap.proposalNotes || '',
+                    createdAt: swap.createdAt
                 };
             })
             .filter(item => item !== null);
@@ -197,9 +239,34 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
 
 module.exports.getPendingSwaps = async (userId) => {
     try {
-        const pendindSwaps = await SkillSwap.find({ toUser: userId, status: 'pending' }).populate('fromUser');
-        return pendindSwaps;
+        const pendingSwaps = await SkillSwap.find({ toUser: userId, status: 'pending' })
+            .populate('fromUser')
+            .lean();
+        return pendingSwaps;
     } catch (err) {
         throw new Error(err);
     }
 }
+
+module.exports.updateSwapWorkspace = async ({ swapId, userId, milestones, sessionNotes }) => {
+    try {
+        const swap = await SkillSwap.findById(swapId);
+        if (!swap) throw new Error("Skill swap record not found");
+
+        const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
+        if (!isParticipant) throw new Error("Unauthorized to update workspace for this swap");
+
+        if (Array.isArray(milestones)) {
+            swap.milestones = milestones;
+        }
+        if (typeof sessionNotes === 'string') {
+            swap.sessionNotes = sessionNotes;
+        }
+
+        await swap.save();
+        return swap;
+    } catch (err) {
+        console.error("Error updating swap workspace:", err);
+        throw err;
+    }
+};
