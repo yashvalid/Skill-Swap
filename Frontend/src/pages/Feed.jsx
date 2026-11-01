@@ -230,13 +230,13 @@ const Feed = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10 pb-6 border-b border-[rgba(255,255,255,0.12)]">
         <div>
-          <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider block mb-1">
+          <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider block mb-1">
             Community Showcases
           </span>
-          <h1 className="heading-h1 text-[#F5F6FA]">
+          <h1 className="heading-h1 text-[#F7F8FC]">
             Peer Projects & Proof
           </h1>
-          <p className="body-md text-sm text-[#A4B0BE] mt-1 max-w-xl">
+          <p className="body-md text-sm text-[#A4B0C6] mt-1 max-w-xl">
             Project demos, milestone progress, and takeaways shared by members after their skill swaps.
           </p>
         </div>
@@ -254,7 +254,7 @@ const Feed = () => {
       {loading ? (
         <div className="space-y-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="ui-card p-6 h-72 skeleton-shimmer rounded-none" />
+            <div key={i} className="ui-card p-6 h-72 skeleton-shimmer rounded-2xl" />
           ))}
         </div>
       ) : (
@@ -267,15 +267,15 @@ const Feed = () => {
             return (
               <article
                 key={post._id}
-                className="ui-card overflow-hidden bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none"
+                className="ui-card overflow-hidden bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl"
               >
                 {/* Post Meta Header */}
-                <div className="p-5 flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#2B313A]">
+                <div className="p-5 flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] bg-[#202738]">
                   <div
                     className="flex items-center gap-3.5 cursor-pointer group"
                     onClick={() => post.user?._id && navigate(`/profile/${post.user._id}`)}
                   >
-                    <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
+                    <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#171D2B] border border-[rgba(255,255,255,0.15)] shrink-0">
                       <img
                         src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user?.fullname?.firstname || 'Builder'}`}
                         alt=""
@@ -284,25 +284,25 @@ const Feed = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-sm text-[#F5F6FA] group-hover:underline">
+                        <h3 className="font-bold text-sm text-[#F7F8FC] group-hover:underline">
                           {post.user?.fullname?.firstname} {post.user?.fullname?.lastname}
                         </h3>
                         <span className="tag-chip text-[9px] py-0 px-1.5">VERIFIED</span>
                       </div>
-                      <p className="text-xs text-[#A4B0BE] font-mono">
+                      <p className="text-xs text-[#A4B0C6] font-mono">
                         {post.user?.role || 'Community Member'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="font-mono text-[10px] text-[#718093]">
+                  <div className="font-mono text-[10px] text-[#71809B]">
                     {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'ACTIVE'}
                   </div>
                 </div>
 
                 {/* Post Media Display */}
                 {post.mediaUrl && (
-                  <div className="aspect-video bg-[#242A32] flex items-center justify-center overflow-hidden border-b border-[rgba(255,255,255,0.08)]">
+                  <div className="aspect-video bg-[#171D2B] flex items-center justify-center overflow-hidden border-b border-[rgba(255,255,255,0.08)]">
                     {post.mediaType === 'video' ? (
                       <video src={post.mediaUrl} controls className="max-h-full w-full object-contain" />
                     ) : (
@@ -317,7 +317,7 @@ const Feed = () => {
 
                 {/* Post Description & Discussion */}
                 <div className="p-6">
-                  <p className="body-md text-sm text-[#F5F6FA] mb-6 leading-relaxed whitespace-pre-wrap">
+                  <p className="body-md text-sm text-[#F7F8FC] mb-6 leading-relaxed whitespace-pre-wrap">
                     {post.content}
                   </p>
 
@@ -329,8 +329,8 @@ const Feed = () => {
                         onClick={() => handleLike(post._id)}
                         className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                           isLiked
-                            ? 'bg-[rgba(255,118,117,0.15)] text-[#FF7675] border-[rgba(255,118,117,0.4)]'
-                            : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)] hover:border-[#FF7675]/40 hover:text-[#FF7675]'
+                            ? 'bg-[rgba(215, 46, 43,0.15)] text-[#D72E2B] border-[rgba(215, 46, 43,0.4)]'
+                            : 'bg-[#202738] text-[#A4B0C6] border-[rgba(255,255,255,0.1)] hover:border-[#D72E2B]/40 hover:text-[#D72E2B]'
                         }`}
                       >
                         <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />
@@ -342,8 +342,8 @@ const Feed = () => {
                         onClick={() => toggleComments(post._id)}
                         className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                           isCommentsOpen
-                            ? 'bg-[#6C5CE7] text-white border-[#6C5CE7]'
-                            : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7] hover:text-[#F5F6FA]'
+                            ? 'bg-[#2B3F74] text-white border-[#2B3F74]'
+                            : 'bg-[#202738] text-[#A4B0C6] border-[rgba(255,255,255,0.1)] hover:border-[#2B3F74] hover:text-[#F7F8FC]'
                         }`}
                       >
                         <MessageCircle size={14} />
@@ -353,7 +353,7 @@ const Feed = () => {
 
                     <button
                       onClick={() => handleShare(post._id)}
-                      className="p-2 rounded-xl text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
+                      className="p-2 rounded-xl text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#202738] transition-colors"
                       title="Share link"
                     >
                       <Share2 size={16} />
@@ -366,13 +366,13 @@ const Feed = () => {
                       <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                         {commentsLoading ? (
                           <div className="space-y-2 py-2">
-                            <div className="h-10 skeleton-shimmer rounded-none" />
-                            <div className="h-10 skeleton-shimmer rounded-none" />
+                            <div className="h-10 skeleton-shimmer rounded-xl" />
+                            <div className="h-10 skeleton-shimmer rounded-xl" />
                           </div>
                         ) : postComments.length > 0 ? (
                           postComments.map((comment) => (
-                            <div key={comment._id} className="flex gap-3 items-start text-xs bg-[#2B313A] p-3 rounded-xl border border-[rgba(255,255,255,0.08)]">
-                              <div className="w-7 h-7 rounded-2xl overflow-hidden bg-[#242A32] shrink-0 border border-[rgba(255,255,255,0.1)]">
+                            <div key={comment._id} className="flex gap-3 items-start text-xs bg-[#202738] p-3 rounded-xl border border-[rgba(255,255,255,0.08)]">
+                              <div className="w-7 h-7 rounded-2xl overflow-hidden bg-[#171D2B] shrink-0 border border-[rgba(255,255,255,0.1)]">
                                 <img
                                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.fullname?.firstname || 'U'}`}
                                   alt=""
@@ -381,17 +381,17 @@ const Feed = () => {
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="font-bold text-[#F5F6FA]">
+                                  <span className="font-bold text-[#F7F8FC]">
                                     {comment.user?.fullname?.firstname}
                                   </span>
-                                  <span className="text-[10px] font-mono text-[#718093]">CONTRIBUTOR</span>
+                                  <span className="text-[10px] font-mono text-[#71809B]">CONTRIBUTOR</span>
                                 </div>
-                                <p className="text-[#A4B0BE] leading-normal">{comment.content}</p>
+                                <p className="text-[#A4B0C6] leading-normal">{comment.content}</p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-[#718093] italic py-2 text-center font-mono">
+                          <p className="text-xs text-[#71809B] italic py-2 text-center font-mono">
                             No review notes yet. Join the technical discussion!
                           </p>
                         )}
@@ -405,12 +405,12 @@ const Feed = () => {
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleComment(post._id)}
-                          className="input-field text-xs py-2 flex-grow rounded-none"
+                          className="input-field text-xs py-2 flex-grow rounded-xl"
                         />
                         <button
                           onClick={() => handleComment(post._id)}
                           disabled={!newComment.trim()}
-                          className="btn btn-primary text-xs py-2 px-3.5 rounded-none shrink-0 disabled:opacity-40"
+                          className="btn btn-primary text-xs py-2 px-3.5 rounded-xl shrink-0 disabled:opacity-40"
                         >
                           <Send size={13} />
                         </button>
@@ -427,15 +427,15 @@ const Feed = () => {
       {/* Upload Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card w-full max-w-lg bg-[#353B48] overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] rounded-none">
-            <div className="p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#2B313A]">
+          <div className="z-[300] ui-card w-full max-w-lg bg-[#283144] overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] rounded-2xl">
+            <div className="p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
               <div>
                 <span className="tag-chip text-[10px] mb-1 inline-block">Share Demo</span>
-                <h2 className="heading-h2 text-lg text-[#F5F6FA]">Share Project Showcase</h2>
+                <h2 className="heading-h2 text-lg text-[#F7F8FC]">Share Project Showcase</h2>
               </div>
               <button
                 onClick={() => setIsUploadModalOpen(false)}
-                className="p-1.5 rounded-none hover:bg-[#242A32] text-[#A4B0BE] hover:text-[#F5F6FA] transition-colors"
+                className="p-1.5 rounded-xl hover:bg-[#171D2B] text-[#A4B0C6] hover:text-[#F7F8FC] transition-colors"
               >
                 <X size={18} />
               </button>
@@ -450,7 +450,7 @@ const Feed = () => {
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
                   placeholder="Detail what concepts or architecture you exercised. Provide technical takeaways..."
-                  className="input-field resize-none h-28 rounded-none"
+                  className="input-field resize-none h-28 rounded-xl"
                 />
               </div>
 
@@ -459,21 +459,21 @@ const Feed = () => {
                   Media Attachment
                 </label>
                 {!previewUrl ? (
-                  <label className="border-2 border-dashed border-[rgba(255,255,255,0.15)] hover:border-[#6C5CE7] rounded-2xl p-8 flex flex-col items-center justify-center gap-2 bg-[#2B313A] hover:bg-[#2B313A]/80 cursor-pointer transition-colors">
+                  <label className="border-2 border-dashed border-[rgba(255,255,255,0.15)] hover:border-[#2B3F74] rounded-2xl p-8 flex flex-col items-center justify-center gap-2 bg-[#202738] hover:bg-[#202738]/80 cursor-pointer transition-colors">
                     <input
                       type="file"
                       onChange={handleFileChange}
                       accept="image/*,video/*"
                       className="hidden"
                     />
-                    <div className="w-10 h-10 rounded-xl bg-[#242A32] flex items-center justify-center text-[#55E6C1]">
+                    <div className="w-10 h-10 rounded-xl bg-[#171D2B] flex items-center justify-center text-[#FFEEA8]">
                       <ImageIcon size={20} />
                     </div>
-                    <p className="text-xs font-semibold text-[#F5F6FA]">Upload screenshot or video clip</p>
-                    <p className="font-mono text-[10px] text-[#718093]">PNG, JPG, MP4 up to 25MB</p>
+                    <p className="text-xs font-semibold text-[#F7F8FC]">Upload screenshot or video clip</p>
+                    <p className="font-mono text-[10px] text-[#71809B]">PNG, JPG, MP4 up to 25MB</p>
                   </label>
                 ) : (
-                  <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#242A32] group border border-[rgba(255,255,255,0.12)]">
+                  <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#171D2B] group border border-[rgba(255,255,255,0.12)]">
                     {selectedFile.type.startsWith('video') ? (
                       <video src={previewUrl} className="w-full h-full object-contain" />
                     ) : (
@@ -482,7 +482,7 @@ const Feed = () => {
                     <button
                       type="button"
                       onClick={() => { setSelectedFile(null); setPreviewUrl(null); }}
-                      className="absolute top-2 right-2 p-1.5 bg-[#1E232A]/90 text-[#F5F6FA] rounded-none hover:bg-[#1E232A] transition-colors"
+                      className="absolute top-2 right-2 p-1.5 bg-[#121722]/90 text-[#F7F8FC] rounded-xl hover:bg-[#121722] transition-colors"
                     >
                       <X size={14} />
                     </button>
@@ -493,7 +493,7 @@ const Feed = () => {
               <button
                 type="submit"
                 disabled={uploading || !newPostContent || !selectedFile}
-                className="btn btn-primary w-full py-2.5 rounded-none flex items-center justify-center gap-2 text-xs font-semibold disabled:opacity-40"
+                className="btn btn-primary w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold disabled:opacity-40"
               >
                 {uploading ? 'Publishing...' : (
                   <>

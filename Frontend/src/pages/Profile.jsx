@@ -159,8 +159,8 @@ const Profile = () => {
   if (!user) {
     return (
       <div className="max-w-[1280px] mx-auto px-6 py-24 text-center">
-        <div className="ui-card max-w-md mx-auto p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-          <p className="text-sm font-semibold text-[#F5F6FA] mb-4">Please log in to manage your profile.</p>
+        <div className="ui-card max-w-md mx-auto p-8 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
+          <p className="text-sm font-semibold text-[#F7F8FC] mb-4">Please log in to manage your profile.</p>
         </div>
       </div>
     );
@@ -170,20 +170,20 @@ const Profile = () => {
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Profile Hero Banner */}
-      <div className="ui-card p-6 sm:p-8 mb-10 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+      <div className="ui-card p-6 sm:p-8 mb-10 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
         <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             
             {/* Avatar Frame */}
             <div className="relative group shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#242A32] shadow-md">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#171D2B] shadow-md">
                 <img
                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullname?.firstname || 'User'}`}
                   alt={user.fullname?.firstname}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#55E6C1] text-[#2F3640] rounded-none flex items-center justify-center font-bold shadow-md">
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#FFEEA8] text-[#202738] rounded-xl flex items-center justify-center font-bold shadow-md">
                 <CheckCircle2 size={15} />
               </div>
             </div>
@@ -191,23 +191,23 @@ const Profile = () => {
             {/* Profile Info */}
             <div>
               <div className="flex flex-wrap items-center gap-2.5 mb-2">
-                <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F5F6FA]">
+                <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F7F8FC]">
                   {user.fullname?.firstname} {user.fullname?.lastname}
                 </h1>
                 <span className="tag-chip text-[10px]">MEMBER</span>
-                <span className="tag-chip text-[10px] bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.15)]">
+                <span className="tag-chip text-[10px] bg-[#202738] text-[#F7F8FC] border-[rgba(255,255,255,0.15)]">
                   <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
                   4.9 RATING
                 </span>
               </div>
 
-              <p className="font-mono text-xs text-[#55E6C1] uppercase tracking-wider mb-2 font-semibold">
+              <p className="font-mono text-xs text-[#FFEEA8] uppercase tracking-wider mb-2 font-semibold">
                 {user.role || 'Full Stack Engineer & Mentor'}
               </p>
 
-              <div className="flex flex-wrap gap-4 text-xs text-[#A4B0BE] font-mono">
-                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#6C5CE7]" /> {user.location || 'Remote'}</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#55E6C1]" /> Identity Verified</span>
+              <div className="flex flex-wrap gap-4 text-xs text-[#A4B0C6] font-mono">
+                <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#2B3F74]" /> {user.location || 'Remote'}</span>
+                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#FFEEA8]" /> Identity Verified</span>
               </div>
             </div>
           </div>
@@ -216,21 +216,21 @@ const Profile = () => {
           <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
             <button
               onClick={() => setShowAddSkill(true)}
-              className="btn btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 rounded-none"
+              className="btn btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 rounded-xl"
             >
               <Plus size={14} />
               <span>Add Skill</span>
             </button>
             <button
               onClick={handleShareProfile}
-              className="btn btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 rounded-none"
+              className="btn btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 rounded-xl"
             >
               <Share2 size={14} />
               <span>Share</span>
             </button>
             <button
               onClick={() => setShowEditProfile(true)}
-              className="btn btn-secondary text-xs p-2 rounded-none"
+              className="btn btn-secondary text-xs p-2 rounded-xl"
               title="Edit Profile Settings"
             >
               <Settings size={15} />
@@ -243,12 +243,12 @@ const Profile = () => {
         <div className="lg:col-span-2 space-y-8">
           
           {/* Bio / About */}
-          <section className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+          <section className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
             <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.08)] pb-2">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">About Me</h2>
-              <span className="font-mono text-[10px] text-[#718093]">SYNOPSIS</span>
+              <h2 className="heading-h2 text-base text-[#F7F8FC]">About Me</h2>
+              <span className="font-mono text-[10px] text-[#71809B]">SYNOPSIS</span>
             </div>
-            <p className="body-md text-sm text-[#A4B0BE] leading-relaxed">
+            <p className="body-md text-sm text-[#A4B0C6] leading-relaxed">
               {user.bio || "No biography added yet. Open profile settings to craft your bio or generate one with the AI bio synthesizer."}
             </p>
           </section>
@@ -257,26 +257,26 @@ const Profile = () => {
           <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Offering Skills */}
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+            <div className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
                 <div>
                   <span className="tag-chip text-[9px] mb-1 inline-block">OFFERING</span>
-                  <h3 className="heading-h2 text-sm text-[#F5F6FA]">Teaching Expertise</h3>
+                  <h3 className="heading-h2 text-sm text-[#F7F8FC]">Teaching Expertise</h3>
                 </div>
-                <span className="font-mono text-xs font-semibold text-[#55E6C1]">
+                <span className="font-mono text-xs font-semibold text-[#FFEEA8]">
                   {offeredSkills.length} Skills
                 </span>
               </div>
               <div className="space-y-3">
                 {offeredSkills.map(s => (
-                  <div key={s._id} className="p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#6C5CE7] transition-colors">
+                  <div key={s._id} className="p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#2B3F74] transition-colors">
                     <div>
-                      <p className="font-bold text-xs text-[#F5F6FA]">{s.skillname}</p>
-                      <p className="text-[11px] text-[#A4B0BE] mt-1">{s.description}</p>
+                      <p className="font-bold text-xs text-[#F7F8FC]">{s.skillname}</p>
+                      <p className="text-[11px] text-[#A4B0C6] mt-1">{s.description}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteSkill(s._id)}
-                      className="text-[#718093] hover:text-[#FF7675] p-1 transition-colors"
+                      className="text-[#71809B] hover:text-[#D72E2B] p-1 transition-colors"
                       title="Remove skill"
                     >
                       <Trash2 size={13} />
@@ -284,32 +284,32 @@ const Profile = () => {
                   </div>
                 ))}
                 {offeredSkills.length === 0 && (
-                  <p className="text-xs text-[#718093] italic py-2 font-mono">No skills offered yet. Add your first skill!</p>
+                  <p className="text-xs text-[#71809B] italic py-2 font-mono">No skills offered yet. Add your first skill!</p>
                 )}
               </div>
             </div>
 
             {/* Seeking Skills */}
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+            <div className="ui-card p-6 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-[rgba(255,255,255,0.08)]">
                 <div>
                   <span className="tag-chip text-[9px] mb-1 inline-block">SEEKING</span>
-                  <h3 className="heading-h2 text-sm text-[#F5F6FA]">Learning Goals</h3>
+                  <h3 className="heading-h2 text-sm text-[#F7F8FC]">Learning Goals</h3>
                 </div>
-                <span className="font-mono text-xs font-semibold text-[#55E6C1]">
+                <span className="font-mono text-xs font-semibold text-[#FFEEA8]">
                   {skillsToLearn.length} Goals
                 </span>
               </div>
               <div className="space-y-3">
                 {skillsToLearn.map(s => (
-                  <div key={s._id} className="p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#6C5CE7] transition-colors">
+                  <div key={s._id} className="p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#2B3F74] transition-colors">
                     <div>
-                      <p className="font-bold text-xs text-[#F5F6FA]">{s.skillToLearn}</p>
-                      <p className="text-[11px] text-[#A4B0BE] mt-1">{s.description}</p>
+                      <p className="font-bold text-xs text-[#F7F8FC]">{s.skillToLearn}</p>
+                      <p className="text-[11px] text-[#A4B0C6] mt-1">{s.description}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteSkill(s._id)}
-                      className="text-[#718093] hover:text-[#FF7675] p-1 transition-colors"
+                      className="text-[#71809B] hover:text-[#D72E2B] p-1 transition-colors"
                       title="Remove goal"
                     >
                       <Trash2 size={13} />
@@ -317,7 +317,7 @@ const Profile = () => {
                   </div>
                 ))}
                 {skillsToLearn.length === 0 && (
-                  <p className="text-xs text-[#718093] italic py-2 font-mono">No learning targets listed yet.</p>
+                  <p className="text-xs text-[#71809B] italic py-2 font-mono">No learning targets listed yet.</p>
                 )}
               </div>
             </div>
@@ -326,40 +326,40 @@ const Profile = () => {
           {/* User Showcases */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="heading-h2 text-base text-[#F5F6FA]">Your Showcases ({posts.length})</h2>
-              <span className="font-mono text-[10px] text-[#718093]">PORTFOLIO ARTIFACTS</span>
+              <h2 className="heading-h2 text-base text-[#F7F8FC]">Your Showcases ({posts.length})</h2>
+              <span className="font-mono text-[10px] text-[#71809B]">PORTFOLIO ARTIFACTS</span>
             </div>
 
             <div className="space-y-4">
               {posts.map(post => (
-                <div key={post._id} className="ui-card p-5 bg-[#353B48] border border-[rgba(255,255,255,0.12)] relative rounded-none">
+                <div key={post._id} className="ui-card p-5 bg-[#283144] border border-[rgba(255,255,255,0.12)] relative rounded-2xl">
                   <div className="absolute top-4 right-4 flex gap-1">
                     <button
                       onClick={() => {
                         setEditPostData({ id: post._id, content: post.content });
                         setShowEditPost(true);
                       }}
-                      className="p-1.5 rounded-xl text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
+                      className="p-1.5 rounded-xl text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#202738] transition-colors"
                     >
                       <Edit size={14} />
                     </button>
                     <button
                       onClick={() => handleDeletePost(post._id)}
-                      className="p-1.5 rounded-xl text-[#A4B0BE] hover:text-[#FF7675] hover:bg-[rgba(255,118,117,0.1)] transition-colors"
+                      className="p-1.5 rounded-xl text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215, 46, 43,0.1)] transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
 
-                  <p className="font-mono text-[10px] text-[#718093] mb-2">
+                  <p className="font-mono text-[10px] text-[#71809B] mb-2">
                     Posted on {new Date(post.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="body-md text-sm text-[#F5F6FA] mb-4 whitespace-pre-wrap pr-14 leading-relaxed">
+                  <p className="body-md text-sm text-[#F7F8FC] mb-4 whitespace-pre-wrap pr-14 leading-relaxed">
                     {post.content}
                   </p>
 
                   {post.mediaUrl && (
-                    <div className="rounded-2xl overflow-hidden aspect-video bg-[#242A32] max-h-64 border border-[rgba(255,255,255,0.1)]">
+                    <div className="rounded-2xl overflow-hidden aspect-video bg-[#171D2B] max-h-64 border border-[rgba(255,255,255,0.1)]">
                       {post.mediaType === 'video' ? (
                         <video src={post.mediaUrl} controls className="w-full h-full object-contain" />
                       ) : (
@@ -371,8 +371,8 @@ const Profile = () => {
               ))}
 
               {posts.length === 0 && (
-                <div className="p-8 text-center ui-card bg-[#2B313A] border-dashed border-[rgba(255,255,255,0.15)] rounded-none">
-                  <p className="text-xs text-[#A4B0BE] font-mono">You haven't posted any showcases yet. Share your milestones on the Feed!</p>
+                <div className="p-8 text-center ui-card bg-[#202738] border-dashed border-[rgba(255,255,255,0.15)] rounded-2xl">
+                  <p className="text-xs text-[#A4B0C6] font-mono">You haven't posted any showcases yet. Share your milestones on the Feed!</p>
                 </div>
               )}
             </div>
@@ -381,28 +381,28 @@ const Profile = () => {
 
         {/* Sidebar Verification */}
         <div className="space-y-6">
-          <div className="ui-card p-6 bg-[#2B313A] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-none">
+          <div className="ui-card p-6 bg-[#202738] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <h3 className="heading-h2 text-xs text-[#F5F6FA] uppercase font-semibold">Reputation & Reviews</h3>
+              <h3 className="heading-h2 text-xs text-[#F7F8FC] uppercase font-semibold">Reputation & Reviews</h3>
               <span className="tag-chip text-[9px]">ACTIVE</span>
             </div>
 
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0BE]">Identity Verification</span>
-                <span className="text-[#55E6C1] font-semibold flex items-center gap-1 font-mono text-[10px]">
+                <span className="text-[#A4B0C6]">Identity Verification</span>
+                <span className="text-[#FFEEA8] font-semibold flex items-center gap-1 font-mono text-[10px]">
                   VERIFIED <CheckCircle2 size={12} />
                 </span>
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0BE]">Community Guidelines</span>
-                <span className="text-[#55E6C1] font-semibold flex items-center gap-1 font-mono text-[10px]">
+                <span className="text-[#A4B0C6]">Community Guidelines</span>
+                <span className="text-[#FFEEA8] font-semibold flex items-center gap-1 font-mono text-[10px]">
                   SIGNED <CheckCircle2 size={12} />
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#A4B0BE]">Account Email</span>
-                <span className="font-mono text-[11px] text-[#F5F6FA] truncate max-w-[150px]">{user.email}</span>
+                <span className="text-[#A4B0C6]">Account Email</span>
+                <span className="font-mono text-[11px] text-[#F7F8FC] truncate max-w-[150px]">{user.email}</span>
               </div>
             </div>
           </div>
@@ -412,13 +412,13 @@ const Profile = () => {
       {/* Add Skill Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {showAddSkill && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">REGISTRY</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Add Skill</h2>
+                <h2 className="heading-h2 text-base text-[#F7F8FC]">Add Skill</h2>
               </div>
-              <button onClick={() => setShowAddSkill(false)} className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]">
+              <button onClick={() => setShowAddSkill(false)} className="p-1 rounded-xl hover:bg-[#202738] text-[#A4B0C6] hover:text-[#F7F8FC]">
                 <X size={18} />
               </button>
             </div>
@@ -431,7 +431,7 @@ const Profile = () => {
                   onChange={(e) => setNewSkill({ ...newSkill, skill: e.target.value })}
                   required
                   placeholder="e.g. Conversational Spanish, React & Node, UI/UX Design, Acoustic Guitar"
-                  className="input-field rounded-none"
+                  className="input-field rounded-xl"
                 />
               </div>
               <div className="input-group">
@@ -441,7 +441,7 @@ const Profile = () => {
                   onChange={(e) => setNewSkill({ ...newSkill, des: e.target.value })}
                   required
                   placeholder="What skills can you teach or what are you excited to learn?"
-                  className="input-field min-h-[90px] resize-none rounded-none"
+                  className="input-field min-h-[90px] resize-none rounded-xl"
                 />
               </div>
               <div className="input-group">
@@ -449,13 +449,13 @@ const Profile = () => {
                 <select
                   value={newSkill.type}
                   onChange={(e) => setNewSkill({ ...newSkill, type: e.target.value })}
-                  className="input-field rounded-none"
+                  className="input-field rounded-xl"
                 >
-                  <option value="offer" className="bg-[#242A32] text-[#F5F6FA]">Offering Expertise (Teach)</option>
-                  <option value="seek" className="bg-[#242A32] text-[#F5F6FA]">Seeking Knowledge (Learn)</option>
+                  <option value="offer" className="bg-[#171D2B] text-[#F7F8FC]">Offering Expertise (Teach)</option>
+                  <option value="seek" className="bg-[#171D2B] text-[#F7F8FC]">Seeking Knowledge (Learn)</option>
                 </select>
               </div>
-              <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold mt-2 rounded-none">
+              <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold mt-2 rounded-xl">
                 Save Skill
               </button>
             </form>
@@ -466,28 +466,28 @@ const Profile = () => {
       {/* Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">SETTINGS</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Edit Profile</h2>
+                <h2 className="heading-h2 text-base text-[#F7F8FC]">Edit Profile</h2>
               </div>
-              <button onClick={() => setShowEditProfile(false)} className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]">
+              <button onClick={() => setShowEditProfile(false)} className="p-1 rounded-xl hover:bg-[#202738] text-[#A4B0C6] hover:text-[#F7F8FC]">
                 <X size={18} />
               </button>
             </div>
 
             {/* AI Synthesizer Box */}
-            <div className="p-3.5 mb-4 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.1)] space-y-2">
+            <div className="p-3.5 mb-4 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.1)] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#F5F6FA] flex items-center gap-1.5 font-mono">
-                  <Sparkles size={13} className="text-[#55E6C1]" /> AI Bio Assistant
+                <span className="text-xs font-semibold text-[#F7F8FC] flex items-center gap-1.5 font-mono">
+                  <Sparkles size={13} className="text-[#FFEEA8]" /> AI Bio Assistant
                 </span>
                 <button
                   type="button"
                   onClick={handleAutoFillBio}
                   disabled={aiExtracting || !aiRawText.trim()}
-                  className="font-mono text-xs text-[#55E6C1] hover:underline disabled:opacity-40"
+                  className="font-mono text-xs text-[#FFEEA8] hover:underline disabled:opacity-40"
                 >
                   {aiExtracting ? 'Synthesizing...' : 'Synthesize Bio'}
                 </button>
@@ -496,7 +496,7 @@ const Profile = () => {
                 value={aiRawText}
                 onChange={(e) => setAiRawText(e.target.value)}
                 placeholder="Paste rough notes, background, or areas of focus..."
-                className="input-field text-xs min-h-[55px] resize-none rounded-none"
+                className="input-field text-xs min-h-[55px] resize-none rounded-xl"
               />
             </div>
 
@@ -508,7 +508,7 @@ const Profile = () => {
                   value={editProfileData.location}
                   onChange={(e) => setEditProfileData({ ...editProfileData, location: e.target.value })}
                   required
-                  className="input-field rounded-none"
+                  className="input-field rounded-xl"
                 />
               </div>
               <div className="input-group">
@@ -517,10 +517,10 @@ const Profile = () => {
                   value={editProfileData.bio}
                   onChange={(e) => setEditProfileData({ ...editProfileData, bio: e.target.value })}
                   required
-                  className="input-field min-h-[90px] resize-none rounded-none"
+                  className="input-field min-h-[90px] resize-none rounded-xl"
                 />
               </div>
-              <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold mt-2 rounded-none">
+              <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold mt-2 rounded-xl">
                 Save Profile
               </button>
             </form>
@@ -531,13 +531,13 @@ const Profile = () => {
       {/* Edit Showcase Modal */}
       {showEditPost && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">UPDATE</span>
-                <h2 className="heading-h2 text-base text-[#F5F6FA]">Edit Showcase</h2>
+                <h2 className="heading-h2 text-base text-[#F7F8FC]">Edit Showcase</h2>
               </div>
-              <button onClick={() => setShowEditPost(false)} className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]">
+              <button onClick={() => setShowEditPost(false)} className="p-1 rounded-xl hover:bg-[#202738] text-[#A4B0C6] hover:text-[#F7F8FC]">
                 <X size={18} />
               </button>
             </div>
@@ -548,10 +548,10 @@ const Profile = () => {
                   value={editPostData.content}
                   onChange={(e) => setEditPostData({ ...editPostData, content: e.target.value })}
                   required
-                  className="input-field min-h-[120px] resize-none rounded-none"
+                  className="input-field min-h-[120px] resize-none rounded-xl"
                 />
               </div>
-              <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold rounded-none">
+              <button type="submit" className="w-full btn btn-primary py-2.5 justify-center text-xs font-semibold rounded-xl">
                 Save Showcase
               </button>
             </form>

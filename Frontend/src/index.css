@@ -3,27 +3,27 @@
 
 :root {
   /* Bold & Energetic 60/30/10 Palette */
-  --primary: #2F3640; /* Dark Slate (60% dominant base) */
-  --secondary: #6C5CE7; /* Deep Purple (30% accent) */
-  --tertiary: #55E6C1; /* Soft Mint (30% secondary/highlight) */
-  --accent-cta: #FF7675; /* Vivid Orange/Coral (10% high-impact call to action & critical points) */
+  --primary: #202738; /* Dark Slate (60% dominant base) */
+  --secondary: #2B3F74; /* Deep Purple (30% accent) */
+  --tertiary: #FFEEA8; /* Soft Mint (30% secondary/highlight) */
+  --accent-cta: #D72E2B; /* Vivid Orange/Coral (10% high-impact call to action & critical points) */
   
-  --surface: #353B48; /* Surface card / elevated */
-  --surface-hover: #3F4956;
-  --surface-subtle: #2B313A;
-  --surface-deep: #242A32;
-  --surface-dark: #1E232A;
+  --surface: #283144; /* Surface card / elevated */
+  --surface-hover: #313C52;
+  --surface-subtle: #202738;
+  --surface-deep: #171D2B;
+  --surface-dark: #121722;
 
-  --text: #F5F6FA; /* Off-white high contrast */
-  --text-muted: #A4B0BE; /* Medium emphasis */
-  --text-subtle: #718093; /* Low emphasis */
+  --text: #F7F8FC; /* Off-white high contrast */
+  --text-muted: #A4B0C6; /* Medium emphasis */
+  --text-subtle: #71809B; /* Low emphasis */
 
   --border: rgba(255, 255, 255, 0.12);
   --border-muted: rgba(255, 255, 255, 0.08);
-  --border-focus: #6C5CE7;
+  --border-focus: #2B3F74;
 
-  --semantic-error: #FF7675;
-  --semantic-success: #55E6C1;
+  --semantic-error: #D72E2B;
+  --semantic-success: #FFEEA8;
   --semantic-warning: #FFA502;
 
   /* Typography */
@@ -41,13 +41,13 @@
   --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   
-  --color-primary: #2F3640;
-  --color-secondary: #6C5CE7;
-  --color-tertiary: #55E6C1;
-  --color-accent: #FF7675;
-  --color-background: #2F3640;
-  --color-surface: #353B48;
-  --color-text: #F5F6FA;
+  --color-primary: #202738;
+  --color-secondary: #2B3F74;
+  --color-tertiary: #FFEEA8;
+  --color-accent: #D72E2B;
+  --color-background: #202738;
+  --color-surface: #283144;
+  --color-text: #F7F8FC;
 }
 
 @layer base {
@@ -59,14 +59,14 @@
 
   html {
     scroll-behavior: smooth;
-    background-color: #2F3640;
+    background-color: #202738;
   }
 
   body {
-    background-color: #2F3640;
+    background-color: #202738;
     background-image: 
-      radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.07) 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(85, 230, 193, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 10% 20%, rgba(43, 63, 116, 0.07) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(255, 238, 168, 0.05) 0%, transparent 40%),
       linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
@@ -98,13 +98,13 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #242A32;
+    background: #171D2B;
   }
   ::-webkit-scrollbar-thumb {
     background: #4B5563;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #6C5CE7;
+    background: #2B3F74;
   }
 }
 
@@ -178,22 +178,22 @@
 
   /* Cards: Soft rounded corners, subtle shadows, pleasant borders */
   .ui-card {
-    background: #353B48;
+    background: #283144;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 14px;
+    border-radius: 16px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
     transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
   }
 
   .ui-card:hover {
-    border-color: rgba(108, 92, 231, 0.4);
+    border-color: rgba(43, 63, 116, 0.4);
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
   }
 
   .ui-card-subtle {
-    background: #2B313A;
+    background: #202738;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
   }
 
@@ -204,7 +204,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.65rem 1.25rem;
-    border-radius: 10px;
+    border-radius: 12px;
     font-family: var(--font-family);
     font-weight: 600;
     font-size: 0.875rem;
@@ -221,46 +221,46 @@
 
   /* Primary Button: Deep Purple accent fill */
   .btn-primary {
-    background-color: #6C5CE7;
+    background-color: #2B3F74;
     color: #FFFFFF;
     font-weight: 600;
-    border: 1px solid #6C5CE7;
-    box-shadow: 0 2px 10px rgba(108, 92, 231, 0.25);
+    border: 1px solid #2B3F74;
+    box-shadow: 0 2px 10px rgba(43, 63, 116, 0.25);
   }
 
   .btn-primary:hover {
-    background-color: #5B4BD8;
-    border-color: #5B4BD8;
-    box-shadow: 0 4px 16px rgba(108, 92, 231, 0.4);
+    background-color: #385296;
+    border-color: #385296;
+    box-shadow: 0 4px 16px rgba(43, 63, 116, 0.4);
   }
 
-  /* Main CTA Button: Vivid Coral #FF7675 */
+  /* Main CTA Button: Vivid Coral Red #D72E2B (Pantone P 48-8 C) */
   .btn-cta {
-    background-color: #FF7675;
-    color: #2F3640;
+    background-color: #D72E2B;
+    color: #FFFFFF;
     font-weight: 700;
-    border: 1px solid #FF7675;
-    box-shadow: 0 2px 10px rgba(255, 118, 117, 0.25);
+    border: 1px solid #D72E2B;
+    box-shadow: 0 4px 14px rgba(215, 46, 43, 0.35);
   }
 
   .btn-cta:hover {
-    background-color: #E05A59;
-    border-color: #E05A59;
+    background-color: #BE2421;
+    border-color: #BE2421;
     color: #FFFFFF;
-    box-shadow: 0 4px 16px rgba(255, 118, 117, 0.4);
+    box-shadow: 0 4px 16px rgba(215, 46, 43, 0.4);
   }
 
   /* Secondary / Ghost Button: Soft border in muted color */
   .btn-secondary {
     background-color: rgba(255, 255, 255, 0.04);
-    color: #F5F6FA;
+    color: #F7F8FC;
     border: 1px solid rgba(255, 255, 255, 0.16);
   }
 
   .btn-secondary:hover {
-    background-color: rgba(108, 92, 231, 0.15);
-    border-color: #6C5CE7;
-    color: #F5F6FA;
+    background-color: rgba(43, 63, 116, 0.15);
+    border-color: #2B3F74;
+    color: #F7F8FC;
   }
 
   .btn-ghost {
@@ -271,7 +271,7 @@
 
   .btn-ghost:hover {
     background-color: rgba(255, 255, 255, 0.06);
-    color: #F5F6FA;
+    color: #F7F8FC;
   }
 
   /* Inputs: Smooth borders with focus glow */
@@ -291,24 +291,24 @@
 
   .input-field {
     width: 100%;
-    background-color: #242A32;
+    background-color: #171D2B;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 0.65rem 0.875rem;
     font-family: var(--font-family);
     font-size: 0.875rem;
-    color: #F5F6FA;
+    color: #F7F8FC;
     outline: none;
     transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
   }
 
   .input-field::placeholder {
-    color: #718093;
+    color: #71809B;
   }
 
   .input-field:focus {
-    border-color: #6C5CE7;
-    box-shadow: 0 0 0 2px #2F3640, 0 0 0 4px rgba(108, 92, 231, 0.6);
+    border-color: #2B3F74;
+    box-shadow: 0 0 0 2px #202738, 0 0 0 4px rgba(43, 63, 116, 0.6);
   }
 
   .input-error {
@@ -328,9 +328,9 @@
     font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0;
-    background-color: rgba(85, 230, 193, 0.12);
-    border: 1px solid rgba(85, 230, 193, 0.3);
-    color: #55E6C1;
+    background-color: rgba(255, 238, 168, 0.12);
+    border: 1px solid rgba(255, 238, 168, 0.3);
+    color: #FFEEA8;
   }
 
   .tag-chip-purple {
@@ -343,8 +343,8 @@
     font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0;
-    background-color: rgba(108, 92, 231, 0.15);
-    border: 1px solid rgba(108, 92, 231, 0.35);
+    background-color: rgba(43, 63, 116, 0.15);
+    border: 1px solid rgba(43, 63, 116, 0.35);
     color: #A29BFE;
   }
 
@@ -358,9 +358,9 @@
     font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0;
-    background-color: rgba(255, 118, 117, 0.15);
-    border: 1px solid rgba(255, 118, 117, 0.4);
-    color: #FF7675;
+    background-color: rgba(215, 46, 43, 0.15);
+    border: 1px solid rgba(215, 46, 43, 0.4);
+    color: #D72E2B;
   }
 
   /* Shimmer Skeleton */
