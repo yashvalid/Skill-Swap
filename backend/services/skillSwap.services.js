@@ -57,7 +57,10 @@ module.exports.completeSwap = async (requestId) => {
         // Reward 1 credit to both users for completing an exchange
         await User.updateMany(
             { _id: { $in: [swap.fromUser, swap.toUser] } },
-            { $inc: { credits: 1 } }
+            {
+                $inc: { credits: 1 },
+                $set: { isVerified: true }
+            }
         );
 
         return swap;

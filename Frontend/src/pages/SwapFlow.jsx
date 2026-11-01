@@ -14,6 +14,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { swapService } from '../services/swapService';
 import toast from 'react-hot-toast';
+import { isUserVerified } from '../utils/userVerification';
 
 const SwapFlow = () => {
   const navigate = useNavigate();
@@ -66,19 +67,19 @@ const SwapFlow = () => {
   };
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-12 flex flex-col items-center">
+    <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6 sm:py-12 flex flex-col items-center">
       <div className="w-full">
         
         {/* Header Title */}
         <div className="text-center mb-8">
           <div className="tag-chip mb-2 inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-none bg-[#55E6C1]" />
+            <span className="w-2 h-2 rounded-full bg-[#FFEEA8]" />
             <span>START A SKILL SWAP</span>
           </div>
-          <h1 className="heading-h1 text-[#F5F6FA]">
+          <h1 className="heading-h1 text-[#F7F8FC]">
             Propose a Skill Swap
           </h1>
-          <p className="body-md text-xs sm:text-sm text-[#A4B0BE] mt-1.5 mx-auto">
+          <p className="body-md text-xs sm:text-sm text-[#A4B0C6] mt-1.5 mx-auto">
             Set expectations, pick meeting times, and agree on milestones with your partner.
           </p>
         </div>
@@ -92,18 +93,18 @@ const SwapFlow = () => {
             return (
               <div key={i} className="flex flex-col items-center z-10">
                 <div
-                  className={`w-10 h-10 rounded-none flex items-center justify-center font-bold text-xs font-mono transition-colors ${
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs font-mono transition-colors ${
                     isCompleted
-                      ? 'bg-[#6C5CE7] text-white shadow-sm'
+                      ? 'bg-[#2B3F74] text-white shadow-sm'
                       : isCurrent
-                      ? 'bg-[#242A32] text-[#55E6C1] border-2 border-[#55E6C1] shadow-md'
-                      : 'bg-[#2B313A] text-[#718093] border border-[rgba(255,255,255,0.12)]'
+                      ? 'bg-[#171D2B] text-[#FFEEA8] border-2 border-[#FFEEA8] shadow-md'
+                      : 'bg-[#202738] text-[#71809B] border border-[rgba(255,255,255,0.12)]'
                   }`}
                 >
                   {isCompleted ? <Check size={16} strokeWidth={3} /> : `0${i + 1}`}
                 </div>
                 <p className={`mt-2 font-mono text-[10px] font-semibold ${
-                  isCurrent ? 'text-[#55E6C1]' : 'text-[#718093]'
+                  isCurrent ? 'text-[#FFEEA8]' : 'text-[#71809B]'
                 }`}>
                   {s.title}
                 </p>
@@ -113,51 +114,55 @@ const SwapFlow = () => {
         </div>
 
         {/* Main Card Container */}
-        <div className="ui-card bg-[#353B48] shadow-2xl rounded-none overflow-hidden min-h-[460px] flex flex-col md:flex-row border border-[rgba(255,255,255,0.12)]">
+        <div className="ui-card bg-[#283144] shadow-2xl rounded-2xl overflow-hidden min-h-[460px] flex flex-col md:flex-row border border-[rgba(255,255,255,0.12)]">
           
           {/* Details Sidebar */}
-          <div className="w-full md:w-72 bg-[#2B313A] p-6 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)] flex flex-col justify-between">
+          <div className="w-full md:w-72 bg-[#202738] p-6 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)] flex flex-col justify-between">
             <div>
-              <span className="font-mono text-[10px] text-[#A4B0BE] uppercase block mb-4 font-semibold">
+              <span className="font-mono text-[10px] text-[#A4B0C6] uppercase block mb-4 font-semibold">
                 Partner
               </span>
               
               <div className="flex items-center gap-3.5 mb-6">
-                <div className="w-11 h-11 rounded-none overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
+                <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#171D2B] border border-[rgba(255,255,255,0.15)] shrink-0">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${partner.name}`} alt={partner.name} className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <p className="font-bold text-sm text-[#F5F6FA]">{partner.name}</p>
-                  <div className="flex items-center gap-1 text-[#55E6C1] font-mono text-[10px]">
-                    VERIFIED <CheckCircle2 size={11} />
+                  <p className="font-bold text-sm text-[#F7F8FC]">{partner.name}</p>
+                  <div className="flex items-center gap-1 font-mono text-[10px]">
+                    {isUserVerified(passedPartner || partner) ? (
+                      <span className="text-[#FFEEA8] flex items-center gap-1">VERIFIED <CheckCircle2 size={11} /></span>
+                    ) : (
+                      <span className="text-[#71809B]">COMMUNITY MEMBER</span>
+                    )}
                   </div>
                 </div>
               </div>
               
               <div className="space-y-3">
-                <div className="p-3.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)]">
-                  <p className="font-mono text-[9px] text-[#718093] mb-1 uppercase">Receiving from {partner.name.split(' ')[0]}</p>
-                  <p className="font-bold text-xs text-[#F5F6FA]">{partner.skill}</p>
+                <div className="p-3.5 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.08)]">
+                  <p className="font-mono text-[9px] text-[#71809B] mb-1 uppercase">Receiving from {partner.name.split(' ')[0]}</p>
+                  <p className="font-bold text-xs text-[#F7F8FC]">{partner.skill}</p>
                 </div>
-                <div className="p-3.5 rounded-none bg-[#242A32] border border-[rgba(85,230,193,0.3)]">
-                  <p className="font-mono text-[9px] text-[#55E6C1] mb-1 uppercase font-semibold">Offering to {partner.name.split(' ')[0]}</p>
-                  <p className="font-bold text-xs text-[#F5F6FA]">{selectedOffering}</p>
+                <div className="p-3.5 rounded-xl bg-[#171D2B] border border-[rgba(255, 238, 168,0.3)]">
+                  <p className="font-mono text-[9px] text-[#FFEEA8] mb-1 uppercase font-semibold">Offering to {partner.name.split(' ')[0]}</p>
+                  <p className="font-bold text-xs text-[#F7F8FC]">{selectedOffering}</p>
                 </div>
               </div>
             </div>
 
-            <div className="pt-6 text-[10px] text-[#718093] font-mono">
+            <div className="pt-6 text-[10px] text-[#71809B] font-mono">
               <span>ZERO FEES • 100% FREE PEER EXCHANGE</span>
             </div>
           </div>
 
           {/* Form Content */}
-          <div className="flex-grow p-6 sm:p-10 flex flex-col justify-between bg-[#2F3640]">
+          <div className="flex-grow p-6 sm:p-10 flex flex-col justify-between bg-[#202738]">
             {step === 1 && (
               <div>
                 <span className="tag-chip text-[10px] mb-2 inline-block">STEP 01</span>
-                <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Select Your Knowledge Offering</h3>
-                <p className="body-md text-xs text-[#A4B0BE] mb-6">Choose the skill you will teach during this swap.</p>
+                <h3 className="heading-h2 text-lg text-[#F7F8FC] mb-1">Select Your Knowledge Offering</h3>
+                <p className="body-md text-xs text-[#A4B0C6] mb-6">Choose the skill you will teach during this swap.</p>
                 
                 <div className="space-y-3">
                   {[
@@ -169,10 +174,10 @@ const SwapFlow = () => {
                     <label
                       key={i}
                       onClick={() => setSelectedOffering(skill.title)}
-                      className={`flex items-center gap-3.5 p-4 rounded-none border transition-colors cursor-pointer ${
+                      className={`flex items-center gap-3.5 p-4 rounded-xl border transition-colors cursor-pointer ${
                         selectedOffering === skill.title
-                          ? 'border-[#6C5CE7] bg-[#353B48] shadow-xs'
-                          : 'border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7] hover:bg-[#353B48]/50'
+                          ? 'border-[#2B3F74] bg-[#283144] shadow-xs'
+                          : 'border-[rgba(255,255,255,0.1)] hover:border-[#2B3F74] hover:bg-[#283144]/50'
                       }`}
                     >
                       <input 
@@ -180,14 +185,14 @@ const SwapFlow = () => {
                         name="skill" 
                         checked={selectedOffering === skill.title}
                         onChange={() => setSelectedOffering(skill.title)}
-                        className="w-4 h-4 accent-[#6C5CE7]" 
+                        className="w-4 h-4 accent-[#2B3F74]" 
                       />
                       <div className="flex-1">
-                        <p className="font-bold text-xs sm:text-sm text-[#F5F6FA]">{skill.title}</p>
-                        <p className="font-mono text-[10px] text-[#718093]">ESTABLISHED COMPETENCY</p>
+                        <p className="font-bold text-xs sm:text-sm text-[#F7F8FC]">{skill.title}</p>
+                        <p className="font-mono text-[10px] text-[#71809B]">ESTABLISHED COMPETENCY</p>
                       </div>
                       {skill.match && (
-                        <span className="tag-chip text-[9px] py-0.5 px-2 bg-[rgba(85,230,193,0.15)] text-[#55E6C1] border border-[rgba(85,230,193,0.3)] font-bold">
+                        <span className="tag-chip text-[9px] py-0.5 px-2 bg-[rgba(255, 238, 168,0.15)] text-[#FFEEA8] border border-[rgba(255, 238, 168,0.3)] font-bold">
                           EXACT MATCH
                         </span>
                       )}
@@ -200,18 +205,18 @@ const SwapFlow = () => {
             {step === 2 && (
               <div>
                 <span className="tag-chip text-[10px] mb-2 inline-block">STEP 02</span>
-                <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Draft Exchange Proposal</h3>
-                <p className="body-md text-xs text-[#A4B0BE] mb-5">State your shared learning goal, current projects, and preferred discussion topics.</p>
+                <h3 className="heading-h2 text-lg text-[#F7F8FC] mb-1">Draft Exchange Proposal</h3>
+                <p className="body-md text-xs text-[#A4B0C6] mb-5">State your shared learning goal, current projects, and preferred discussion topics.</p>
                 
                 <textarea 
                   value={proposalNotes}
                   onChange={(e) => setProposalNotes(e.target.value)}
-                  className="input-field h-36 resize-none text-xs sm:text-sm rounded-none"
+                  className="input-field h-36 resize-none text-xs sm:text-sm rounded-xl"
                 />
                 
-                <div className="mt-4 p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] flex items-center gap-2.5 text-xs text-[#F5F6FA]">
-                  <Sparkles size={16} className="text-[#55E6C1] shrink-0" />
-                  <span className="text-[#A4B0BE]">Recommendation: Propose a specific mini-project to build together across 2-4 weeks for best retention.</span>
+                <div className="mt-4 p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.1)] flex items-center gap-2.5 text-xs text-[#F7F8FC]">
+                  <Sparkles size={16} className="text-[#FFEEA8] shrink-0" />
+                  <span className="text-[#A4B0C6]">Recommendation: Propose a specific mini-project to build together across 2-4 weeks for best retention.</span>
                 </div>
               </div>
             )}
@@ -219,8 +224,8 @@ const SwapFlow = () => {
             {step === 3 && (
               <div>
                 <span className="tag-chip text-[10px] mb-2 inline-block">STEP 03</span>
-                <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Propose Kickoff Window</h3>
-                <p className="body-md text-xs text-[#A4B0BE] mb-6">Choose an ideal time slot for your initial 30-minute sync.</p>
+                <h3 className="heading-h2 text-lg text-[#F7F8FC] mb-1">Propose Kickoff Window</h3>
+                <p className="body-md text-xs text-[#A4B0C6] mb-6">Choose an ideal time slot for your initial 30-minute sync.</p>
                 
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -231,15 +236,15 @@ const SwapFlow = () => {
                   ].map((s, i) => (
                     <div
                       key={i}
-                      className={`p-4 rounded-none border ${
+                      className={`p-4 rounded-xl border ${
                         s.slots === "FULLY BOOKED"
-                          ? 'opacity-40 pointer-events-none bg-[#242A32]'
-                          : 'border-[rgba(255,255,255,0.12)] hover:border-[#6C5CE7] hover:bg-[#353B48] cursor-pointer'
+                          ? 'opacity-40 pointer-events-none bg-[#171D2B]'
+                          : 'border-[rgba(255,255,255,0.12)] hover:border-[#2B3F74] hover:bg-[#283144] cursor-pointer'
                       } transition-colors`}
                     >
-                      <Calendar className="text-[#55E6C1] mb-2" size={18} />
-                      <p className="font-bold text-xs text-[#F5F6FA] mb-0.5">{s.day}</p>
-                      <p className="font-mono text-[9px] text-[#A4B0BE]">{s.slots}</p>
+                      <Calendar className="text-[#FFEEA8] mb-2" size={18} />
+                      <p className="font-bold text-xs text-[#F7F8FC] mb-0.5">{s.day}</p>
+                      <p className="font-mono text-[9px] text-[#A4B0C6]">{s.slots}</p>
                     </div>
                   ))}
                 </div>
@@ -248,31 +253,31 @@ const SwapFlow = () => {
 
             {step === 4 && (
               <div className="text-center py-4">
-                <div className="w-12 h-12 bg-[#2B313A] text-[#55E6C1] rounded-none flex items-center justify-center mx-auto mb-4 border border-[rgba(85,230,193,0.3)]">
+                <div className="w-12 h-12 bg-[#202738] text-[#FFEEA8] rounded-xl flex items-center justify-center mx-auto mb-4 border border-[rgba(255, 238, 168,0.3)]">
                   <ArrowLeftRight size={22} strokeWidth={2.5} />
                 </div>
-                <h3 className="heading-h2 text-lg text-[#F5F6FA] mb-1">Swap Proposal Ready to Send</h3>
-                <p className="body-md text-xs text-[#A4B0BE] max-w-sm mx-auto mb-6">
+                <h3 className="heading-h2 text-lg text-[#F7F8FC] mb-1">Swap Proposal Ready to Send</h3>
+                <p className="body-md text-xs text-[#A4B0C6] max-w-sm mx-auto mb-6">
                   {partner.name.split(' ')[0]} will receive a notification in dashboard and inbox to confirm the swap.
                 </p>
                 
-                <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] text-left mb-4 space-y-3 max-w-md mx-auto">
+                <div className="p-4 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.1)] text-left mb-4 space-y-3 max-w-md mx-auto">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)] text-[#55E6C1]">
+                    <div className="p-2 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.08)] text-[#FFEEA8]">
                       <Clock size={16} />
                     </div>
                     <div>
-                      <p className="font-bold text-xs text-[#F5F6FA]">SCHEDULE</p>
-                      <p className="font-mono text-[10px] text-[#A4B0BE]">2 SESSIONS PER WEEK (45 MINS)</p>
+                      <p className="font-bold text-xs text-[#F7F8FC]">SCHEDULE</p>
+                      <p className="font-mono text-[10px] text-[#A4B0C6]">2 SESSIONS PER WEEK (45 MINS)</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)] text-[#55E6C1]">
+                    <div className="p-2 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.08)] text-[#FFEEA8]">
                       <Calendar size={16} />
                     </div>
                     <div>
-                      <p className="font-bold text-xs text-[#F5F6FA]">FIRST SESSION</p>
-                      <p className="font-mono text-[10px] text-[#A4B0BE]">Monday • 14:00 UTC</p>
+                      <p className="font-bold text-xs text-[#F7F8FC]">FIRST SESSION</p>
+                      <p className="font-mono text-[10px] text-[#A4B0C6]">Monday • 14:00 UTC</p>
                     </div>
                   </div>
                 </div>
@@ -283,7 +288,7 @@ const SwapFlow = () => {
             <div className="pt-6 border-t border-[rgba(255,255,255,0.1)] flex justify-between items-center">
               <button 
                 onClick={prevStep}
-                className={`flex items-center gap-1.5 text-xs font-semibold text-[#A4B0BE] hover:text-[#F5F6FA] transition-colors ${
+                className={`flex items-center gap-1.5 text-xs font-semibold text-[#A4B0C6] hover:text-[#F7F8FC] transition-colors ${
                   step === 1 ? 'invisible' : ''
                 }`}
               >
@@ -291,12 +296,12 @@ const SwapFlow = () => {
               </button>
               
               {step < totalSteps ? (
-                <button onClick={nextStep} className="btn btn-primary text-xs py-2 px-5 rounded-none">
+                <button onClick={nextStep} className="btn btn-primary text-xs py-2 px-5 rounded-xl">
                   <span>Continue</span>
                   <ArrowRight size={14} />
                 </button>
               ) : (
-                <button onClick={handleFinish} className="btn btn-cta text-xs py-2 px-5 rounded-none">
+                <button onClick={handleFinish} className="btn btn-cta text-xs py-2 px-5 rounded-xl">
                   <span>Send Proposal</span>
                   <Zap size={14} />
                 </button>

@@ -20,6 +20,7 @@ import { aiService } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { isUserVerified } from '../utils/userVerification';
 
 // Curated default mentors spanning both technical and non-technical disciplines
 const CURATED_PEERS = [
@@ -238,18 +239,18 @@ const Marketplace = () => {
   });
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-10">
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
       
       {/* Header */}
       <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between pb-6 border-b border-[rgba(255,255,255,0.12)]">
         <div>
-          <span className="font-mono text-xs uppercase text-[#55E6C1] font-semibold tracking-wider">
+          <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
             Mentor Directory
           </span>
-          <h1 className="heading-h1 text-[#F5F6FA] mt-1">
+          <h1 className="heading-h1 text-[#F7F8FC] mt-1">
             Skill Marketplace
           </h1>
-          <p className="body-md text-sm text-[#A4B0BE] mt-1 max-w-xl">
+          <p className="body-md text-sm text-[#A4B0C6] mt-1 max-w-xl">
             Browse mentors offering direct 1-on-1 sessions. Propose a swap with your skills.
           </p>
         </div>
@@ -264,18 +265,18 @@ const Marketplace = () => {
       {/* Spotlight Search & Category Filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-8 items-stretch md:items-center justify-between">
         <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#718093]" size={16} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71809B]" size={16} />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by skill (e.g. React, Spanish, Video Editing, Guitar)..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.15)] focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7] focus:ring-offset-2 focus:ring-offset-[#2F3640] text-sm text-[#F5F6FA] placeholder-[#718093] outline-none transition-colors"
+            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.15)] focus:border-[#2B3F74] focus:ring-2 focus:ring-[#2B3F74] focus:ring-offset-2 focus:ring-offset-[#202738] text-sm text-[#F7F8FC] placeholder-[#71809B] outline-none transition-colors"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A4B0BE] hover:text-[#F5F6FA]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A4B0C6] hover:text-[#F7F8FC]"
             >
               <X size={14} />
             </button>
@@ -283,15 +284,15 @@ const Marketplace = () => {
         </div>
 
         {/* Category Pills */}
-        <div className="flex gap-1.5 p-1 bg-[#2B313A] rounded-none overflow-x-auto border border-[rgba(255,255,255,0.1)]">
+        <div className="flex gap-1.5 p-1 bg-[#202738] rounded-xl overflow-x-auto border border-[rgba(255,255,255,0.1)] scrollbar-none touch-pan-x">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-none text-xs font-medium tracking-tight transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight transition-colors whitespace-nowrap ${
                 activeCategory === cat
-                  ? 'bg-[#6C5CE7] text-white font-semibold shadow-xs'
-                  : 'text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#242A32]'
+                  ? 'bg-[#2B3F74] text-white font-semibold shadow-xs'
+                  : 'text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#171D2B]'
               }`}
             >
               {cat}
@@ -302,12 +303,12 @@ const Marketplace = () => {
 
       {/* Grid of Mentors */}
       {filteredUsers.length === 0 ? (
-        <div className="ui-card p-12 text-center max-w-md mx-auto my-12 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
-          <div className="w-12 h-12 rounded-none bg-[#242A32] text-[#55E6C1] flex items-center justify-center mx-auto mb-3">
+        <div className="ui-card p-12 text-center max-w-md mx-auto my-12 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl">
+          <div className="w-12 h-12 rounded-xl bg-[#171D2B] text-[#FFEEA8] flex items-center justify-center mx-auto mb-3">
             <Inbox size={22} />
           </div>
-          <h3 className="font-bold text-base text-[#F5F6FA] mb-1">No Mentors Found</h3>
-          <p className="text-xs text-[#A4B0BE] mb-4">
+          <h3 className="font-bold text-base text-[#F7F8FC] mb-1">No Mentors Found</h3>
+          <p className="text-xs text-[#A4B0C6] mb-4">
             Try adjusting your search criteria or explore other categories.
           </p>
           <button
@@ -325,7 +326,7 @@ const Marketplace = () => {
             return (
               <div
                 key={u._id}
-                className="ui-card p-6 flex flex-col justify-between group bg-[#353B48] border border-[rgba(255,255,255,0.12)] hover:border-[#6C5CE7] rounded-none"
+                className="ui-card p-6 flex flex-col justify-between group bg-[#283144] border border-[rgba(255,255,255,0.12)] hover:border-[#2B3F74] rounded-2xl"
               >
                 <div>
                   {/* Header: Avatar, Name, Rating */}
@@ -334,33 +335,40 @@ const Marketplace = () => {
                       className="flex items-center gap-3 cursor-pointer"
                       onClick={() => navigate(`/profile/${u._id}`)}
                     >
-                      <div className="w-11 h-11 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-sm flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-sm flex items-center justify-center shrink-0">
                         {initials}
                       </div>
                       <div>
-                        <h3 className="font-bold text-base text-[#F5F6FA] group-hover:underline">
-                          {u.fullname?.firstname} {u.fullname?.lastname}
-                        </h3>
-                        <p className="text-xs text-[#A4B0BE] truncate max-w-[150px]">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-base text-[#F7F8FC] group-hover:underline">
+                            {u.fullname?.firstname} {u.fullname?.lastname}
+                          </h3>
+                          {isUserVerified(u) && (
+                            <span className="tag-chip text-[9px] py-0 px-1.5 font-mono">
+                              VERIFIED
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#A4B0C6] truncate max-w-[150px]">
                           {u.role}
                         </p>
                       </div>
                     </div>
 
-                    <span className="font-mono text-xs font-semibold text-[#55E6C1] bg-[#242A32] px-2 py-0.5 rounded-none border border-[rgba(85,230,193,0.3)] flex items-center gap-1">
+                    <span className="font-mono text-xs font-semibold text-[#FFEEA8] bg-[#171D2B] px-2.5 py-0.5 rounded-full border border-[rgba(255, 238, 168,0.3)] flex items-center gap-1">
                       <Star size={11} fill="currentColor" className="text-[#FFA502]" />
                       <span>{u.averageRating?.toFixed(1) || '5.0'}</span>
                     </span>
                   </div>
 
                   {/* Bio */}
-                  <p className="body-md text-xs text-[#A4B0BE] line-clamp-2 leading-relaxed mb-4">
+                  <p className="body-md text-xs text-[#A4B0C6] line-clamp-2 leading-relaxed mb-4">
                     {u.bio || "Passionate about reciprocal skill mastery and knowledge exchange."}
                   </p>
 
                   {/* Offers Section */}
-                  <div className="space-y-1.5 mb-3 bg-[#2B313A] p-3 rounded-none border border-[rgba(255,255,255,0.08)]">
-                    <span className="font-mono text-[10px] uppercase font-bold text-[#55E6C1] block">
+                  <div className="space-y-1.5 mb-3 bg-[#202738] p-3 rounded-xl border border-[rgba(255,255,255,0.08)]">
+                    <span className="font-mono text-[10px] uppercase font-bold text-[#FFEEA8] block">
                       Teaches
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -370,7 +378,7 @@ const Marketplace = () => {
                         </span>
                       ))}
                       {u.skillsOffered?.length > 3 && (
-                        <span className="font-mono text-[10px] text-[#A4B0BE] px-1.5 py-0.5">
+                        <span className="font-mono text-[10px] text-[#A4B0C6] px-1.5 py-0.5">
                           +{u.skillsOffered.length - 3}
                         </span>
                       )}
@@ -380,12 +388,12 @@ const Marketplace = () => {
                   {/* Seeking Section */}
                   {u.skillsNeeded && u.skillsNeeded.length > 0 && (
                     <div className="space-y-1 mb-5">
-                      <span className="font-mono text-[10px] uppercase font-bold text-[#718093] block">
+                      <span className="font-mono text-[10px] uppercase font-bold text-[#71809B] block">
                         Wants to Learn
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {u.skillsNeeded.slice(0, 2).map((sk, i) => (
-                          <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-[#A4B0BE]">
+                          <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#171D2B] border border-[rgba(255,255,255,0.1)] text-[#A4B0C6]">
                             {sk}
                           </span>
                         ))}
@@ -396,8 +404,8 @@ const Marketplace = () => {
 
                 {/* Bottom: Location & Action */}
                 <div className="pt-4 border-t border-[rgba(255,255,255,0.08)] flex items-center justify-between">
-                  <span className="text-xs text-[#718093] flex items-center gap-1 font-mono">
-                    <MapPin size={12} className="text-[#A4B0BE]" /> {u.location || 'Remote'}
+                  <span className="text-xs text-[#71809B] flex items-center gap-1 font-mono">
+                    <MapPin size={12} className="text-[#A4B0C6]" /> {u.location || 'Remote'}
                   </span>
 
                   <button
@@ -417,14 +425,14 @@ const Marketplace = () => {
       {/* Guest Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {guestModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-8 max-w-md w-full bg-[#353B48] text-center border border-[rgba(255,255,255,0.15)] shadow-2xl">
-            <div className="w-12 h-12 rounded-none bg-[#2B313A] text-[#55E6C1] flex items-center justify-center mx-auto mb-4 border border-[rgba(85,230,193,0.3)]">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-8 max-w-md w-full bg-[#283144] text-center border border-[rgba(255,255,255,0.15)] shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-[#202738] text-[#FFEEA8] flex items-center justify-center mx-auto mb-4 border border-[rgba(255, 238, 168,0.3)]">
               <ArrowLeftRight size={20} strokeWidth={2.5} />
             </div>
-            <h3 className="heading-h2 text-[#F5F6FA] mb-2">
+            <h3 className="heading-h2 text-[#F7F8FC] mb-2">
               Join the Exchange
             </h3>
-            <p className="body-md text-xs text-[#A4B0BE] leading-relaxed mb-6">
+            <p className="body-md text-xs text-[#A4B0C6] leading-relaxed mb-6">
               Sign in or create an account to propose skill exchanges, generate AI study plans, and trade knowledge directly.
             </p>
             <div className="space-y-2.5">
@@ -444,20 +452,20 @@ const Marketplace = () => {
 
       {/* Propose Swap Modal: z-index overlay (200), modal (300) */}
       {selectedUser && !guestModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-8 w-full max-w-lg bg-[#353B48] shadow-2xl border border-[rgba(255,255,255,0.15)] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-2xl p-4 sm:p-8 w-full max-w-lg bg-[#283144] shadow-2xl border border-[rgba(255,255,255,0.15)] max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
-                <span className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">
+                <span className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold">
                   Exchange Proposal
                 </span>
-                <h2 className="heading-h2 text-[#F5F6FA]">
+                <h2 className="heading-h2 text-[#F7F8FC]">
                   Swap with {selectedUser.fullname?.firstname}
                 </h2>
               </div>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]"
+                className="p-1 rounded-lg hover:bg-[#202738] text-[#A4B0C6] hover:text-[#F7F8FC]"
                 aria-label="Close modal"
               >
                 <X size={18} />
@@ -475,7 +483,7 @@ const Marketplace = () => {
                   onChange={(e) => setSwapData({ ...swapData, offersSkill: e.target.value })}
                   required
                   placeholder="e.g. Modern React & TypeScript Architecture"
-                  className="input-field rounded-none"
+                  className="input-field"
                 />
               </div>
 
@@ -489,21 +497,21 @@ const Marketplace = () => {
                   onChange={(e) => setSwapData({ ...swapData, requestsSkill: e.target.value })}
                   required
                   placeholder="e.g. Figma Design Systems"
-                  className="input-field rounded-none"
+                  className="input-field"
                 />
               </div>
 
               {/* AI Proposal Pitch Helper */}
-              <div className="p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] space-y-2">
+              <div className="p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.1)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-semibold text-[#F5F6FA] flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-[#55E6C1]" /> Proposal Assistant
+                  <span className="font-mono text-xs font-semibold text-[#F7F8FC] flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-[#FFEEA8]" /> Proposal Assistant
                   </span>
                   <button
                     type="button"
                     onClick={handleGeneratePitch}
                     disabled={generatingPitch || !swapData.offersSkill || !swapData.requestsSkill}
-                    className="font-mono text-xs text-[#55E6C1] hover:underline disabled:opacity-40 flex items-center gap-1"
+                    className="font-mono text-xs text-[#FFEEA8] hover:underline disabled:opacity-40 flex items-center gap-1"
                   >
                     <Sparkles size={11} />
                     <span>{generatingPitch ? 'Synthesizing...' : 'Draft Pitch'}</span>
@@ -511,23 +519,23 @@ const Marketplace = () => {
                 </div>
 
                 {generatingPitch && (
-                  <div className="h-14 w-full skeleton-shimmer rounded-none" />
+                  <div className="h-14 w-full skeleton-shimmer rounded-xl" />
                 )}
 
                 {pitchData && !generatingPitch && (
-                  <div className="p-3 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-xs space-y-1.5">
+                  <div className="p-3 rounded-xl bg-[#171D2B] border border-[rgba(255,255,255,0.1)] text-xs space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-[#F5F6FA]">{pitchData.hook}</span>
+                      <span className="font-bold text-[#F7F8FC]">{pitchData.hook}</span>
                       <button
                         type="button"
                         onClick={handleCopyPitch}
-                        className="text-[#A4B0BE] hover:text-[#F5F6FA] flex items-center gap-1 text-[11px] font-mono"
+                        className="text-[#A4B0C6] hover:text-[#F7F8FC] flex items-center gap-1 text-[11px] font-mono"
                       >
-                        {copiedPitch ? <Check size={12} className="text-[#55E6C1]" /> : <Copy size={12} />}
+                        {copiedPitch ? <Check size={12} className="text-[#FFEEA8]" /> : <Copy size={12} />}
                         <span>{copiedPitch ? 'Copied' : 'Copy'}</span>
                       </button>
                     </div>
-                    <p className="text-[#A4B0BE] italic leading-relaxed text-[11px]">
+                    <p className="text-[#A4B0C6] italic leading-relaxed text-[11px]">
                       "{pitchData.pitch}"
                     </p>
                   </div>
@@ -536,7 +544,7 @@ const Marketplace = () => {
 
               <button
                 type="submit"
-                className="w-full btn btn-primary py-2.5 justify-center text-sm font-semibold mt-2 rounded-none"
+                className="w-full btn btn-primary py-2.5 justify-center text-sm font-semibold mt-2 rounded-xl"
               >
                 Send Swap Request
               </button>

@@ -64,9 +64,9 @@ function App() {
         containerStyle={{ zIndex: 500 }}
         toastOptions={{
           style: {
-            background: '#353B48',
-            color: '#F5F6FA',
-            border: '1px solid rgba(108, 92, 231, 0.4)',
+            background: '#283144',
+            color: '#F7F8FC',
+            border: '1px solid rgba(43, 63, 116, 0.4)',
             borderRadius: '0px',
             fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             fontSize: '0.875rem',
@@ -75,14 +75,14 @@ function App() {
           },
           success: {
             iconTheme: {
-              primary: '#55E6C1',
-              secondary: '#2F3640',
+              primary: '#FFEEA8',
+              secondary: '#202738',
             },
           },
           error: {
             iconTheme: {
-              primary: '#FF7675',
-              secondary: '#2F3640',
+              primary: '#D72E2B',
+              secondary: '#202738',
             },
           },
         }}
