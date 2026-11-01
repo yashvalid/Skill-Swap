@@ -90,14 +90,14 @@ const VideoCallModal = () => {
       
       {/* 1. Incoming Call Dialog (z-[300]) */}
       {callStatus === 'incoming' && (
-        <div className="z-[300] ui-card p-6 sm:p-8 rounded-none border border-[rgba(255,255,255,0.18)] shadow-2xl text-center max-w-sm w-full bg-[#353B48] animate-in fade-in duration-200">
-          <div className="w-20 h-20 rounded-none overflow-hidden mx-auto mb-4 border-2 border-[#55E6C1] shadow-lg bg-[#242A32] relative">
+        <div className="z-[300] ui-card p-6 sm:p-8 rounded-3xl border border-[rgba(255,255,255,0.18)] shadow-2xl text-center max-w-sm w-full bg-[#353B48] animate-in fade-in duration-200">
+          <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-2 border-[#55E6C1] shadow-lg bg-[#242A32] relative">
             <img
               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`}
               alt=""
               className="w-full h-full object-cover"
             />
-            <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#55E6C1] rounded-none animate-ping" />
+            <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#55E6C1] rounded-full animate-ping" />
           </div>
 
           <span className="tag-chip text-[9px] mb-2 inline-flex items-center gap-1">
@@ -116,7 +116,7 @@ const VideoCallModal = () => {
             <button 
               type="button"
               onClick={rejectCall}
-              className="w-12 h-12 rounded-none bg-[#FF7675] text-[#2F3640] flex items-center justify-center hover:bg-[#e05a59] active:translate-y-px transition-colors shadow-md font-bold cursor-pointer"
+              className="w-12 h-12 rounded-full bg-[#FF7675] text-[#2F3640] flex items-center justify-center hover:bg-[#e05a59] active:translate-y-px transition-colors shadow-md font-bold cursor-pointer"
               title="Decline"
             >
               <PhoneOff size={20} />
@@ -124,7 +124,7 @@ const VideoCallModal = () => {
             <button 
               type="button"
               onClick={acceptCall}
-              className="w-12 h-12 rounded-none bg-[#55E6C1] text-[#2F3640] font-bold flex items-center justify-center hover:bg-[#45d4af] active:translate-y-px transition-colors shadow-md cursor-pointer animate-pulse"
+              className="w-12 h-12 rounded-full bg-[#55E6C1] text-[#2F3640] font-bold flex items-center justify-center hover:bg-[#45d4af] active:translate-y-px transition-colors shadow-md cursor-pointer animate-pulse"
               title="Accept Call"
             >
               <Phone size={20} />
@@ -137,12 +137,12 @@ const VideoCallModal = () => {
       {(callStatus === 'calling' || callStatus === 'ongoing') && (
         <div 
           ref={containerRef}
-          className="z-[300] relative w-full h-full max-w-5xl max-h-[85vh] bg-[#1E232A] rounded-none overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] flex flex-col justify-between"
+          className="z-[300] relative w-full h-full max-w-5xl max-h-[85vh] bg-[#1E232A] rounded-3xl overflow-hidden shadow-2xl border border-[rgba(255,255,255,0.15)] flex flex-col justify-between"
         >
           {/* Top Call Status Bar */}
           <div className="p-3.5 px-5 bg-[#242A32]/95 backdrop-blur-md border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between z-20">
             <div className="flex items-center gap-3 min-w-0">
-              <span className={`w-2.5 h-2.5 rounded-none shrink-0 ${
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                 callStatus === 'ongoing' ? 'bg-[#55E6C1] animate-pulse' : 'bg-[#FFA502]'
               }`} />
               <div className="truncate">
@@ -165,7 +165,7 @@ const VideoCallModal = () => {
               <button
                 type="button"
                 onClick={toggleFullscreen}
-                className="p-1.5 rounded-none bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.16)] text-[#F5F6FA] cursor-pointer"
+                className="p-1.5 rounded-lg bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.16)] text-[#F5F6FA] cursor-pointer"
                 title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
               >
                 {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -174,7 +174,7 @@ const VideoCallModal = () => {
               <button
                 type="button"
                 onClick={endCall}
-                className="p-1.5 rounded-none bg-[#FF7675]/20 hover:bg-[#FF7675] text-[#FF7675] hover:text-[#2F3640] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#FF7675]/20 hover:bg-[#FF7675] text-[#FF7675] hover:text-[#2F3640] transition-colors cursor-pointer"
                 title="End Call"
               >
                 <X size={16} />
@@ -193,7 +193,7 @@ const VideoCallModal = () => {
               />
             ) : (
               <div className="flex flex-col items-center justify-center text-[#F5F6FA] gap-4 p-8 text-center">
-                <div className="w-24 h-24 rounded-none overflow-hidden bg-[#242A32] flex items-center justify-center border border-[rgba(255,255,255,0.15)] shadow-xl relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#242A32] flex items-center justify-center border border-[rgba(255,255,255,0.15)] shadow-xl relative">
                   <img
                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`}
                     alt=""
@@ -215,7 +215,7 @@ const VideoCallModal = () => {
             )}
 
             {/* Local Video Picture-in-Picture (PiP) */}
-            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 w-28 sm:w-56 aspect-video bg-[#242A32] rounded-none overflow-hidden border border-[rgba(255,255,255,0.25)] shadow-2xl z-10">
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 w-28 sm:w-56 aspect-video bg-[#242A32] rounded-2xl overflow-hidden border border-[rgba(255,255,255,0.25)] shadow-2xl z-10">
               <video 
                 ref={localVideoRef} 
                 autoPlay 
@@ -241,7 +241,7 @@ const VideoCallModal = () => {
             <button 
               type="button"
               onClick={toggleMic}
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                 isMuted 
                   ? 'bg-[#FF7675] text-[#2F3640] shadow-md font-bold' 
                   : 'bg-[#2F3640] border border-[rgba(255,255,255,0.15)] hover:bg-[#353B48] text-[#F5F6FA]'
@@ -255,7 +255,7 @@ const VideoCallModal = () => {
             <button 
               type="button"
               onClick={toggleVideo}
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                 isVideoDisabled 
                   ? 'bg-[#FF7675] text-[#2F3640] shadow-md font-bold' 
                   : 'bg-[#2F3640] border border-[rgba(255,255,255,0.15)] hover:bg-[#353B48] text-[#F5F6FA]'
@@ -270,7 +270,7 @@ const VideoCallModal = () => {
               type="button"
               onClick={toggleScreenShare}
               disabled={callStatus !== 'ongoing'}
-              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-none flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
                 isScreenSharing 
                   ? 'bg-[#55E6C1] text-[#2F3640] shadow-md font-bold' 
                   : 'bg-[#2F3640] border border-[rgba(255,255,255,0.15)] hover:bg-[#353B48] text-[#F5F6FA]'
@@ -284,7 +284,7 @@ const VideoCallModal = () => {
             <button 
               type="button"
               onClick={endCall}
-              className="h-10 sm:h-11 px-3 sm:px-6 rounded-none bg-[#FF7675] hover:bg-[#e05a59] text-[#2F3640] flex items-center gap-1.5 sm:gap-2 font-bold transition-colors shadow-md cursor-pointer ml-1 sm:ml-2 shrink-0"
+              className="h-10 sm:h-11 px-3 sm:px-6 rounded-full bg-[#FF7675] hover:bg-[#e05a59] text-[#2F3640] flex items-center gap-1.5 sm:gap-2 font-bold transition-colors shadow-md cursor-pointer ml-1 sm:ml-2 shrink-0"
               title="Terminate Call"
             >
               <PhoneOff size={16} />

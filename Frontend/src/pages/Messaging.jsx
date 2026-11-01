@@ -581,7 +581,7 @@ const Messaging = () => {
   if (!currentUser) {
     return (
       <div className="py-24 text-center max-w-md mx-auto px-6">
-        <div className="ui-card p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+        <div className="ui-card p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-2xl">
           <h3 className="heading-h2 text-[#F5F6FA] mb-2">Authentication Required</h3>
           <p className="body-md text-xs text-[#A4B0BE] mb-6">
             Sign in to coordinate with mentors and message your active swap partners.
@@ -596,7 +596,7 @@ const Messaging = () => {
 
   return (
     <div className="max-w-[1280px] mx-auto px-2 sm:px-6 py-2 sm:py-8">
-      <div className="ui-card bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none overflow-hidden h-[calc(100dvh-5rem)] sm:h-[78vh] flex shadow-2xl">
+      <div className="ui-card bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-2xl overflow-hidden h-[calc(100dvh-5rem)] sm:h-[78vh] flex shadow-2xl">
         
         {/* Left Side: Channel List */}
         <div className={`w-full md:w-80 border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#2B313A] shrink-0 ${
@@ -620,7 +620,7 @@ const Messaging = () => {
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field pl-8 py-1.5 text-xs rounded-none bg-[#2B313A]"
+                className="input-field pl-8 py-1.5 text-xs rounded-xl bg-[#2B313A]"
               />
             </div>
           </div>
@@ -630,13 +630,13 @@ const Messaging = () => {
             {/* SkillBot */}
             <div
               onClick={() => handleSelectChat(SKILLBOT_USER)}
-              className={`p-3 rounded-none flex items-center gap-3 cursor-pointer transition-colors border ${
+              className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-colors border ${
                 activeChatUser?.isBot
                   ? 'bg-[#6C5CE7] text-white border-[#6C5CE7] font-semibold'
                   : 'hover:bg-[#242A32] border-transparent text-[#F5F6FA]'
               }`}
             >
-              <div className={`w-9 h-9 rounded-none flex items-center justify-center shrink-0 font-mono font-bold text-xs ${
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-mono font-bold text-xs ${
                 activeChatUser?.isBot ? 'bg-[#2F3640] text-[#55E6C1]' : 'bg-[#55E6C1] text-[#2F3640]'
               }`}>
                 <Bot size={18} />
@@ -644,7 +644,7 @@ const Messaging = () => {
               <div className="flex-grow min-w-0">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-xs tracking-wide">SkillBot</span>
-                  <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded-none font-semibold ${
+                  <span className={`font-mono text-[9px] px-2 py-0.5 rounded-full font-semibold ${
                     activeChatUser?.isBot ? 'bg-[#2F3640] text-[#55E6C1]' : 'bg-[#242A32] text-[#55E6C1]'
                   }`}>
                     AI BOT
@@ -674,13 +674,13 @@ const Messaging = () => {
                 <div
                   key={chat.swapId || partner._id}
                   onClick={() => handleSelectChat(partner)}
-                  className={`p-2.5 rounded-none flex items-center gap-3 cursor-pointer transition-colors border ${
+                  className={`p-2.5 rounded-xl flex items-center gap-3 cursor-pointer transition-colors border ${
                     isSelected
                       ? 'bg-[#353B48] border-[#6C5CE7] text-[#F5F6FA] font-bold'
                       : 'hover:bg-[#242A32] border-transparent text-[#A4B0BE]'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {initials}
                   </div>
                   <div className="flex-grow min-w-0">
@@ -730,13 +730,13 @@ const Messaging = () => {
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     onClick={() => setMobileView('list')}
-                    className="md:hidden p-1.5 rounded-none hover:bg-[#242A32] text-[#A4B0BE] shrink-0"
+                    className="md:hidden p-1.5 rounded-lg hover:bg-[#242A32] text-[#A4B0BE] shrink-0"
                     aria-label="Back"
                   >
                     <ArrowLeft size={16} />
                   </button>
 
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {activeChatUser.isBot ? <Bot size={16} /> : (activeChatUser.fullname?.firstname?.[0] || 'U')}
                   </div>
                   <div className="min-w-0">
@@ -745,7 +745,7 @@ const Messaging = () => {
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="font-mono text-[9px] sm:text-[10px] text-[#55E6C1] font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#55E6C1]" />
                         {activeChatUser.isBot ? 'AI TUTOR' : 'PARTNER'}
                       </span>
                       {!activeChatUser.isBot && isE2EEActive && (
@@ -789,7 +789,7 @@ const Messaging = () => {
                 className="flex-grow p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-3.5 bg-[#2F3640]"
               >
                 {activeChatUser.isBot && (
-                  <div className="mb-4 p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
+                  <div className="mb-4 p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
                     <span className="font-mono text-[10px] text-[#A4B0BE] uppercase block mb-2 font-semibold">
                       Suggested Prompts
                     </span>
@@ -829,8 +829,8 @@ const Messaging = () => {
                                               msg.text?.includes('Declined');
                     return (
                       <div key={msg._id} className="flex justify-center my-2.5">
-                        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#242A32] border border-[rgba(255,255,255,0.12)] rounded-none shadow-sm max-w-md w-full sm:w-auto">
-                          <div className={`w-8 h-8 rounded-none flex items-center justify-center shrink-0 ${
+                        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#242A32] border border-[rgba(255,255,255,0.12)] rounded-xl shadow-sm max-w-md w-full sm:w-auto">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                             isMissedOrDeclined 
                               ? 'bg-[#FF7675]/20 text-[#FF7675] border border-[rgba(255,118,117,0.3)]' 
                               : 'bg-[#55E6C1]/20 text-[#55E6C1] border border-[rgba(85,230,193,0.3)]'
@@ -849,7 +849,7 @@ const Messaging = () => {
                             <button
                               type="button"
                               onClick={() => startCall(activeChatUser)}
-                              className="px-2.5 py-1 text-[11px] font-mono bg-[#6C5CE7] hover:bg-[#5b4bd8] text-white rounded-none shrink-0 transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-mono bg-[#6C5CE7] hover:bg-[#5b4bd8] text-white rounded-lg shrink-0 transition-colors cursor-pointer"
                               title="Start Video Call"
                             >
                               Call Back
@@ -864,7 +864,7 @@ const Messaging = () => {
                     <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] sm:max-w-[70%] ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                         <div
-                          className={`px-4 py-2.5 rounded-none text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
+                          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                             isMe
                               ? 'bg-[#6C5CE7] text-white font-medium shadow-sm'
                               : isBotMsg
@@ -890,7 +890,7 @@ const Messaging = () => {
                 {/* Shimmer skeleton for bot response (no circular spinner per DESIGN.md) */}
                 {botLoading && (
                   <div className="flex justify-start w-64">
-                    <div className="p-3 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] w-full space-y-2">
+                    <div className="p-3 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.1)] w-full space-y-2">
                       <div className="h-3 w-1/3 skeleton-shimmer" />
                       <div className="h-4 w-full skeleton-shimmer" />
                       <div className="h-4 w-4/5 skeleton-shimmer" />
@@ -928,12 +928,12 @@ const Messaging = () => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={activeChatUser.isBot ? "Ask SkillBot anything..." : "Write a message..."}
-                    className="input-field text-xs sm:text-sm py-2 px-3 rounded-none bg-[#242A32]"
+                    className="input-field text-xs sm:text-sm py-2 px-3 rounded-xl bg-[#242A32]"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim()}
-                    className="btn btn-primary text-xs py-2 px-3 sm:px-4 rounded-none shrink-0 disabled:opacity-40"
+                    className="btn btn-primary text-xs py-2 px-3 sm:px-4 rounded-xl shrink-0 disabled:opacity-40"
                   >
                     <Send size={14} />
                     <span className="hidden sm:inline">Send</span>

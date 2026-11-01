@@ -75,7 +75,7 @@ const Login = () => {
         {/* Brand Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-3 group">
-            <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white font-bold flex items-center justify-center transition-transform group-hover:scale-105">
+            <div className="w-8 h-8 rounded-xl bg-[#6C5CE7] text-white font-bold flex items-center justify-center transition-transform group-hover:scale-105">
               <ArrowLeftRight size={17} strokeWidth={2.5} />
             </div>
             <span className="font-bold text-xl tracking-[-0.025em] text-[#F5F6FA]">
@@ -93,14 +93,14 @@ const Login = () => {
         </div>
 
         {/* Form Card */}
-        <div className="ui-card rounded-none p-4 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] shadow-2xl">
+        <div className="ui-card rounded-2xl p-4 sm:p-8 bg-[#353B48] border border-[rgba(255,255,255,0.12)] shadow-2xl">
           
           {/* Segmented Switcher */}
-          <div className="flex p-1 bg-[#242A32] rounded-none mb-6 border border-[rgba(255,255,255,0.1)]">
+          <div className="flex p-1 bg-[#242A32] rounded-xl mb-6 border border-[rgba(255,255,255,0.1)]">
             <button
               type="button"
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 rounded-none text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
                 isLogin
                   ? 'bg-[#6C5CE7] text-white font-bold shadow-xs'
                   : 'text-[#A4B0BE] hover:text-[#F5F6FA]'
@@ -111,7 +111,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 rounded-none text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs font-mono font-medium uppercase tracking-tight transition-colors ${
                 !isLogin
                   ? 'bg-[#6C5CE7] text-white font-bold shadow-xs'
                   : 'text-[#A4B0BE] hover:text-[#F5F6FA]'
@@ -140,7 +140,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Alex" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -160,7 +160,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Chen" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -182,7 +182,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Frontend Architect" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -202,7 +202,7 @@ const Login = () => {
                         type="text" 
                         required
                         placeholder="Remote" 
-                        className="input-field pl-8 rounded-none"
+                        className="input-field pl-8"
                       />
                     </div>
                   </div>
@@ -222,7 +222,7 @@ const Login = () => {
                       onChange={handleChange}
                       required
                       placeholder="Share what skills you have mastered and what you want to learn..." 
-                      className="input-field pl-8 min-h-[70px] resize-none rounded-none"
+                      className="input-field pl-8 min-h-[70px] resize-none"
                     />
                   </div>
                 </div>
@@ -244,7 +244,7 @@ const Login = () => {
                   type="email" 
                   required
                   placeholder="alex.chen@example.com" 
-                  className="input-field pl-8 rounded-none"
+                  className="input-field pl-8"
                 />
               </div>
             </div>
@@ -264,7 +264,7 @@ const Login = () => {
                   type="password" 
                   required
                   placeholder="••••••••" 
-                  className="input-field pl-8 rounded-none"
+                  className="input-field pl-8"
                 />
               </div>
             </div>
@@ -277,7 +277,7 @@ const Login = () => {
                     id="privacyPolicyConsent"
                     checked={agreedToPolicy}
                     onChange={(e) => setAgreedToPolicy(e.target.checked)}
-                    className="mt-1 w-4 h-4 rounded-none accent-[#6C5CE7] cursor-pointer shrink-0"
+                    className="mt-1 w-4 h-4 rounded accent-[#6C5CE7] cursor-pointer shrink-0"
                     required
                   />
                   <label htmlFor="privacyPolicyConsent" className="text-xs text-[#A4B0BE] leading-relaxed cursor-pointer select-none">
@@ -308,7 +308,7 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-none"
+              className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-xl"
             >
               <span>{isLogin ? 'Sign In to Account' : 'Create Your Account'}</span>
               <ArrowRight size={15} />
@@ -325,7 +325,7 @@ const Login = () => {
       {/* Privacy Policy Reader Modal */}
       {showPolicyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="relative w-full max-w-2xl bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl rounded-2xl flex flex-col max-h-[85vh]">
             
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#242A32]">

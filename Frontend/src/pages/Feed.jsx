@@ -275,7 +275,7 @@ const Feed = () => {
                     className="flex items-center gap-3.5 cursor-pointer group"
                     onClick={() => post.user?._id && navigate(`/profile/${post.user._id}`)}
                   >
-                    <div className="w-10 h-10 rounded-none overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
+                    <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
                       <img
                         src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user?.fullname?.firstname || 'Builder'}`}
                         alt=""
@@ -327,7 +327,7 @@ const Feed = () => {
                       {/* Like Button */}
                       <button
                         onClick={() => handleLike(post._id)}
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-none border transition-colors ${
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                           isLiked
                             ? 'bg-[rgba(255,118,117,0.15)] text-[#FF7675] border-[rgba(255,118,117,0.4)]'
                             : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)] hover:border-[#FF7675]/40 hover:text-[#FF7675]'
@@ -340,7 +340,7 @@ const Feed = () => {
                       {/* Comments Toggle */}
                       <button
                         onClick={() => toggleComments(post._id)}
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-none border transition-colors ${
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                           isCommentsOpen
                             ? 'bg-[#6C5CE7] text-white border-[#6C5CE7]'
                             : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7] hover:text-[#F5F6FA]'
@@ -353,7 +353,7 @@ const Feed = () => {
 
                     <button
                       onClick={() => handleShare(post._id)}
-                      className="p-2 rounded-none text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
+                      className="p-2 rounded-xl text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
                       title="Share link"
                     >
                       <Share2 size={16} />
@@ -371,8 +371,8 @@ const Feed = () => {
                           </div>
                         ) : postComments.length > 0 ? (
                           postComments.map((comment) => (
-                            <div key={comment._id} className="flex gap-3 items-start text-xs bg-[#2B313A] p-3 rounded-none border border-[rgba(255,255,255,0.08)]">
-                              <div className="w-7 h-7 rounded-none overflow-hidden bg-[#242A32] shrink-0 border border-[rgba(255,255,255,0.1)]">
+                            <div key={comment._id} className="flex gap-3 items-start text-xs bg-[#2B313A] p-3 rounded-xl border border-[rgba(255,255,255,0.08)]">
+                              <div className="w-7 h-7 rounded-2xl overflow-hidden bg-[#242A32] shrink-0 border border-[rgba(255,255,255,0.1)]">
                                 <img
                                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.fullname?.firstname || 'U'}`}
                                   alt=""
@@ -459,21 +459,21 @@ const Feed = () => {
                   Media Attachment
                 </label>
                 {!previewUrl ? (
-                  <label className="border-2 border-dashed border-[rgba(255,255,255,0.15)] hover:border-[#6C5CE7] rounded-none p-8 flex flex-col items-center justify-center gap-2 bg-[#2B313A] hover:bg-[#2B313A]/80 cursor-pointer transition-colors">
+                  <label className="border-2 border-dashed border-[rgba(255,255,255,0.15)] hover:border-[#6C5CE7] rounded-2xl p-8 flex flex-col items-center justify-center gap-2 bg-[#2B313A] hover:bg-[#2B313A]/80 cursor-pointer transition-colors">
                     <input
                       type="file"
                       onChange={handleFileChange}
                       accept="image/*,video/*"
                       className="hidden"
                     />
-                    <div className="w-10 h-10 rounded-none bg-[#242A32] flex items-center justify-center text-[#55E6C1]">
+                    <div className="w-10 h-10 rounded-xl bg-[#242A32] flex items-center justify-center text-[#55E6C1]">
                       <ImageIcon size={20} />
                     </div>
                     <p className="text-xs font-semibold text-[#F5F6FA]">Upload screenshot or video clip</p>
                     <p className="font-mono text-[10px] text-[#718093]">PNG, JPG, MP4 up to 25MB</p>
                   </label>
                 ) : (
-                  <div className="relative rounded-none overflow-hidden aspect-video bg-[#242A32] group border border-[rgba(255,255,255,0.12)]">
+                  <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#242A32] group border border-[rgba(255,255,255,0.12)]">
                     {selectedFile.type.startsWith('video') ? (
                       <video src={previewUrl} className="w-full h-full object-contain" />
                     ) : (

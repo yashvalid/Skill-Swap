@@ -27,7 +27,7 @@ const Footer = () => {
               <span className="font-bold text-lg tracking-[-0.025em] text-[#F5F6FA]">
                 SKILLSWAP
               </span>
-              <span className="font-mono text-[10px] uppercase px-1.5 py-0.5 rounded-none bg-[rgba(85,230,193,0.12)] border border-[rgba(85,230,193,0.3)] text-[#55E6C1]">
+              <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-[rgba(85,230,193,0.12)] border border-[rgba(85,230,193,0.3)] text-[#55E6C1]">
                 V2.0
               </span>
             </div>

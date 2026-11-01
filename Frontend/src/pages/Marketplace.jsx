@@ -270,7 +270,7 @@ const Marketplace = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by skill (e.g. React, Spanish, Video Editing, Guitar)..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.15)] focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7] focus:ring-offset-2 focus:ring-offset-[#2F3640] text-sm text-[#F5F6FA] placeholder-[#718093] outline-none transition-colors"
+            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.15)] focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7] focus:ring-offset-2 focus:ring-offset-[#2F3640] text-sm text-[#F5F6FA] placeholder-[#718093] outline-none transition-colors"
           />
           {searchTerm && (
             <button
@@ -283,12 +283,12 @@ const Marketplace = () => {
         </div>
 
         {/* Category Pills */}
-        <div className="flex gap-1.5 p-1 bg-[#2B313A] rounded-none overflow-x-auto border border-[rgba(255,255,255,0.1)] scrollbar-none touch-pan-x">
+        <div className="flex gap-1.5 p-1 bg-[#2B313A] rounded-xl overflow-x-auto border border-[rgba(255,255,255,0.1)] scrollbar-none touch-pan-x">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-none text-xs font-medium tracking-tight transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium tracking-tight transition-colors whitespace-nowrap ${
                 activeCategory === cat
                   ? 'bg-[#6C5CE7] text-white font-semibold shadow-xs'
                   : 'text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#242A32]'
@@ -302,7 +302,7 @@ const Marketplace = () => {
 
       {/* Grid of Mentors */}
       {filteredUsers.length === 0 ? (
-        <div className="ui-card p-12 text-center max-w-md mx-auto my-12 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-none">
+        <div className="ui-card p-12 text-center max-w-md mx-auto my-12 bg-[#353B48] border border-[rgba(255,255,255,0.12)] rounded-2xl">
           <div className="w-12 h-12 rounded-none bg-[#242A32] text-[#55E6C1] flex items-center justify-center mx-auto mb-3">
             <Inbox size={22} />
           </div>
@@ -325,7 +325,7 @@ const Marketplace = () => {
             return (
               <div
                 key={u._id}
-                className="ui-card p-6 flex flex-col justify-between group bg-[#353B48] border border-[rgba(255,255,255,0.12)] hover:border-[#6C5CE7] rounded-none"
+                className="ui-card p-6 flex flex-col justify-between group bg-[#353B48] border border-[rgba(255,255,255,0.12)] hover:border-[#6C5CE7] rounded-2xl"
               >
                 <div>
                   {/* Header: Avatar, Name, Rating */}
@@ -334,7 +334,7 @@ const Marketplace = () => {
                       className="flex items-center gap-3 cursor-pointer"
                       onClick={() => navigate(`/profile/${u._id}`)}
                     >
-                      <div className="w-11 h-11 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-sm flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-full bg-[#6C5CE7] text-white font-mono font-bold text-sm flex items-center justify-center shrink-0">
                         {initials}
                       </div>
                       <div>
@@ -347,7 +347,7 @@ const Marketplace = () => {
                       </div>
                     </div>
 
-                    <span className="font-mono text-xs font-semibold text-[#55E6C1] bg-[#242A32] px-2 py-0.5 rounded-none border border-[rgba(85,230,193,0.3)] flex items-center gap-1">
+                    <span className="font-mono text-xs font-semibold text-[#55E6C1] bg-[#242A32] px-2.5 py-0.5 rounded-full border border-[rgba(85,230,193,0.3)] flex items-center gap-1">
                       <Star size={11} fill="currentColor" className="text-[#FFA502]" />
                       <span>{u.averageRating?.toFixed(1) || '5.0'}</span>
                     </span>
@@ -359,7 +359,7 @@ const Marketplace = () => {
                   </p>
 
                   {/* Offers Section */}
-                  <div className="space-y-1.5 mb-3 bg-[#2B313A] p-3 rounded-none border border-[rgba(255,255,255,0.08)]">
+                  <div className="space-y-1.5 mb-3 bg-[#2B313A] p-3 rounded-xl border border-[rgba(255,255,255,0.08)]">
                     <span className="font-mono text-[10px] uppercase font-bold text-[#55E6C1] block">
                       Teaches
                     </span>
@@ -385,7 +385,7 @@ const Marketplace = () => {
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {u.skillsNeeded.slice(0, 2).map((sk, i) => (
-                          <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-[#A4B0BE]">
+                          <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-[#A4B0BE]">
                             {sk}
                           </span>
                         ))}
@@ -417,8 +417,8 @@ const Marketplace = () => {
       {/* Guest Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {guestModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-8 max-w-md w-full bg-[#353B48] text-center border border-[rgba(255,255,255,0.15)] shadow-2xl">
-            <div className="w-12 h-12 rounded-none bg-[#2B313A] text-[#55E6C1] flex items-center justify-center mx-auto mb-4 border border-[rgba(85,230,193,0.3)]">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-8 max-w-md w-full bg-[#353B48] text-center border border-[rgba(255,255,255,0.15)] shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-[#2B313A] text-[#55E6C1] flex items-center justify-center mx-auto mb-4 border border-[rgba(85,230,193,0.3)]">
               <ArrowLeftRight size={20} strokeWidth={2.5} />
             </div>
             <h3 className="heading-h2 text-[#F5F6FA] mb-2">
@@ -445,7 +445,7 @@ const Marketplace = () => {
       {/* Propose Swap Modal: z-index overlay (200), modal (300) */}
       {selectedUser && !guestModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-4 sm:p-8 w-full max-w-lg bg-[#353B48] shadow-2xl border border-[rgba(255,255,255,0.15)] max-h-[90vh] overflow-y-auto">
+          <div className="z-[300] ui-card rounded-2xl p-4 sm:p-8 w-full max-w-lg bg-[#353B48] shadow-2xl border border-[rgba(255,255,255,0.15)] max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">
@@ -457,7 +457,7 @@ const Marketplace = () => {
               </div>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="p-1 rounded-none hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]"
+                className="p-1 rounded-lg hover:bg-[#2B313A] text-[#A4B0BE] hover:text-[#F5F6FA]"
                 aria-label="Close modal"
               >
                 <X size={18} />
@@ -475,7 +475,7 @@ const Marketplace = () => {
                   onChange={(e) => setSwapData({ ...swapData, offersSkill: e.target.value })}
                   required
                   placeholder="e.g. Modern React & TypeScript Architecture"
-                  className="input-field rounded-none"
+                  className="input-field"
                 />
               </div>
 
@@ -489,12 +489,12 @@ const Marketplace = () => {
                   onChange={(e) => setSwapData({ ...swapData, requestsSkill: e.target.value })}
                   required
                   placeholder="e.g. Figma Design Systems"
-                  className="input-field rounded-none"
+                  className="input-field"
                 />
               </div>
 
               {/* AI Proposal Pitch Helper */}
-              <div className="p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] space-y-2">
+              <div className="p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.1)] space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-semibold text-[#F5F6FA] flex items-center gap-1.5">
                     <Sparkles size={13} className="text-[#55E6C1]" /> Proposal Assistant
@@ -511,11 +511,11 @@ const Marketplace = () => {
                 </div>
 
                 {generatingPitch && (
-                  <div className="h-14 w-full skeleton-shimmer rounded-none" />
+                  <div className="h-14 w-full skeleton-shimmer rounded-xl" />
                 )}
 
                 {pitchData && !generatingPitch && (
-                  <div className="p-3 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-xs space-y-1.5">
+                  <div className="p-3 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.1)] text-xs space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-[#F5F6FA]">{pitchData.hook}</span>
                       <button
@@ -536,7 +536,7 @@ const Marketplace = () => {
 
               <button
                 type="submit"
-                className="w-full btn btn-primary py-2.5 justify-center text-sm font-semibold mt-2 rounded-none"
+                className="w-full btn btn-primary py-2.5 justify-center text-sm font-semibold mt-2 rounded-xl"
               >
                 Send Swap Request
               </button>

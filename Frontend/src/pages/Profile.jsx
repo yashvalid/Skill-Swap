@@ -176,7 +176,7 @@ const Profile = () => {
             
             {/* Avatar Frame */}
             <div className="relative group shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-none overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#242A32] shadow-md">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border-2 border-[rgba(255,255,255,0.2)] bg-[#242A32] shadow-md">
                 <img
                   src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullname?.firstname || 'User'}`}
                   alt={user.fullname?.firstname}
@@ -269,7 +269,7 @@ const Profile = () => {
               </div>
               <div className="space-y-3">
                 {offeredSkills.map(s => (
-                  <div key={s._id} className="p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#6C5CE7] transition-colors">
+                  <div key={s._id} className="p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#6C5CE7] transition-colors">
                     <div>
                       <p className="font-bold text-xs text-[#F5F6FA]">{s.skillname}</p>
                       <p className="text-[11px] text-[#A4B0BE] mt-1">{s.description}</p>
@@ -302,7 +302,7 @@ const Profile = () => {
               </div>
               <div className="space-y-3">
                 {skillsToLearn.map(s => (
-                  <div key={s._id} className="p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#6C5CE7] transition-colors">
+                  <div key={s._id} className="p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)] flex justify-between items-start group hover:border-[#6C5CE7] transition-colors">
                     <div>
                       <p className="font-bold text-xs text-[#F5F6FA]">{s.skillToLearn}</p>
                       <p className="text-[11px] text-[#A4B0BE] mt-1">{s.description}</p>
@@ -339,13 +339,13 @@ const Profile = () => {
                         setEditPostData({ id: post._id, content: post.content });
                         setShowEditPost(true);
                       }}
-                      className="p-1.5 rounded-none text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
+                      className="p-1.5 rounded-xl text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A] transition-colors"
                     >
                       <Edit size={14} />
                     </button>
                     <button
                       onClick={() => handleDeletePost(post._id)}
-                      className="p-1.5 rounded-none text-[#A4B0BE] hover:text-[#FF7675] hover:bg-[rgba(255,118,117,0.1)] transition-colors"
+                      className="p-1.5 rounded-xl text-[#A4B0BE] hover:text-[#FF7675] hover:bg-[rgba(255,118,117,0.1)] transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -359,7 +359,7 @@ const Profile = () => {
                   </p>
 
                   {post.mediaUrl && (
-                    <div className="rounded-none overflow-hidden aspect-video bg-[#242A32] max-h-64 border border-[rgba(255,255,255,0.1)]">
+                    <div className="rounded-2xl overflow-hidden aspect-video bg-[#242A32] max-h-64 border border-[rgba(255,255,255,0.1)]">
                       {post.mediaType === 'video' ? (
                         <video src={post.mediaUrl} controls className="w-full h-full object-contain" />
                       ) : (
@@ -412,7 +412,7 @@ const Profile = () => {
       {/* Add Skill Modal: z-index overlay (200), modal (300) per DESIGN.md */}
       {showAddSkill && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">REGISTRY</span>
@@ -466,7 +466,7 @@ const Profile = () => {
       {/* Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">SETTINGS</span>
@@ -478,7 +478,7 @@ const Profile = () => {
             </div>
 
             {/* AI Synthesizer Box */}
-            <div className="p-3.5 mb-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] space-y-2">
+            <div className="p-3.5 mb-4 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.1)] space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#F5F6FA] flex items-center gap-1.5 font-mono">
                   <Sparkles size={13} className="text-[#55E6C1]" /> AI Bio Assistant
@@ -531,7 +531,7 @@ const Profile = () => {
       {/* Edit Showcase Modal */}
       {showEditPost && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="z-[300] ui-card rounded-none p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
+          <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#353B48] border border-[rgba(255,255,255,0.15)] shadow-2xl">
             <div className="flex justify-between items-center mb-5 pb-3 border-b border-[rgba(255,255,255,0.1)]">
               <div>
                 <span className="tag-chip text-[9px] mb-1 inline-block">UPDATE</span>

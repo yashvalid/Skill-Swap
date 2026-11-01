@@ -50,7 +50,7 @@ const LandingPage = () => {
           {/* Left Column: Headline and Callouts */}
           <div className="lg:col-span-7 space-y-6 text-left">
             <div className="inline-flex items-center gap-2 tag-chip">
-              <span className="w-2 h-2 rounded-none bg-[#55E6C1]" />
+              <span className="w-2 h-2 rounded-full bg-[#55E6C1]" />
               <span>DIRECT PEER LEARNING</span>
             </div>
 
@@ -88,12 +88,12 @@ const LandingPage = () => {
 
           {/* Right Column: Visual 2D Poster Card on Solid Surface */}
           <div className="lg:col-span-5 flex justify-center">
-            <div className="w-full max-w-md ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] relative shadow-xl">
+            <div className="w-full max-w-md ui-card p-6 bg-[#353B48] rounded-2xl border border-[rgba(255,255,255,0.12)] relative shadow-xl">
               
               {/* Card Header */}
               <div className="flex items-center justify-between pb-4 border-b border-[rgba(255,255,255,0.1)] mb-5">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-none bg-[#55E6C1]" />
+                  <span className="w-2 h-2 rounded-full bg-[#55E6C1]" />
                   <span className="font-mono text-xs font-semibold tracking-wide text-[#F5F6FA]">
                     ACTIVE EXCHANGE PAIR
                   </span>
@@ -106,7 +106,7 @@ const LandingPage = () => {
               {/* Partner A */}
               <div className="p-3.5 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-none bg-[#6C5CE7] text-white font-mono font-bold flex items-center justify-center text-sm">
+                  <div className="w-10 h-10 rounded-full bg-[#6C5CE7] text-white font-mono font-bold flex items-center justify-center text-sm">
                     SL
                   </div>
                   <div>
@@ -121,7 +121,7 @@ const LandingPage = () => {
 
               {/* Swap Direction Icon */}
               <div className="flex items-center justify-center my-2">
-                <div className="w-8 h-8 rounded-none bg-[#FF7675] text-[#2F3640] flex items-center justify-center shadow-md">
+                <div className="w-8 h-8 rounded-xl bg-[#FF7675] text-[#2F3640] flex items-center justify-center shadow-md">
                   <ArrowLeftRight size={15} strokeWidth={2.5} />
                 </div>
               </div>
@@ -129,7 +129,7 @@ const LandingPage = () => {
               {/* Partner B */}
               <div className="p-3.5 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-none bg-[#353B48] text-[#55E6C1] border border-[rgba(85,230,193,0.3)] font-mono font-bold flex items-center justify-center text-sm">
+                  <div className="w-10 h-10 rounded-full bg-[#353B48] text-[#55E6C1] border border-[rgba(85,230,193,0.3)] font-mono font-bold flex items-center justify-center text-sm">
                     MT
                   </div>
                   <div>
@@ -148,7 +148,7 @@ const LandingPage = () => {
                   <span className="text-[#A4B0BE]">Swap Progress</span>
                   <span className="text-[#F5F6FA] font-semibold">Week 3 of 4</span>
                 </div>
-                <div className="w-full h-2 rounded-none bg-[#2F3640] overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-[#2F3640] overflow-hidden">
                   <div className="h-full bg-[#6C5CE7] w-3/4" />
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-[#A4B0BE] pt-1">
@@ -192,7 +192,7 @@ const LandingPage = () => {
                   <button
                     key={skill}
                     onClick={() => handleSimulate(skill, wantSkill)}
-                    className={`text-[11px] sm:text-xs p-2.5 sm:p-3 rounded-none border text-left font-medium leading-snug transition-colors duration-150 ${
+                    className={`text-[11px] sm:text-xs p-2.5 sm:p-3 rounded-xl border text-left font-medium leading-snug transition-colors duration-150 ${
                       mySkill === skill
                         ? 'bg-[#6C5CE7] text-white border-[#6C5CE7] font-bold shadow-sm'
                         : 'bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7]'
@@ -213,7 +213,7 @@ const LandingPage = () => {
                   <button
                     key={skill}
                     onClick={() => handleSimulate(mySkill, skill)}
-                    className={`text-[11px] sm:text-xs p-2.5 sm:p-3 rounded-none border text-left font-medium leading-snug transition-colors duration-150 ${
+                    className={`text-[11px] sm:text-xs p-2.5 sm:p-3 rounded-xl border text-left font-medium leading-snug transition-colors duration-150 ${
                       wantSkill === skill
                         ? 'bg-[#242A32] text-[#55E6C1] border-[#55E6C1] font-bold shadow-sm ring-1 ring-[#55E6C1]'
                         : 'bg-[#2B313A] text-[#F5F6FA] border-[rgba(255,255,255,0.1)] hover:border-[#55E6C1]'
@@ -227,7 +227,7 @@ const LandingPage = () => {
           </div>
 
           {/* Computed Pairing Box */}
-          <div className="md:col-span-5 bg-[#2B313A] p-6 rounded-none border border-[rgba(255,255,255,0.1)] space-y-4">
+          <div className="md:col-span-5 bg-[#2B313A] p-6 rounded-2xl border border-[rgba(255,255,255,0.1)] space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.08)]">
               <span className="font-mono text-xs text-[#A4B0BE] uppercase">Match Compatibility</span>
               <span className="tag-chip-orange text-xs font-bold">
@@ -244,7 +244,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div className="p-3 bg-[#242A32] rounded-none border border-[rgba(255,255,255,0.08)] space-y-1">
+            <div className="p-3 bg-[#242A32] rounded-xl border border-[rgba(255,255,255,0.08)] space-y-1">
               <p className="font-mono text-[10px] text-[#55E6C1] uppercase font-semibold">Suggested Schedule</p>
               <p className="text-xs text-[#A4B0BE] leading-relaxed">
                 4-week structured exchange with weekly 45-minute live practice sessions, milestone tracking, and shared progress reviews.
@@ -292,10 +292,10 @@ const LandingPage = () => {
           </div>
 
           <div className="md:col-span-6">
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)]">
+            <div className="ui-card p-6 bg-[#353B48] rounded-2xl border border-[rgba(255,255,255,0.12)]">
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-[rgba(255,255,255,0.08)]">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-none bg-[#55E6C1] animate-pulse" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#55E6C1] animate-pulse" />
                   <span className="font-mono text-xs text-[#F5F6FA] font-bold">LIVE SWAP SESSION</span>
                 </div>
                 <span className="font-mono text-[10px] bg-[#242A32] text-[#55E6C1] px-2 py-0.5 border border-[rgba(85,230,193,0.3)]">
@@ -332,7 +332,7 @@ const LandingPage = () => {
                   <span>Hands-on practice & live pronunciation feedback</span>
                 </div>
                 <div className="flex items-center gap-2 text-[#A4B0BE]">
-                  <span className="w-3.5 h-3.5 rounded-none border border-[rgba(255,255,255,0.3)] inline-block shrink-0" />
+                  <span className="w-3.5 h-3.5 rounded-md border border-[rgba(255,255,255,0.3)] inline-block shrink-0" />
                   <span>Component build review & next week milestones</span>
                 </div>
               </div>
@@ -343,7 +343,7 @@ const LandingPage = () => {
         {/* Row 2: Visual Left, Text Right (Zig-Zag) */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
           <div className="md:col-span-6 order-2 md:order-1">
-            <div className="ui-card p-6 bg-[#353B48] border border-[rgba(255,255,255,0.12)] space-y-3">
+            <div className="ui-card p-6 bg-[#353B48] rounded-2xl border border-[rgba(255,255,255,0.12)] space-y-3">
               <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.08)]">
                 <span className="font-mono text-xs font-semibold text-[#F5F6FA]">MILESTONE ROADMAP</span>
                 <span className="font-mono text-[11px] text-[#718093]">4 WEEKS</span>
@@ -432,7 +432,7 @@ const LandingPage = () => {
               {/* Chat & Call Header Preview */}
               <div className="p-3 bg-[#242A32] border border-[rgba(255,255,255,0.08)] flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-8 h-8 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center font-bold text-xs">
                     SS
                   </div>
                   <div>
@@ -457,12 +457,12 @@ const LandingPage = () => {
               <div className="space-y-2.5 p-3 bg-[#242A32] border border-[rgba(255,255,255,0.06)] mb-4">
                 <div className="flex items-start gap-2">
                   <span className="text-[10px] font-mono text-[#55E6C1] shrink-0 font-bold">Sofia:</span>
-                  <div className="p-2 bg-[#2B313A] text-xs text-[#F5F6FA] border border-[rgba(255,255,255,0.05)] rounded-none">
+                  <div className="p-2 bg-[#2B313A] text-xs text-[#F5F6FA] border border-[rgba(255,255,255,0.05)] rounded-2xl">
                     Ready for our session today? We can practice conversational Spanish first!
                   </div>
                 </div>
                 <div className="flex items-start justify-end gap-2">
-                  <div className="p-2 bg-[#6C5CE7]/30 text-xs text-[#F5F6FA] border border-[#6C5CE7]/40 rounded-none text-right">
+                  <div className="p-2 bg-[#6C5CE7]/30 text-xs text-[#F5F6FA] border border-[#6C5CE7]/40 rounded-2xl text-right">
                     Sounds great! Jumping on the video call right now.
                   </div>
                   <span className="text-[10px] font-mono text-[#A4B0BE] shrink-0 font-bold">Alex:</span>

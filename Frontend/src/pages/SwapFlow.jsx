@@ -113,7 +113,7 @@ const SwapFlow = () => {
         </div>
 
         {/* Main Card Container */}
-        <div className="ui-card bg-[#353B48] shadow-2xl rounded-none overflow-hidden min-h-[460px] flex flex-col md:flex-row border border-[rgba(255,255,255,0.12)]">
+        <div className="ui-card bg-[#353B48] shadow-2xl rounded-2xl overflow-hidden min-h-[460px] flex flex-col md:flex-row border border-[rgba(255,255,255,0.12)]">
           
           {/* Details Sidebar */}
           <div className="w-full md:w-72 bg-[#2B313A] p-6 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)] flex flex-col justify-between">
@@ -123,7 +123,7 @@ const SwapFlow = () => {
               </span>
               
               <div className="flex items-center gap-3.5 mb-6">
-                <div className="w-11 h-11 rounded-none overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
+                <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#242A32] border border-[rgba(255,255,255,0.15)] shrink-0">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${partner.name}`} alt={partner.name} className="w-full h-full object-cover" />
                 </div>
                 <div>
@@ -135,11 +135,11 @@ const SwapFlow = () => {
               </div>
               
               <div className="space-y-3">
-                <div className="p-3.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)]">
+                <div className="p-3.5 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.08)]">
                   <p className="font-mono text-[9px] text-[#718093] mb-1 uppercase">Receiving from {partner.name.split(' ')[0]}</p>
                   <p className="font-bold text-xs text-[#F5F6FA]">{partner.skill}</p>
                 </div>
-                <div className="p-3.5 rounded-none bg-[#242A32] border border-[rgba(85,230,193,0.3)]">
+                <div className="p-3.5 rounded-xl bg-[#242A32] border border-[rgba(85,230,193,0.3)]">
                   <p className="font-mono text-[9px] text-[#55E6C1] mb-1 uppercase font-semibold">Offering to {partner.name.split(' ')[0]}</p>
                   <p className="font-bold text-xs text-[#F5F6FA]">{selectedOffering}</p>
                 </div>
@@ -169,7 +169,7 @@ const SwapFlow = () => {
                     <label
                       key={i}
                       onClick={() => setSelectedOffering(skill.title)}
-                      className={`flex items-center gap-3.5 p-4 rounded-none border transition-colors cursor-pointer ${
+                      className={`flex items-center gap-3.5 p-4 rounded-xl border transition-colors cursor-pointer ${
                         selectedOffering === skill.title
                           ? 'border-[#6C5CE7] bg-[#353B48] shadow-xs'
                           : 'border-[rgba(255,255,255,0.1)] hover:border-[#6C5CE7] hover:bg-[#353B48]/50'
@@ -209,7 +209,7 @@ const SwapFlow = () => {
                   className="input-field h-36 resize-none text-xs sm:text-sm rounded-none"
                 />
                 
-                <div className="mt-4 p-3.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] flex items-center gap-2.5 text-xs text-[#F5F6FA]">
+                <div className="mt-4 p-3.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.1)] flex items-center gap-2.5 text-xs text-[#F5F6FA]">
                   <Sparkles size={16} className="text-[#55E6C1] shrink-0" />
                   <span className="text-[#A4B0BE]">Recommendation: Propose a specific mini-project to build together across 2-4 weeks for best retention.</span>
                 </div>
@@ -231,7 +231,7 @@ const SwapFlow = () => {
                   ].map((s, i) => (
                     <div
                       key={i}
-                      className={`p-4 rounded-none border ${
+                      className={`p-4 rounded-xl border ${
                         s.slots === "FULLY BOOKED"
                           ? 'opacity-40 pointer-events-none bg-[#242A32]'
                           : 'border-[rgba(255,255,255,0.12)] hover:border-[#6C5CE7] hover:bg-[#353B48] cursor-pointer'
@@ -256,9 +256,9 @@ const SwapFlow = () => {
                   {partner.name.split(' ')[0]} will receive a notification in dashboard and inbox to confirm the swap.
                 </p>
                 
-                <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.1)] text-left mb-4 space-y-3 max-w-md mx-auto">
+                <div className="p-4 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.1)] text-left mb-4 space-y-3 max-w-md mx-auto">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)] text-[#55E6C1]">
+                    <div className="p-2 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.08)] text-[#55E6C1]">
                       <Clock size={16} />
                     </div>
                     <div>
@@ -267,7 +267,7 @@ const SwapFlow = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)] text-[#55E6C1]">
+                    <div className="p-2 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.08)] text-[#55E6C1]">
                       <Calendar size={16} />
                     </div>
                     <div>

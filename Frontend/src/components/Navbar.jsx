@@ -52,35 +52,35 @@ const Navbar = () => {
         
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
-          <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white flex items-center justify-center font-bold transition-transform group-hover:scale-105">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6C5CE7] to-[#8075ea] text-white flex items-center justify-center font-bold shadow-md shadow-[#6C5CE7]/20 transition-transform group-hover:scale-105">
             <ArrowLeftRight size={17} strokeWidth={2.5} />
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-base sm:text-lg tracking-[-0.025em] text-[#F5F6FA]">
               SKILL<span className="text-[#55E6C1]">SWAP</span>
             </span>
-            <span className="hidden sm:inline-block font-mono text-[10px] uppercase px-1.5 py-0.5 rounded-none bg-[rgba(85,230,193,0.12)] border border-[rgba(85,230,193,0.3)] text-[#55E6C1]">
+            <span className="hidden sm:inline-block font-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-[rgba(85,230,193,0.12)] border border-[rgba(85,230,193,0.3)] text-[#55E6C1]">
               PROTO
             </span>
           </div>
         </Link>
 
-        {/* Desktop Nav Links per DESIGN.md: Primary surface background, active item accent indicator, font weight 500 when active */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Desktop Nav Links */}
+        <nav className="hidden md:flex items-center gap-1.5">
           {navLinks.map((link) => {
             const active = isActive(link.path);
             return (
               <Link
                 key={link.name}
                 to={link.path}
-                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-none text-sm tracking-[-0.01em] transition-all duration-150 ${
+                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm tracking-[-0.01em] transition-all duration-150 ${
                   active
-                    ? 'font-medium text-[#F5F6FA] bg-[#353B48] border border-[rgba(108,92,231,0.5)] shadow-sm'
+                    ? 'font-medium text-[#F5F6FA] bg-[#353B48] border border-[rgba(108,92,231,0.5)] shadow-xs'
                     : 'font-normal text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#353B48]/50'
                 }`}
               >
                 {active && (
-                  <span className="w-1.5 h-1.5 rounded-none bg-[#55E6C1]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#55E6C1]" />
                 )}
                 {link.icon}
                 <span>{link.name}</span>
@@ -95,14 +95,14 @@ const Navbar = () => {
             <div className="flex items-center gap-2">
               <Link 
                 to="/profile" 
-                className={`flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-none border transition-all duration-150 ${
+                className={`flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-xl border transition-all duration-150 ${
                   isActive('/profile')
                     ? 'bg-[#353B48] border-[#6C5CE7] text-[#F5F6FA]'
                     : 'bg-[#353B48]/80 border-[rgba(255,255,255,0.12)] hover:border-[rgba(108,92,231,0.4)] text-[#F5F6FA]'
                 }`}
                 title="View Profile"
               >
-                <div className="w-6 h-6 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-full bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
                   {user.fullname?.firstname?.[0] || 'U'}
                 </div>
                 <div className="hidden sm:flex flex-col text-left leading-tight">
@@ -117,7 +117,7 @@ const Navbar = () => {
 
               <button
                 onClick={handleLogout}
-                className="hidden md:inline-flex p-2 rounded-none text-[#A4B0BE] hover:text-[#FF7675] hover:bg-[rgba(255,118,117,0.1)] transition-colors duration-150"
+                className="hidden md:inline-flex p-2 rounded-lg text-[#A4B0BE] hover:text-[#FF7675] hover:bg-[rgba(255,118,117,0.1)] transition-colors duration-150"
                 title="Log Out"
                 aria-label="Log Out"
               >
@@ -138,7 +138,7 @@ const Navbar = () => {
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-none text-[#F5F6FA] hover:bg-[#353B48] transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+            className="md:hidden p-2 rounded-lg text-[#F5F6FA] hover:bg-[#353B48] transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -150,9 +150,9 @@ const Navbar = () => {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[rgba(255,255,255,0.12)] bg-[#353B48] p-4 space-y-2.5 shadow-2xl animate-in fade-in duration-150">
           {user && (
-            <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] mb-3 flex items-center justify-between">
+            <div className="p-3 bg-[#2B313A] border border-[rgba(255,255,255,0.08)] rounded-xl mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-full bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
                   {user.fullname?.firstname?.[0] || 'U'}
                 </div>
                 <div className="min-w-0">
@@ -164,7 +164,7 @@ const Navbar = () => {
                   </p>
                 </div>
               </div>
-              <span className="shrink-0 font-mono text-[10px] px-2 py-0.5 bg-[rgba(85,230,193,0.12)] border border-[rgba(85,230,193,0.3)] text-[#55E6C1] font-semibold">
+              <span className="shrink-0 font-mono text-[10px] px-2.5 py-0.5 rounded-full bg-[rgba(85,230,193,0.12)] border border-[rgba(85,230,193,0.3)] text-[#55E6C1] font-semibold">
                 {user.credits ?? 3} Credits
               </span>
             </div>
@@ -177,7 +177,7 @@ const Navbar = () => {
                 <Link
                   key={link.name}
                   to={link.path}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-none text-sm tracking-[-0.01em] min-h-[44px] transition-colors ${
+                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-sm tracking-[-0.01em] min-h-[44px] transition-colors ${
                     active 
                       ? 'bg-[#2B313A] text-[#F5F6FA] font-medium border border-[rgba(108,92,231,0.5)]' 
                       : 'text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A]/60'
@@ -195,7 +195,7 @@ const Navbar = () => {
             {user && (
               <Link
                 to="/profile"
-                className={`flex items-center justify-between px-3.5 py-3 rounded-none text-sm tracking-[-0.01em] min-h-[44px] transition-colors ${
+                className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-sm tracking-[-0.01em] min-h-[44px] transition-colors ${
                   isActive('/profile')
                     ? 'bg-[#2B313A] text-[#F5F6FA] font-medium border border-[rgba(108,92,231,0.5)]'
                     : 'text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A]/60'
@@ -214,7 +214,7 @@ const Navbar = () => {
             <div className="pt-2 border-t border-[rgba(255,255,255,0.08)]">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2B313A] hover:bg-[#FF7675]/15 text-[#A4B0BE] hover:text-[#FF7675] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,118,117,0.3)] text-xs font-mono font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2B313A] hover:bg-[#FF7675]/15 text-[#A4B0BE] hover:text-[#FF7675] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,118,117,0.3)] text-xs font-mono font-semibold transition-colors"
               >
                 <LogOut size={15} />
                 <span>Log Out</span>
@@ -224,13 +224,13 @@ const Navbar = () => {
             <div className="pt-3 border-t border-[rgba(255,255,255,0.08)] flex flex-col gap-2">
               <Link
                 to="/login"
-                className="btn btn-secondary text-xs py-2.5 w-full justify-center text-center font-mono"
+                className="btn btn-secondary text-xs py-2.5 w-full justify-center text-center font-mono rounded-xl"
               >
                 Log In
               </Link>
               <Link
                 to="/login"
-                className="btn btn-cta text-xs py-2.5 w-full justify-center text-center font-mono"
+                className="btn btn-cta text-xs py-2.5 w-full justify-center text-center font-mono rounded-xl"
               >
                 Create Account / Get Started
               </Link>

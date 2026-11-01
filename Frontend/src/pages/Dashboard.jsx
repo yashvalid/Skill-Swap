@@ -214,7 +214,7 @@ Schedule: ${curriculumData.recommendedSessionCadence}
               >
                 <div className="flex justify-between items-center mb-3">
                   <span className="font-mono text-[10px] text-[#A4B0BE]">{stat.code}</span>
-                  <span className={`font-mono text-[9px] font-semibold px-2 py-0.5 rounded-none border ${
+                  <span className={`font-mono text-[9px] font-semibold px-2 py-0.5 rounded-xl border ${
                     stat.isAction 
                       ? 'bg-[rgba(255,118,117,0.15)] text-[#FF7675] border-[rgba(255,118,117,0.4)]' 
                       : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)]'
@@ -245,7 +245,7 @@ Schedule: ${curriculumData.recommendedSessionCadence}
                     className="ui-card p-5 bg-[#353B48] border-2 border-[rgba(255,165,2,0.5)] flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between rounded-none"
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="w-10 h-10 rounded-none bg-[#6C5CE7] text-white font-mono font-bold flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#6C5CE7] text-white font-mono font-bold flex items-center justify-center shrink-0">
                         {swap.fromUser?.fullname?.firstname?.[0] || 'U'}
                       </div>
                       <div>
@@ -311,7 +311,7 @@ Schedule: ${curriculumData.recommendedSessionCadence}
                     <div>
                       {/* Partner Head */}
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-none bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-[#6C5CE7] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                           {partner?.fullname?.firstname?.[0] || 'P'}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -333,11 +333,11 @@ Schedule: ${curriculumData.recommendedSessionCadence}
 
                       {/* Learning / Teaching Pills */}
                       <div className="space-y-2 mb-4 text-xs font-mono">
-                        <div className="p-2.5 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
+                        <div className="p-2.5 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
                           <span className="text-[10px] uppercase text-[#55E6C1] block font-semibold">You Learn</span>
                           <p className="text-[#F5F6FA] font-medium mt-0.5">{swap.skillOffered}</p>
                         </div>
-                        <div className="p-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.08)]">
+                        <div className="p-2.5 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.08)]">
                           <span className="text-[10px] uppercase text-[#A4B0BE] block font-semibold">You Teach</span>
                           <p className="text-[#F5F6FA] font-medium mt-0.5">{swap.requestedSkill}</p>
                         </div>
@@ -357,13 +357,13 @@ Schedule: ${curriculumData.recommendedSessionCadence}
                       {!isCompleted ? (
                         <button
                           onClick={() => handleCompleteSwap(swap.swapId)}
-                          className="w-full py-1.5 px-3 rounded-none text-xs font-mono text-[#A4B0BE] hover:text-[#55E6C1] hover:bg-[#2B313A] transition-colors border border-dashed border-[rgba(255,255,255,0.15)] flex items-center justify-center gap-1.5"
+                          className="w-full py-1.5 px-3 rounded-xl text-xs font-mono text-[#A4B0BE] hover:text-[#55E6C1] hover:bg-[#2B313A] transition-colors border border-dashed border-[rgba(255,255,255,0.15)] flex items-center justify-center gap-1.5"
                         >
                           <CheckCircle2 size={13} className="text-[#55E6C1]" />
                           <span>Mark Milestone Done (+1 Credit)</span>
                         </button>
                       ) : (
-                        <div className="py-1 text-center text-xs font-mono text-[#55E6C1] bg-[#2B313A] rounded-none border border-[rgba(85,230,193,0.3)]">
+                        <div className="py-1 text-center text-xs font-mono text-[#55E6C1] bg-[#2B313A] rounded-xl border border-[rgba(85,230,193,0.3)]">
                           Milestone Complete • +1 Credit Earned
                         </div>
                       )}
@@ -457,7 +457,7 @@ Schedule: ${curriculumData.recommendedSessionCadence}
                 </div>
               ) : curriculumData ? (
                 <>
-                  <div className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)] space-y-1">
+                  <div className="p-4 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)] space-y-1">
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-base text-[#F5F6FA]">{curriculumData.title}</h4>
                       <span className="tag-chip text-[10px]">
@@ -477,7 +477,7 @@ Schedule: ${curriculumData.recommendedSessionCadence}
                     {curriculumData.weeks?.map((week) => (
                       <div
                         key={week.week}
-                        className="p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)] space-y-2.5"
+                        className="p-4 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)] space-y-2.5"
                       >
                         <div className="flex items-center justify-between">
                           <span className="tag-chip text-[10px]">
@@ -489,17 +489,17 @@ Schedule: ${curriculumData.recommendedSessionCadence}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-                          <div className="p-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.06)]">
+                          <div className="p-2.5 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.06)]">
                             <span className="text-[10px] text-[#55E6C1] block font-semibold">Learn Topic:</span>
                             <p className="text-[#F5F6FA] mt-0.5">{week.learnTopic}</p>
                           </div>
-                          <div className="p-2.5 rounded-none bg-[#242A32] border border-[rgba(255,255,255,0.06)]">
+                          <div className="p-2.5 rounded-xl bg-[#242A32] border border-[rgba(255,255,255,0.06)]">
                             <span className="text-[10px] text-[#A4B0BE] block font-semibold">Teach Topic:</span>
                             <p className="text-[#F5F6FA] mt-0.5">{week.teachTopic}</p>
                           </div>
                         </div>
 
-                        <div className="p-2.5 rounded-none bg-[#242A32] text-xs flex items-start gap-2 border border-[rgba(255,255,255,0.06)]">
+                        <div className="p-2.5 rounded-xl bg-[#242A32] text-xs flex items-start gap-2 border border-[rgba(255,255,255,0.06)]">
                           <CheckCircle2 size={14} className="text-[#55E6C1] shrink-0 mt-0.5" />
                           <div>
                             <span className="font-mono font-bold text-[#F5F6FA]">Milestone: </span>

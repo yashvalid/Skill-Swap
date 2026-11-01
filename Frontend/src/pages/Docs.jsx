@@ -45,7 +45,7 @@ const Docs = () => {
           <button
             key={link.id}
             onClick={() => scrollTo(link.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-none text-xs font-mono whitespace-nowrap border transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono whitespace-nowrap border transition-colors ${
               activeSection === link.id
                 ? 'bg-[#6C5CE7] text-white border-[#6C5CE7] font-semibold'
                 : 'bg-[#2B313A] text-[#A4B0BE] border-[rgba(255,255,255,0.1)]'
@@ -60,7 +60,7 @@ const Docs = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Navigation Sidebar */}
         <div className="md:col-span-1 hidden md:block">
-          <nav className="sticky top-24 space-y-1 bg-[#353B48] p-2 rounded-none border border-[rgba(255,255,255,0.12)]">
+          <nav className="sticky top-24 space-y-1 bg-[#353B48] p-2 rounded-xl border border-[rgba(255,255,255,0.12)]">
             {[
               { id: "introduction", title: "OUR MISSION", icon: <FileText size={15} /> },
               { id: "product-requirements", title: "MATCHING & PRACTICE", icon: <Layout size={15} /> },
@@ -69,7 +69,7 @@ const Docs = () => {
               <button
                 key={link.id}
                 onClick={() => scrollTo(link.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-none text-xs font-medium transition-colors text-left ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors text-left ${
                   activeSection === link.id
                     ? 'bg-[#6C5CE7] text-white font-semibold shadow-xs'
                     : 'text-[#A4B0BE] hover:text-[#F5F6FA] hover:bg-[#2B313A]'
@@ -115,8 +115,8 @@ const Docs = () => {
                   desc: "Completed swaps award verified reviews and credits to both members' profiles, building reputation in the community."
                 }
               ].map((item, i) => (
-                <div key={i} className="flex gap-3.5 items-start p-4 rounded-none bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
-                  <div className="w-8 h-8 rounded-none bg-[#6C5CE7] text-white flex items-center justify-center shrink-0">
+                <div key={i} className="flex gap-3.5 items-start p-4 rounded-xl bg-[#2B313A] border border-[rgba(255,255,255,0.08)]">
+                  <div className="w-8 h-8 rounded-full bg-[#6C5CE7] text-white flex items-center justify-center shrink-0">
                     <CheckCircle2 size={16} />
                   </div>
                   <div>
