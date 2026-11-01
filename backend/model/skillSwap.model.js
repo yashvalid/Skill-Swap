@@ -28,6 +28,17 @@ const skillSwapSchema = new mongoose.Schema({
         title: { type: String, required: true },
         completed: { type: Boolean, default: false }
     }],
+    scheduledTime: {
+        type: Date
+    },
+    durationMinutes: {
+        type: Number,
+        default: 30
+    },
+    proposalNotes: {
+        type: String,
+        default: ''
+    },
     completedAt: {
         type: Date
     },
