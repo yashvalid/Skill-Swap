@@ -19,6 +19,7 @@ import { swapService } from '../services/swapService';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useVideoCall } from '../context/VideoCallContext';
+import { isUserVerified, getVerificationLabel } from '../utils/userVerification';
 
 const CURATED_FALLBACK_PEERS = {
   'peer-1': {
@@ -187,15 +188,23 @@ const UserProfile = () => {
             </div>
 
             <div>
-              <div className="flex flex-wrap items-center gap-2.5 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F7F8FC]">
                   {profileUser.fullname?.firstname} {profileUser.fullname?.lastname}
                 </h1>
-                <span className="tag-chip text-[10px]">COMMUNITY MEMBER</span>
-                <span className="tag-chip text-[10px] bg-[#202738] text-[#F7F8FC] border-[rgba(255,255,255,0.15)]">
-                  <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
-                  {profileUser.averageRating?.toFixed(1) || '5.0'} RATING
-                </span>
+                <span className="tag-chip text-[10px]">{getVerificationLabel(profileUser)}</span>
+                {isUserVerified(profileUser) && (
+                  <span className="tag-chip text-[10px] bg-[rgba(255,238,168,0.12)] text-[#FFEEA8] border-[rgba(255,238,168,0.3)]">
+                    <CheckCircle2 size={10} className="inline mr-1" />
+                    VERIFIED
+                  </span>
+                )}
+                {profileUser.averageRating ? (
+                  <span className="tag-chip text-[10px] bg-[#202738] text-[#F7F8FC] border-[rgba(255,255,255,0.15)]">
+                    <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
+                    {profileUser.averageRating?.toFixed(1) || '5.0'} RATING
+                  </span>
+                ) : null}
               </div>
 
               <p className="font-mono text-xs text-[#FFEEA8] uppercase tracking-wider mb-2 font-semibold">
@@ -204,7 +213,10 @@ const UserProfile = () => {
 
               <div className="flex flex-wrap gap-4 text-xs text-[#A4B0C6] font-mono">
                 <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#2B3F74]" /> {profileUser.location || 'Remote'}</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#FFEEA8]" /> Identity Verified</span>
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck size={13} className={isUserVerified(profileUser) ? "text-[#FFEEA8]" : "text-[#71809B]"} />
+                  <span>{isUserVerified(profileUser) ? "Verified Swap Standing" : "Unverified (Pending 1st Swap)"}</span>
+                </span>
               </div>
             </div>
           </div>

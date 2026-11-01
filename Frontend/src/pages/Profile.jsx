@@ -19,6 +19,7 @@ import { feedService } from '../services/feedService';
 import { userService } from '../services/userService';
 import { aiService } from '../services/aiService';
 import toast from 'react-hot-toast';
+import { isUserVerified, getVerificationLabel } from '../utils/userVerification';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -190,15 +191,27 @@ const Profile = () => {
 
             {/* Profile Info */}
             <div>
-              <div className="flex flex-wrap items-center gap-2.5 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h1 className="heading-h1 text-2xl sm:text-3xl text-[#F7F8FC]">
                   {user.fullname?.firstname} {user.fullname?.lastname}
                 </h1>
-                <span className="tag-chip text-[10px]">MEMBER</span>
-                <span className="tag-chip text-[10px] bg-[#202738] text-[#F7F8FC] border-[rgba(255,255,255,0.15)]">
-                  <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
-                  4.9 RATING
-                </span>
+                <span className="tag-chip text-[10px]">{getVerificationLabel(user)}</span>
+                {isUserVerified(user) && (
+                  <span className="tag-chip text-[10px] bg-[rgba(255,238,168,0.12)] text-[#FFEEA8] border-[rgba(255,238,168,0.3)]">
+                    <CheckCircle2 size={10} className="inline mr-1" />
+                    VERIFIED
+                  </span>
+                )}
+                {user.totalRatings > 0 ? (
+                  <span className="tag-chip text-[10px] bg-[#202738] text-[#F7F8FC] border-[rgba(255,255,255,0.15)]">
+                    <Star size={11} fill="currentColor" className="inline mr-1 text-[#FFA502]" />
+                    {user.averageRating?.toFixed(1) || '5.0'} ({user.totalRatings})
+                  </span>
+                ) : (
+                  <span className="tag-chip text-[10px] bg-[#202738] text-[#A4B0C6] border-[rgba(255,255,255,0.1)]">
+                    NEW MEMBER
+                  </span>
+                )}
               </div>
 
               <p className="font-mono text-xs text-[#FFEEA8] uppercase tracking-wider mb-2 font-semibold">
@@ -207,7 +220,10 @@ const Profile = () => {
 
               <div className="flex flex-wrap gap-4 text-xs text-[#A4B0C6] font-mono">
                 <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#2B3F74]" /> {user.location || 'Remote'}</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#FFEEA8]" /> Identity Verified</span>
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck size={13} className={isUserVerified(user) ? "text-[#FFEEA8]" : "text-[#71809B]"} />
+                  <span>{isUserVerified(user) ? "Verified Swap Standing" : "Unverified (Complete 1 Swap)"}</span>
+                </span>
               </div>
             </div>
           </div>
@@ -389,10 +405,16 @@ const Profile = () => {
 
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0C6]">Identity Verification</span>
-                <span className="text-[#FFEEA8] font-semibold flex items-center gap-1 font-mono text-[10px]">
-                  VERIFIED <CheckCircle2 size={12} />
-                </span>
+                <span className="text-[#A4B0C6]">Swap Standing</span>
+                {isUserVerified(user) ? (
+                  <span className="text-[#FFEEA8] font-semibold flex items-center gap-1 font-mono text-[10px]">
+                    VERIFIED <CheckCircle2 size={12} />
+                  </span>
+                ) : (
+                  <span className="text-[#71809B] flex items-center gap-1 font-mono text-[10px]">
+                    PENDING 1ST SWAP
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
                 <span className="text-[#A4B0C6]">Community Guidelines</span>

@@ -29,6 +29,7 @@ import { useAuth } from '../context/AuthContext';
 import { feedService } from '../services/feedService';
 import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
+import { isUserVerified } from '../utils/userVerification';
 
 const CURATED_SHOWCASES = [
   {
@@ -425,7 +426,11 @@ const Feed = () => {
                             <h3 className="font-bold text-sm text-[#F7F8FC] group-hover:underline">
                               {post.user?.fullname?.firstname} {post.user?.fullname?.lastname}
                             </h3>
-                            <span className="tag-chip text-[9px] py-0 px-1.5 font-mono">VERIFIED</span>
+                            {isUserVerified(post.user) && (
+                              <span className="tag-chip text-[9px] py-0 px-1.5 font-mono" title="Verified Swap Member">
+                                VERIFIED
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-[#A4B0C6] font-mono">
                             {post.user?.role || 'Community Member'}

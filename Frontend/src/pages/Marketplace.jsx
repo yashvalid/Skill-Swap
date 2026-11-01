@@ -20,6 +20,7 @@ import { aiService } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { isUserVerified } from '../utils/userVerification';
 
 // Curated default mentors spanning both technical and non-technical disciplines
 const CURATED_PEERS = [
@@ -338,9 +339,16 @@ const Marketplace = () => {
                         {initials}
                       </div>
                       <div>
-                        <h3 className="font-bold text-base text-[#F7F8FC] group-hover:underline">
-                          {u.fullname?.firstname} {u.fullname?.lastname}
-                        </h3>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-base text-[#F7F8FC] group-hover:underline">
+                            {u.fullname?.firstname} {u.fullname?.lastname}
+                          </h3>
+                          {isUserVerified(u) && (
+                            <span className="tag-chip text-[9px] py-0 px-1.5 font-mono">
+                              VERIFIED
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-[#A4B0C6] truncate max-w-[150px]">
                           {u.role}
                         </p>

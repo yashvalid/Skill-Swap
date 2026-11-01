@@ -14,6 +14,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { swapService } from '../services/swapService';
 import toast from 'react-hot-toast';
+import { isUserVerified } from '../utils/userVerification';
 
 const SwapFlow = () => {
   const navigate = useNavigate();
@@ -128,8 +129,12 @@ const SwapFlow = () => {
                 </div>
                 <div>
                   <p className="font-bold text-sm text-[#F7F8FC]">{partner.name}</p>
-                  <div className="flex items-center gap-1 text-[#FFEEA8] font-mono text-[10px]">
-                    VERIFIED <CheckCircle2 size={11} />
+                  <div className="flex items-center gap-1 font-mono text-[10px]">
+                    {isUserVerified(passedPartner || partner) ? (
+                      <span className="text-[#FFEEA8] flex items-center gap-1">VERIFIED <CheckCircle2 size={11} /></span>
+                    ) : (
+                      <span className="text-[#71809B]">COMMUNITY MEMBER</span>
+                    )}
                   </div>
                 </div>
               </div>
