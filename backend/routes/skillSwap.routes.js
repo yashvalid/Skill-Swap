@@ -44,6 +44,11 @@ router.post('/reschedule',
     skillSwapController.rescheduleSwap
 )
 
+router.put('/workspace',
+    authMiddleware.authUser,
+    skillSwapController.updateSwapWorkspace
+)
+
 router.get('/accepted-swaps',
     authMiddleware.authUser,
     cache(300, (req) => `cache:swaps:accepted:${req.user._id}`),

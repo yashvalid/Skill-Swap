@@ -150,3 +150,28 @@ module.exports.getPendingSwaps = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 }
+
+module.exports.updateSwapWorkspace = async (req, res) => {
+    const { swapId, milestones, sessionNotes } = req.body;
+    if (!swapId) return res.status(400).json({ message: "Swap ID is required" });
+
+    try {
+        const updatedSwap = await skillSwapService.updateSwapWorkspace({
+            swapId,
+            userId: req.user._id,
+            milestones,
+            sessionNotes
+        });
+
+        // Invalidate cache for both participants
+        await invalidateCache([
+            `cache:swaps:accepted:${updatedSwap.fromUser}`,
+            `cache:swaps:accepted:${updatedSwap.toUser}`
+        ]);
+
+        return res.status(200).json({ message: "Session workspace updated successfully", skillSwap: updatedSwap });
+    } catch (err) {
+        console.error("Error updating workspace:", err);
+        return res.status(500).json({ message: err.message || "Failed to update workspace" });
+    }
+};

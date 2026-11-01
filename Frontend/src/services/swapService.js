@@ -15,6 +15,8 @@ export const swapService = {
   rejectSwap: (requestId) => api.get(`/skillSwap/reject-request-swap?requestId=${requestId}`),
   rescheduleSwap: ({ swapId, scheduledTime, durationMinutes }) =>
     api.post('/skillSwap/reschedule', { swapId, scheduledTime, durationMinutes }),
+  updateWorkspace: ({ swapId, milestones, sessionNotes }) =>
+    api.put('/skillSwap/workspace', { swapId, milestones, sessionNotes }),
   getAcceptedSwaps: () => api.get('/skillSwap/accepted-swaps'),
   getPendingSwaps: () => api.get('/skillSwap/get-pending-swaps'),
 };

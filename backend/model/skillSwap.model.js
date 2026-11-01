@@ -39,6 +39,10 @@ const skillSwapSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    sessionNotes: {
+        type: String,
+        default: ''
+    },
     completedAt: {
         type: Date
     },

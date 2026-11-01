@@ -247,3 +247,26 @@ module.exports.getPendingSwaps = async (userId) => {
         throw new Error(err);
     }
 }
+
+module.exports.updateSwapWorkspace = async ({ swapId, userId, milestones, sessionNotes }) => {
+    try {
+        const swap = await SkillSwap.findById(swapId);
+        if (!swap) throw new Error("Skill swap record not found");
+
+        const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
+        if (!isParticipant) throw new Error("Unauthorized to update workspace for this swap");
+
+        if (Array.isArray(milestones)) {
+            swap.milestones = milestones;
+        }
+        if (typeof sessionNotes === 'string') {
+            swap.sessionNotes = sessionNotes;
+        }
+
+        await swap.save();
+        return swap;
+    } catch (err) {
+        console.error("Error updating swap workspace:", err);
+        throw err;
+    }
+};
