@@ -49,6 +49,8 @@ export const VideoCallProvider = ({ children }) => {
   const [remoteUser, setRemoteUser] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
+  const [iceStatus, setIceStatus] = useState('connecting');
   const [incomingSignal, setIncomingSignal] = useState(null);
 
   const [isMuted, setIsMuted] = useState(false);
@@ -74,6 +76,7 @@ export const VideoCallProvider = ({ children }) => {
   localStreamRef.current = localStream;
 
   const peerConnection = useRef(null);
+  const remoteMediaStreamRef = useRef(null);
   const pendingCandidates = useRef([]);
   const screenStreamRef = useRef(null);
   const ringTimeoutRef = useRef(null);
@@ -199,6 +202,9 @@ export const VideoCallProvider = ({ children }) => {
 
     setLocalStream(null);
     setRemoteStream(null);
+    setHasRemoteVideo(false);
+    setIceStatus('connecting');
+    remoteMediaStreamRef.current = null;
     setCallStatus('idle');
     setIsAnswering(false);
     setRemoteUser(null);
@@ -297,22 +303,44 @@ export const VideoCallProvider = ({ children }) => {
     };
 
     pc.ontrack = (event) => {
-      if (event.streams && event.streams[0]) {
-        setRemoteStream(new MediaStream(event.streams[0].getTracks()));
-      } else if (event.track) {
-        setRemoteStream(prev => {
-          const tracks = prev ? prev.getTracks().filter(t => t.id !== event.track.id) : [];
-          tracks.push(event.track);
-          return new MediaStream(tracks);
-        });
+      if (!remoteMediaStreamRef.current) {
+        remoteMediaStreamRef.current = new MediaStream();
       }
+      const targetStream = remoteMediaStreamRef.current;
+
+      const incomingTracks = event.streams?.[0]?.getTracks()?.length
+        ? event.streams[0].getTracks()
+        : (event.track ? [event.track] : []);
+
+      for (const track of incomingTracks) {
+        if (!targetStream.getTracks().some(t => t.id === track.id)) {
+          targetStream.addTrack(track);
+        }
+        if (track.kind === 'video') {
+          const updateVideoFlag = () => {
+            const hasLiveVideo = targetStream.getVideoTracks().some(t => t.readyState === 'live' && !t.muted);
+            setHasRemoteVideo(hasLiveVideo || targetStream.getVideoTracks().length > 0);
+          };
+          updateVideoFlag();
+          track.onunmute = updateVideoFlag;
+          track.onended = () => {
+            setHasRemoteVideo(targetStream.getVideoTracks().some(t => t.readyState === 'live'));
+          };
+        }
+      }
+
+      setRemoteStream(prev => (prev === targetStream ? prev : targetStream));
     };
 
     pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
-      if (state === 'failed') {
+      if (state === 'checking' || state === 'new') {
+        setIceStatus('connecting');
+      } else if (state === 'failed') {
+        setIceStatus('reconnecting');
         attemptIceRestart(targetUserId);
       } else if (state === 'disconnected') {
+        setIceStatus('reconnecting');
         toast('Connection unstable, attempting to reconnect...', { id: 'webrtc-reconnect' });
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = setTimeout(() => {
@@ -321,6 +349,7 @@ export const VideoCallProvider = ({ children }) => {
           }
         }, 4000);
       } else if (state === 'connected' || state === 'completed') {
+        setIceStatus('connected');
         if (reconnectTimerRef.current) {
           clearTimeout(reconnectTimerRef.current);
           reconnectTimerRef.current = null;
@@ -336,16 +365,19 @@ export const VideoCallProvider = ({ children }) => {
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
       if (state === 'connected') {
+        setIceStatus('connected');
         if (connectionFailTimerRef.current) {
           clearTimeout(connectionFailTimerRef.current);
           connectionFailTimerRef.current = null;
         }
         toast.dismiss('webrtc-reconnect');
       } else if (state === 'failed') {
+        setIceStatus('reconnecting');
         attemptIceRestart(targetUserId);
         if (connectionFailTimerRef.current) clearTimeout(connectionFailTimerRef.current);
         connectionFailTimerRef.current = setTimeout(() => {
           if (peerConnection.current?.connectionState === 'failed') {
+            setIceStatus('failed');
             toast.error('Video connection could not be established across your network');
             socket?.emit('end-call', {
               to: targetUserId,
@@ -486,9 +518,13 @@ export const VideoCallProvider = ({ children }) => {
       setCallStatus('ongoing');
 
       const pc = initPeerConnection(targetUser._id, iceConfig);
-      attachMediaOrTransceivers(pc, stream);
 
+      // Set remote offer first so Unified Plan binds local tracks to matching offered m-lines
       await pc.setRemoteDescription(new RTCSessionDescription(incomingSignal));
+
+      if (stream) {
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      }
 
       if (pendingCandidates.current.length > 0) {
         for (const cand of pendingCandidates.current) {
@@ -750,6 +786,8 @@ export const VideoCallProvider = ({ children }) => {
       remoteUser,
       localStream,
       remoteStream,
+      hasRemoteVideo,
+      iceStatus,
       isMuted,
       isVideoDisabled,
       isScreenSharing,

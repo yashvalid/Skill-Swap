@@ -45,6 +45,8 @@ const VideoCallModal = () => {
     remoteUser, 
     localStream, 
     remoteStream, 
+    hasRemoteVideo,
+    iceStatus,
     isMuted, 
     isVideoDisabled, 
     isScreenSharing, 
@@ -75,8 +77,8 @@ const VideoCallModal = () => {
   const hasPlayedHalfwayCueRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // Default showStudio to true during ongoing call so both users immediately see the collaborative studio!
-  const [showStudio, setShowStudio] = useState(true);
+  // Keep Collaborative Studio local to each user (never forced by partner toggles)
+  const [showStudio, setShowStudio] = useState(false);
   const [studioTab, setStudioTab] = useState('scratchpad'); // 'scratchpad' | 'agenda'
   const [studioMode, setStudioMode] = useState('notes'); // 'notes' | 'code'
   const [codeLanguage, setCodeLanguage] = useState('javascript');
@@ -115,8 +117,6 @@ const VideoCallModal = () => {
   milestonesRef.current = milestones;
   const targetDurationRef = useRef(targetDuration);
   targetDurationRef.current = targetDuration;
-  const showStudioRef = useRef(showStudio);
-  showStudioRef.current = showStudio;
   const activeSwapRef = useRef(activeSwap);
   activeSwapRef.current = activeSwap;
 
@@ -161,7 +161,7 @@ const VideoCallModal = () => {
       return;
     }
     attemptPlayRemoteVideo();
-  }, [remoteStream, callStatus, attemptPlayRemoteVideo]);
+  }, [remoteStream, hasRemoteVideo, callStatus, attemptPlayRemoteVideo]);
 
   const handleUnmuteRemoteAudio = () => {
     const video = remoteVideoRef.current;
@@ -330,10 +330,13 @@ const VideoCallModal = () => {
     endCall();
   }, [persistWorkspace, endCall]);
 
-  // Ensure studio opens when call transitions to ongoing and request live partner state
+  // Sync live collaborative workspace state in the background when call becomes active
   useEffect(() => {
+    if (callStatus === 'idle') {
+      setShowStudio(false);
+      return undefined;
+    }
     if (callStatus === 'ongoing') {
-      setShowStudio(true);
       isWorkspaceDirtyRef.current = false;
       lastAppliedRemoteRef.current = 0;
       if (socket && remoteUser?._id) {
@@ -357,9 +360,6 @@ const VideoCallModal = () => {
       }
       lastAppliedRemoteRef.current = incomingTs;
 
-      if (data.isOpen !== undefined) {
-        setShowStudio(Boolean(data.isOpen));
-      }
       if (data.content !== undefined && !isLocalTypingRef.current) {
         setStudioContent(data.content);
       }
@@ -378,7 +378,6 @@ const VideoCallModal = () => {
       socket.emit('studio-sync', {
         to: targetId,
         isSyncSnapshot: true,
-        isOpen: showStudioRef.current,
         content: studioContentRef.current,
         mode: studioModeRef.current,
         language: codeLanguageRef.current,
@@ -435,7 +434,7 @@ const VideoCallModal = () => {
     if (outgoingTypingTimerRef.current) clearTimeout(outgoingTypingTimerRef.current);
     outgoingTypingTimerRef.current = setTimeout(() => {
       isLocalTypingRef.current = false;
-      broadcastSync({ content: val, mode: studioMode, language: codeLanguage, isOpen: true });
+      broadcastSync({ content: val, mode: studioMode, language: codeLanguage });
       if (socket && remoteUser?._id) {
         socket.emit('studio-typing', { to: remoteUser._id, isTyping: false });
       }
@@ -451,7 +450,7 @@ const VideoCallModal = () => {
       const nextContent = studioContent.substring(0, start) + '  ' + studioContent.substring(end);
       setStudioContent(nextContent);
       scheduleWorkspaceAutosave();
-      broadcastSync({ content: nextContent, mode: studioMode, language: codeLanguage, isOpen: true });
+      broadcastSync({ content: nextContent, mode: studioMode, language: codeLanguage });
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 2;
@@ -460,11 +459,9 @@ const VideoCallModal = () => {
     }
   };
 
-  // Toggle studio visibility with synchronization
+  // Toggle studio visibility locally for this participant only
   const handleToggleStudio = () => {
-    const nextShow = !showStudio;
-    setShowStudio(nextShow);
-    broadcastSync({ isOpen: nextShow });
+    setShowStudio(prev => !prev);
   };
 
   // Toggle mode (Notes vs Code)
@@ -489,7 +486,7 @@ const VideoCallModal = () => {
     const nextContent = studioContent.substring(0, start) + replacement + studioContent.substring(end);
     setStudioContent(nextContent);
     scheduleWorkspaceAutosave();
-    broadcastSync({ content: nextContent, mode: studioMode, isOpen: true });
+    broadcastSync({ content: nextContent, mode: studioMode });
   };
 
   // Milestones handlers
@@ -761,10 +758,10 @@ const VideoCallModal = () => {
           </div>
 
           {/* Central Workspace Area (Split when Studio is active) */}
-          <div className="relative flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#0E131C]">
+          <div className="relative flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden bg-[#0E131C]">
             
             {/* Video Viewport Column */}
-            <div className={`relative flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
+            <div className={`relative min-h-0 flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
               showStudio ? 'w-full lg:w-[52%] h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-[rgba(255,255,255,0.1)]' : 'w-full h-full'
             }`}>
               
@@ -774,7 +771,7 @@ const VideoCallModal = () => {
                 autoPlay 
                 playsInline 
                 onLoadedMetadata={attemptPlayRemoteVideo}
-                className={`w-full h-full object-contain bg-black transition-opacity ${remoteStream ? 'opacity-100' : 'opacity-0 pointer-events-none absolute inset-0'}`}
+                className={`w-full h-full object-contain bg-black transition-opacity ${hasRemoteVideo ? 'opacity-100' : 'opacity-0 pointer-events-none absolute inset-0'}`}
               />
 
               {remoteStream && remoteAudioBlocked && (
@@ -787,7 +784,7 @@ const VideoCallModal = () => {
                 </button>
               )}
 
-              {!remoteStream && (
+              {!hasRemoteVideo && (
                 <div className="flex flex-col items-center justify-center text-[#F7F8FC] gap-4 p-8 text-center">
                   <div className="w-24 h-24 rounded-full overflow-hidden bg-[#171D2B] flex items-center justify-center border border-[rgba(255,255,255,0.15)] shadow-xl relative">
                     <img
@@ -795,16 +792,26 @@ const VideoCallModal = () => {
                       alt=""
                       className="w-full h-full object-cover opacity-85"
                     />
-                    {callStatus === 'calling' && (
+                    {(callStatus === 'calling' || iceStatus === 'connecting' || iceStatus === 'reconnecting') && (
                       <div className="absolute inset-0 border-2 border-[#FFEEA8] animate-ping pointer-events-none" />
                     )}
                   </div>
                   <div>
                     <h3 className="heading-h2 text-base sm:text-lg text-[#F7F8FC] mb-1">
-                      {callStatus === 'calling' ? `Calling ${partnerName}...` : `Connecting with ${partnerName}...`}
+                      {callStatus === 'calling'
+                        ? `Calling ${partnerName}...`
+                        : remoteStream
+                        ? `${partnerName} • Audio Connected`
+                        : `Connecting with ${partnerName}...`}
                     </h3>
                     <p className="text-[#A4B0C6] text-xs font-mono tracking-wider uppercase">
-                      {callStatus === 'calling' ? 'Waiting for answer...' : 'Connecting WebRTC stream...'}
+                      {callStatus === 'calling'
+                        ? 'Waiting for answer...'
+                        : remoteStream
+                        ? 'Partner camera is off or unavailable'
+                        : iceStatus === 'reconnecting'
+                        ? 'Reconnecting WebRTC peer...'
+                        : 'Establishing WebRTC stream...'}
                     </p>
                   </div>
                 </div>
@@ -817,6 +824,7 @@ const VideoCallModal = () => {
                   autoPlay 
                   muted 
                   playsInline 
+                  onLoadedMetadata={() => localVideoRef.current?.play().catch(() => {})}
                   className={`w-full h-full object-cover scale-x-[-1] ${(isVideoDisabled || !localStream || localStream.getVideoTracks().length === 0) ? 'hidden' : 'block'}`}
                 />
                 {(isVideoDisabled || !localStream || localStream.getVideoTracks().length === 0) && (
@@ -858,7 +866,7 @@ const VideoCallModal = () => {
 
             {/* Stage 2 Collaborative Studio Column */}
             {showStudio && (
-              <div className="w-full lg:w-[48%] h-1/2 lg:h-full flex flex-col bg-[#141A26] overflow-hidden animate-in fade-in duration-200">
+              <div className="w-full lg:w-[48%] h-1/2 lg:h-full min-h-0 flex flex-col bg-[#141A26] overflow-hidden animate-in fade-in duration-200">
                 
                 {/* Studio Header: Tabs & Quick Actions */}
                 <div className="p-2 sm:p-3 bg-[#171D2B] border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between gap-2 flex-wrap">
