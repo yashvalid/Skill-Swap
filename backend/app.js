@@ -81,7 +81,7 @@ app.get('/ready', async (req, res) => {
 const apiRateLimiter = createRateLimiter({
     prefix: 'api-global',
     windowMs: 60 * 1000,
-    max: 300,
+    max: 600,
     keyGenerator: (req) => req.ip || req.socket?.remoteAddress || 'anonymous'
 });
 

@@ -160,6 +160,14 @@ const Messaging = () => {
   const partnerTypingTimeoutRef = useRef(null);
   const activeChatUserRef = useRef(activeChatUser);
   activeChatUserRef.current = activeChatUser;
+  const userKeyPairRef = useRef(userKeyPair);
+  userKeyPairRef.current = userKeyPair;
+  const partnerSharedKeyRef = useRef(partnerSharedKey);
+  partnerSharedKeyRef.current = partnerSharedKey;
+  const refreshedPartnerKeysRef = useRef(new Set());
+  const rawMessagesRef = useRef([]);
+  const messagesRef = useRef([]);
+  messagesRef.current = messages;
   const chatUsersRef = useRef([]);
   chatUsersRef.current = chatUsers;
 
@@ -317,17 +325,19 @@ const Messaging = () => {
 
       const processedUsers = await Promise.all(
         users.map(async (item) => {
-          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv && userKeyPair?.privateKey && item.otherUser?.publicKey) {
+          const activeKeyPair = userKeyPairRef.current;
+          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv && activeKeyPair?.privateKey && item.otherUser?.publicKey) {
             try {
-              const key = await getOrDeriveSharedKey(userKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
+              const key = await getOrDeriveSharedKey(activeKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
               if (key) {
                 const dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, key);
                 return {
                   ...item,
                   lastMessage: {
                     ...item.lastMessage,
+                    _cipherText: item.lastMessage.text,
                     text: dec,
-                    isDecrypted: true
+                    isDecrypted: dec !== '[Unable to decrypt message]'
                   }
                 };
               }
@@ -351,17 +361,59 @@ const Messaging = () => {
     } finally {
       setLoading(false);
     }
-  }, [userKeyPair, location.state?.partnerId, handleSelectChat]);
+  }, [location.state?.partnerId, handleSelectChat]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers, swapEvent]);
+    if (currentUser?._id) {
+      fetchUsers();
+    }
+  }, [currentUser?._id, fetchUsers, swapEvent]);
+
+  // Re-decrypt sidebar lastMessage previews locally once E2EE keypair loads
+  useEffect(() => {
+    if (!userKeyPair?.privateKey || chatUsersRef.current.length === 0) return;
+    let cancelled = false;
+    const decryptPreviews = async () => {
+      const updated = await Promise.all(
+        chatUsersRef.current.map(async (item) => {
+          const cipherText = item.lastMessage?._cipherText || item.lastMessage?.text;
+          if (item.lastMessage?.isEncrypted && !item.lastMessage?.isDecrypted && item.lastMessage?.iv && item.otherUser?.publicKey && cipherText) {
+            try {
+              const key = await getOrDeriveSharedKey(userKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
+              if (key) {
+                const dec = await decryptMessageText(cipherText, item.lastMessage.iv, key);
+                return {
+                  ...item,
+                  lastMessage: {
+                    ...item.lastMessage,
+                    _cipherText: cipherText,
+                    text: dec,
+                    isDecrypted: dec !== '[Unable to decrypt message]'
+                  }
+                };
+              }
+            } catch {
+              // Keep existing preview
+            }
+          }
+          return item;
+        })
+      );
+      if (!cancelled) {
+        setChatUsers(sortByRecentMessage(updated));
+      }
+    };
+    decryptPreviews();
+    return () => { cancelled = true; };
+  }, [userKeyPair]);
 
   const decryptMessageBatch = useCallback(async (rawMessages, partnerUser, initialKey) => {
-    let activeKey = initialKey;
-    if (!activeKey && userKeyPair?.privateKey && partnerUser?._id) {
+    const activeKeyPair = userKeyPairRef.current;
+    let activeKey = initialKey || partnerSharedKeyRef.current;
+    if (!activeKey && activeKeyPair?.privateKey && partnerUser?._id) {
       let partnerPubKey = partnerUser.publicKey;
-      if (!partnerPubKey && !partnerUser._id.startsWith('peer-')) {
+      if (!partnerPubKey && !partnerUser._id.startsWith('peer-') && !refreshedPartnerKeysRef.current.has(partnerUser._id)) {
+        refreshedPartnerKeysRef.current.add(partnerUser._id);
         try {
           const res = await userService.getUserById(partnerUser._id);
           partnerPubKey = res.data?.user?.publicKey;
@@ -370,32 +422,35 @@ const Messaging = () => {
         }
       }
       if (partnerPubKey) {
-        activeKey = await getOrDeriveSharedKey(userKeyPair.privateKey, partnerUser._id, partnerPubKey);
+        activeKey = await getOrDeriveSharedKey(activeKeyPair.privateKey, partnerUser._id, partnerPubKey);
         if (activeKey && activeChatUserRef.current?._id === partnerUser._id) {
+          partnerSharedKeyRef.current = activeKey;
           setPartnerSharedKey(activeKey);
           setIsE2EEActive(true);
         }
       }
     }
 
-    let attemptedRefresh = false;
+    let attemptedRefresh = partnerUser?._id ? refreshedPartnerKeysRef.current.has(`retry:${partnerUser._id}`) : true;
     return Promise.all(
       rawMessages.map(async (msg) => {
         if (!msg.isEncrypted || !msg.iv) return msg;
-        if (!activeKey) return { ...msg, text: '[Encrypted message]', isDecrypted: false };
+        if (!activeKey) return { ...msg, _cipherText: msg.text, text: '[Encrypted message]', isDecrypted: false };
 
         let decrypted = await decryptMessageText(msg.text, msg.iv, activeKey);
-        if (decrypted === '[Unable to decrypt message]' && !attemptedRefresh && partnerUser?._id && !partnerUser._id.startsWith('peer-') && userKeyPair?.privateKey) {
+        if (decrypted === '[Unable to decrypt message]' && !attemptedRefresh && partnerUser?._id && !partnerUser._id.startsWith('peer-') && activeKeyPair?.privateKey) {
           attemptedRefresh = true;
+          refreshedPartnerKeysRef.current.add(`retry:${partnerUser._id}`);
           try {
             clearSharedKeyCacheForPartner(partnerUser._id);
             const res = await userService.getUserById(partnerUser._id);
             const freshPubKey = res.data?.user?.publicKey;
             if (freshPubKey) {
-              const refreshedKey = await getOrDeriveSharedKey(userKeyPair.privateKey, partnerUser._id, freshPubKey);
+              const refreshedKey = await getOrDeriveSharedKey(activeKeyPair.privateKey, partnerUser._id, freshPubKey);
               if (refreshedKey) {
                 activeKey = refreshedKey;
                 if (activeChatUserRef.current?._id === partnerUser._id) {
+                  partnerSharedKeyRef.current = refreshedKey;
                   setPartnerSharedKey(refreshedKey);
                 }
                 decrypted = await decryptMessageText(msg.text, msg.iv, refreshedKey);
@@ -407,12 +462,13 @@ const Messaging = () => {
         }
         return {
           ...msg,
+          _cipherText: msg.text,
           text: decrypted,
           isDecrypted: decrypted !== '[Unable to decrypt message]'
         };
       })
     );
-  }, [userKeyPair]);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -504,26 +560,35 @@ const Messaging = () => {
     };
   }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
 
-  const fetchMessages = useCallback(async () => {
-    if (!activeChatUser?._id || activeChatUser.isBot) return;
+  const activePartnerId = activeChatUser?.isBot ? null : activeChatUser?._id;
+
+  const fetchMessages = useCallback(async (partnerId) => {
+    const partnerObj = activeChatUserRef.current;
+    if (!partnerId || !partnerObj || partnerObj.isBot) return;
     setPartnerTyping(false);
+    rawMessagesRef.current = [];
     try {
-      const { data } = await messageService.getMessages(activeChatUser._id, { limit: 40 });
+      const { data } = await messageService.getMessages(partnerId, { limit: 40 });
+      if (activeChatUserRef.current?._id !== partnerId) return;
+
       const rawMessages = data.messages || [];
+      rawMessagesRef.current = rawMessages;
       setHasMoreMessages(Boolean(data.hasMore));
 
-      const processed = await decryptMessageBatch(rawMessages, activeChatUser, partnerSharedKey);
+      const processed = await decryptMessageBatch(rawMessages, partnerObj, partnerSharedKeyRef.current);
+      if (activeChatUserRef.current?._id !== partnerId) return;
+
       setMessages(processed);
 
       const hasUnseenIncoming = rawMessages.some(
-        (m) => m.senderId === activeChatUser._id && !m.isSeen
+        (m) => m.senderId === partnerId && !m.isSeen
       );
       if (hasUnseenIncoming) {
-        messageService.markSeen(activeChatUser._id).catch(() => {});
+        messageService.markSeen(partnerId).catch(() => {});
       }
       setChatUsers((prev) =>
         prev.map((item) =>
-          item.otherUser?._id === activeChatUser._id ? { ...item, unreadCount: 0 } : item
+          item.otherUser?._id === partnerId ? { ...item, unreadCount: 0 } : item
         )
       );
 
@@ -537,7 +602,7 @@ const Messaging = () => {
       setHasMoreMessages(false);
       isSwitchingChatRef.current = false;
     }
-  }, [activeChatUser, partnerSharedKey, decryptMessageBatch]);
+  }, [decryptMessageBatch]);
 
   const handleLoadOlderMessages = async () => {
     if (!activeChatUser?._id || activeChatUser.isBot || loadingOlder || !hasMoreMessages || messages.length === 0) {
@@ -554,9 +619,10 @@ const Messaging = () => {
         before: oldestTimestamp
       });
       const olderRaw = data.messages || [];
+      rawMessagesRef.current = [...olderRaw, ...rawMessagesRef.current];
       setHasMoreMessages(Boolean(data.hasMore));
 
-      const olderProcessed = await decryptMessageBatch(olderRaw, activeChatUser, partnerSharedKey);
+      const olderProcessed = await decryptMessageBatch(olderRaw, activeChatUser, partnerSharedKeyRef.current);
       isPrependingRef.current = true;
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m._id));
@@ -580,15 +646,40 @@ const Messaging = () => {
   useEffect(() => {
     isSwitchingChatRef.current = true;
     setShowScrollBottomPill(false);
-    if (activeChatUser && !activeChatUser.isBot) {
-      fetchMessages();
+    if (activePartnerId) {
+      fetchMessages(activePartnerId);
     } else if (activeChatUser?.isBot) {
       requestAnimationFrame(() => {
         scrollToBottom('auto');
         isSwitchingChatRef.current = false;
       });
     }
-  }, [activeChatUser, fetchMessages]);
+  }, [activePartnerId, activeChatUser?.isBot, fetchMessages]);
+
+  // In-memory re-decryption when shared key finishes deriving after initial fetch (no extra HTTP call)
+  useEffect(() => {
+    if (!partnerSharedKey || !activeChatUserRef.current || activeChatUserRef.current.isBot) return;
+    const current = messagesRef.current;
+    const needsDecrypt = current.some((m) => m.isEncrypted && !m.isDecrypted && m._cipherText);
+    if (!needsDecrypt) return;
+
+    let cancelled = false;
+    Promise.all(
+      current.map(async (m) => {
+        if (m.isEncrypted && !m.isDecrypted && m._cipherText && m.iv) {
+          const dec = await decryptMessageText(m._cipherText, m.iv, partnerSharedKey);
+          return { ...m, text: dec, isDecrypted: dec !== '[Unable to decrypt message]' };
+        }
+        return m;
+      })
+    ).then((updated) => {
+      if (!cancelled) {
+        isPrependingRef.current = true;
+        setMessages(updated);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [partnerSharedKey]);
 
   const currentChatMessages = activeChatUser?.isBot ? botMessages : messages;
 
@@ -909,11 +1000,11 @@ const Messaging = () => {
       <div className="ui-card bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl overflow-hidden h-[calc(100dvh-5rem)] sm:h-[78vh] flex shadow-2xl">
         
         {/* Left Side: Channel List */}
-        <div className={`w-full md:w-80 border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#202738] shrink-0 ${
+        <div className={`w-full md:w-80 min-h-0 h-full border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#202738] shrink-0 ${
           mobileView === 'chat' ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Header */}
-          <div className="p-3 sm:p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#171D2B]">
+          <div className="shrink-0 p-3 sm:p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#171D2B]">
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
                 Conversations
@@ -947,7 +1038,7 @@ const Messaging = () => {
           </div>
 
           {/* Contact Items */}
-          <div className="flex-grow overflow-y-auto p-2 space-y-1">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1">
             {/* SkillBot */}
             <div
               onClick={() => handleSelectChat(SKILLBOT_USER)}
@@ -1054,13 +1145,13 @@ const Messaging = () => {
         </div>
 
         {/* Right Side: Conversation Panel */}
-        <div className={`flex-grow flex flex-col relative bg-[#202738] ${
+        <div className={`flex-1 min-w-0 min-h-0 h-full flex flex-col relative bg-[#202738] ${
           mobileView === 'list' ? 'hidden md:flex' : 'flex'
         }`}>
           {activeChatUser ? (
             <>
               {/* Header */}
-              <div className="p-3 px-3 sm:px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
+              <div className="shrink-0 p-3 px-3 sm:px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     onClick={() => setMobileView('list')}
@@ -1153,7 +1244,7 @@ const Messaging = () => {
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-grow p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-3.5 bg-[#202738]"
+                className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto overscroll-contain space-y-3 sm:space-y-3.5 bg-[#202738]"
               >
                 {activeChatUser.isBot && (
                   <div className="mb-4 p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)]">
@@ -1302,7 +1393,7 @@ const Messaging = () => {
               )}
 
               {/* Input Area */}
-              <div className="p-2.5 sm:p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#202738]">
+              <div className="shrink-0 p-2.5 sm:p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#202738]">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
