@@ -132,7 +132,24 @@ const unregisterUserSocket = async (userId, socketId) => {
 const isUserOnline = async (userId) => {
     if (!userId) return false;
     const count = await redisClient.sCard(presenceSocketsKey(userId));
-    return count > 0;
+    if (count > 0) return true;
+
+    // Self-heal presence from live Socket.IO room across adapter nodes if Redis TTL lapsed
+    if (io) {
+        try {
+            const roomSockets = await io.in(userRoom(userId)).fetchSockets();
+            if (roomSockets.length > 0) {
+                const setKey = presenceSocketsKey(userId);
+                await redisClient.sAdd(setKey, roomSockets.map(s => s.id));
+                await redisClient.expire(setKey, PRESENCE_TTL_SECONDS);
+                await redisClient.sAdd(PRESENCE_ONLINE_KEY, userId.toString());
+                return true;
+            }
+        } catch {
+            // Fall through safely
+        }
+    }
+    return false;
 };
 
 const getOnlineUserIds = async () => {
@@ -342,12 +359,29 @@ const initSocket = async (server) => {
                     return;
                 }
 
-                if (await isUserInCall(receiverId) || await isUserInCall(callerId)) {
-                    sock.emit('call-rejected', {
-                        reason: 'busy',
-                        message: 'Partner is currently in another exchange call'
-                    });
-                    return;
+                const callKey = getCallKey(callerId, receiverId);
+                const existingPairCall = await getCallByKey(callKey);
+                if (existingPairCall && existingPairCall.status === 'ringing' && existingPairCall.callerId?.toString() === callerId) {
+                    // Allow same caller to retry an unanswered ringing call cleanly
+                    await clearCallState(callKey, existingPairCall.callerId, existingPairCall.receiverId);
+                } else if (await isUserInCall(receiverId) || await isUserInCall(callerId)) {
+                    // If the caller already holds a stale lock pointing to an offline peer, clear it automatically
+                    const callerCallKey = await redisClient.get(callUserKey(callerId));
+                    const callerCall = callerCallKey ? await getCallByKey(callerCallKey) : null;
+                    if (callerCall) {
+                        const peerId = callerCall.callerId?.toString() === callerId ? callerCall.receiverId : callerCall.callerId;
+                        if (!(await isUserOnline(peerId))) {
+                            await clearCallState(callerCallKey, callerCall.callerId, callerCall.receiverId);
+                        }
+                    }
+
+                    if (await isUserInCall(receiverId) || await isUserInCall(callerId)) {
+                        sock.emit('call-rejected', {
+                            reason: 'busy',
+                            message: 'Partner is currently in another exchange call'
+                        });
+                        return;
+                    }
                 }
 
                 const online = await isUserOnline(receiverId);
@@ -366,7 +400,6 @@ const initSocket = async (server) => {
                     return;
                 }
 
-                const callKey = getCallKey(callerId, receiverId);
                 await saveCallState({
                     callKey,
                     callerId,

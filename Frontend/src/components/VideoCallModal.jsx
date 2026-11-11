@@ -103,6 +103,7 @@ const VideoCallModal = () => {
   // Active Linked Swap (if any)
   const [activeSwap, setActiveSwap] = useState(null);
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
+  const [remoteAudioBlocked, setRemoteAudioBlocked] = useState(false);
 
   const studioContentRef = useRef(studioContent);
   studioContentRef.current = studioContent;
@@ -131,23 +132,44 @@ const VideoCallModal = () => {
         playPromise.catch(() => {});
       }
     }
-  }, [localStream]);
+  }, [localStream, callStatus, isVideoDisabled]);
+
+  const attemptPlayRemoteVideo = useCallback(() => {
+    const video = remoteVideoRef.current;
+    if (!video || !remoteStream) return;
+    if (video.srcObject !== remoteStream) {
+      video.srcObject = remoteStream;
+    }
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          if (!video.muted) setRemoteAudioBlocked(false);
+        })
+        .catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+          setRemoteAudioBlocked(true);
+        });
+    }
+  }, [remoteStream]);
 
   // Bind remote video stream to permanently-mounted video element with autoplay safeguard
   useEffect(() => {
-    const video = remoteVideoRef.current;
-    if (video && remoteStream) {
-      if (video.srcObject !== remoteStream) {
-        video.srcObject = remoteStream;
-      }
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn('[WebRTC] Remote video autoplay waiting for user interaction:', err.message);
-        });
-      }
+    if (!remoteStream || callStatus === 'idle') {
+      setRemoteAudioBlocked(false);
+      return;
     }
-  }, [remoteStream]);
+    attemptPlayRemoteVideo();
+  }, [remoteStream, callStatus, attemptPlayRemoteVideo]);
+
+  const handleUnmuteRemoteAudio = () => {
+    const video = remoteVideoRef.current;
+    if (!video) return;
+    video.muted = false;
+    video.play().catch(() => {});
+    setRemoteAudioBlocked(false);
+  };
 
   // Fullscreen toggle
   const toggleFullscreen = async () => {
@@ -751,8 +773,19 @@ const VideoCallModal = () => {
                 ref={remoteVideoRef} 
                 autoPlay 
                 playsInline 
-                className={`w-full h-full object-contain bg-black ${remoteStream ? 'block' : 'hidden'}`}
+                onLoadedMetadata={attemptPlayRemoteVideo}
+                className={`w-full h-full object-contain bg-black transition-opacity ${remoteStream ? 'opacity-100' : 'opacity-0 pointer-events-none absolute inset-0'}`}
               />
+
+              {remoteStream && remoteAudioBlocked && (
+                <button
+                  type="button"
+                  onClick={handleUnmuteRemoteAudio}
+                  className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1.5 rounded-full bg-[#FFEEA8] text-[#171D2B] font-mono text-xs font-bold shadow-xl cursor-pointer hover:bg-[#FFDF80]"
+                >
+                  Tap to Enable Partner Audio
+                </button>
+              )}
 
               {!remoteStream && (
                 <div className="flex flex-col items-center justify-center text-[#F7F8FC] gap-4 p-8 text-center">
@@ -784,12 +817,12 @@ const VideoCallModal = () => {
                   autoPlay 
                   muted 
                   playsInline 
-                  className={`w-full h-full object-cover scale-x-[-1] ${isVideoDisabled ? 'hidden' : 'block'}`}
+                  className={`w-full h-full object-cover scale-x-[-1] ${(isVideoDisabled || !localStream || localStream.getVideoTracks().length === 0) ? 'hidden' : 'block'}`}
                 />
-                {isVideoDisabled && (
+                {(isVideoDisabled || !localStream || localStream.getVideoTracks().length === 0) && (
                   <div className="w-full h-full flex flex-col items-center justify-center text-[#A4B0C6] text-[10px] font-mono bg-[#202738] gap-1 p-1 text-center">
                     <VideoOff size={13} className="text-[#D72E2B]" />
-                    <span>Camera Off</span>
+                    <span>{localStream && localStream.getVideoTracks().length === 0 ? 'Audio / Listen Only' : 'Camera Off'}</span>
                   </div>
                 )}
                 <div className="absolute bottom-1 left-1.5 font-mono text-[8px] bg-black/80 px-1 py-0.5 rounded text-white/90">
