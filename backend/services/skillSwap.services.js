@@ -4,269 +4,322 @@ const User = require('../model/user.model');
 const Messages = require('../model/message.model');
 const { sendMessages, getReceiverSocketId } = require('../socket');
 
+const SAFE_PARTNER_PROJECTION = 'fullname role location bio skillsOffered skillsNeeded averageRating totalRatings isVerified publicKey credits';
+
+const httpError = (status, message) => {
+    const err = new Error(message);
+    err.status = status;
+    return err;
+};
+
 module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSkill, scheduledTime, durationMinutes, proposalNotes }) => {
-    try {
-        const skillSwap = await SkillSwap.create({
-            fromUser,
-            toUser,
-            offersSkill,
-            requestsSkill,
-            scheduledTime: scheduledTime ? new Date(scheduledTime) : null,
-            durationMinutes: durationMinutes ? Number(durationMinutes) : 30,
-            proposalNotes: proposalNotes || ''
-        });
-        const toUserSocketId = getReceiverSocketId(toUser);
-        const swapReq = await SkillSwap.findOne({ _id: skillSwap._id }).populate('fromUser');
-        sendMessages(toUserSocketId, {
+    const recipient = await User.findById(toUser).select('_id');
+    if (!recipient) {
+        throw httpError(404, "Target user not found");
+    }
+
+    const skillSwap = await SkillSwap.create({
+        fromUser,
+        toUser,
+        offersSkill,
+        requestsSkill,
+        scheduledTime: scheduledTime ? new Date(scheduledTime) : null,
+        durationMinutes: durationMinutes ? Number(durationMinutes) : 30,
+        proposalNotes: proposalNotes || ''
+    });
+
+    const toUserSocketId = await getReceiverSocketId(toUser);
+    if (toUserSocketId) {
+        const swapReq = await SkillSwap.findById(skillSwap._id)
+            .populate('fromUser', SAFE_PARTNER_PROJECTION)
+            .lean();
+        await sendMessages(toUserSocketId, {
             event: 'swap-request',
-            data: {
-                swapReq
-            },
+            data: swapReq || skillSwap
         });
-        return skillSwap;
-    } catch (err) {
-        console.error("Error creating skill swap request:", err);
-        throw new Error("Error creating skill swap request");
     }
-}
 
-module.exports.acceptSwapRequest = async (requestId) => {
-    try {
-        const acceptSwap = await SkillSwap.findOneAndUpdate(
-            { _id: requestId },
-            { status: 'accepted' },
-            { new: true }
-        );
-        const user = await User.findOne({ _id: acceptSwap.fromUser })
-        sendMessages(user.socketId, {
+    return skillSwap;
+};
+
+module.exports.acceptSwapRequest = async (requestId, userId) => {
+    const existing = await SkillSwap.findById(requestId);
+    if (!existing) throw httpError(404, "Skill swap request not found");
+    if (existing.toUser.toString() !== userId.toString()) {
+        throw httpError(403, "Only the swap recipient can accept this request");
+    }
+    if (existing.status !== 'pending') {
+        throw httpError(400, `Cannot accept a swap with status '${existing.status}'`);
+    }
+
+    const acceptSwap = await SkillSwap.findOneAndUpdate(
+        { _id: requestId, toUser: userId, status: 'pending' },
+        { status: 'accepted' },
+        { new: true }
+    );
+    if (!acceptSwap) throw httpError(409, "Swap request already updated");
+
+    const fromSocketId = await getReceiverSocketId(acceptSwap.fromUser);
+    if (fromSocketId) {
+        await sendMessages(fromSocketId, {
             event: 'swap-accepted',
-            data: user,
-            swapId: acceptSwap._id,
-        })
-        return acceptSwap
-    } catch (err) {
-        throw new Error("Error accepting skill swap request");
-    }
-}
-
-module.exports.completeSwap = async (requestId) => {
-    try {
-        const swap = await SkillSwap.findById(requestId);
-        if (!swap) throw new Error("Swap not found");
-
-        swap.status = 'completed';
-        swap.completedAt = new Date();
-        await swap.save();
-
-        // Reward 1 credit to both users for completing an exchange
-        await User.updateMany(
-            { _id: { $in: [swap.fromUser, swap.toUser] } },
-            {
-                $inc: { credits: 1 },
-                $set: { isVerified: true }
+            data: {
+                swapId: acceptSwap._id,
+                toUser: acceptSwap.toUser
             }
-        );
-
-        return swap;
-    } catch (err) {
-        throw new Error("Error completing swap");
+        });
     }
-}
 
-module.exports.rejectSwap = async (requestId) => {
-    try {
-        const skillSwap = await SkillSwap.findById({ _id: requestId }).populate('fromUser');
-        if (!skillSwap) {
-            throw new Error("Skill swap request not found");
+    return acceptSwap;
+};
+
+module.exports.completeSwap = async (requestId, userId) => {
+    const existing = await SkillSwap.findById(requestId);
+    if (!existing) throw httpError(404, "Swap not found");
+
+    const isParticipant =
+        existing.fromUser.toString() === userId.toString() ||
+        existing.toUser.toString() === userId.toString();
+    if (!isParticipant) {
+        throw httpError(403, "Unauthorized to complete this swap");
+    }
+    if (existing.status !== 'accepted') {
+        throw httpError(400, existing.status === 'completed'
+            ? "Swap is already completed"
+            : "Only accepted swaps can be completed");
+    }
+
+    // Conditional atomic transition prevents duplicate credit rewards under concurrent requests
+    const swap = await SkillSwap.findOneAndUpdate(
+        {
+            _id: requestId,
+            status: 'accepted',
+            $or: [{ fromUser: userId }, { toUser: userId }]
+        },
+        {
+            $set: { status: 'completed', completedAt: new Date() }
+        },
+        { new: true }
+    );
+
+    if (!swap) {
+        throw httpError(409, "Swap status changed concurrently");
+    }
+
+    await User.updateMany(
+        { _id: { $in: [swap.fromUser, swap.toUser] } },
+        {
+            $inc: { credits: 1 },
+            $set: { isVerified: true }
         }
-        await SkillSwap.deleteOne({ _id: requestId });
-        sendMessages(skillSwap.fromUser.socketId, skillSwap.fromUser);
-        return skillSwap;
-    } catch (err) {
-        throw new Error("Error rejecting skill swap request");
+    );
+
+    return swap;
+};
+
+module.exports.rejectSwap = async (requestId, userId) => {
+    const skillSwap = await SkillSwap.findById(requestId);
+    if (!skillSwap) {
+        throw httpError(404, "Skill swap request not found");
     }
-}
+
+    const isParticipant =
+        skillSwap.fromUser.toString() === userId.toString() ||
+        skillSwap.toUser.toString() === userId.toString();
+    if (!isParticipant) {
+        throw httpError(403, "Unauthorized to reject this swap");
+    }
+    if (skillSwap.status !== 'pending') {
+        throw httpError(400, "Only pending swap requests can be rejected");
+    }
+
+    await SkillSwap.deleteOne({ _id: requestId, status: 'pending' });
+
+    const otherUserId = skillSwap.fromUser.toString() === userId.toString()
+        ? skillSwap.toUser
+        : skillSwap.fromUser;
+    const otherSocketId = await getReceiverSocketId(otherUserId);
+    if (otherSocketId) {
+        await sendMessages(otherSocketId, {
+            event: 'swap-rejected',
+            data: { swapId: skillSwap._id }
+        });
+    }
+
+    return skillSwap;
+};
 
 module.exports.rescheduleSwap = async ({ swapId, userId, scheduledTime, durationMinutes }) => {
-    try {
-        const swap = await SkillSwap.findById(swapId);
-        if (!swap) throw new Error("Swap not found");
+    const swap = await SkillSwap.findById(swapId);
+    if (!swap) throw httpError(404, "Swap not found");
 
-        // Verify user is a participant
-        const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
-        if (!isParticipant) throw new Error("Unauthorized to reschedule this swap");
+    const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
+    if (!isParticipant) throw httpError(403, "Unauthorized to reschedule this swap");
 
-        swap.scheduledTime = new Date(scheduledTime);
-        if (durationMinutes) swap.durationMinutes = Number(durationMinutes);
-        await swap.save();
-
-        // Notify other user via socket
-        const otherUserId = swap.fromUser.toString() === userId.toString() ? swap.toUser : swap.fromUser;
-        const otherSocketId = getReceiverSocketId(otherUserId);
-        if (otherSocketId) {
-            sendMessages(otherSocketId, {
-                event: 'swap-rescheduled',
-                data: {
-                    swapId: swap._id,
-                    scheduledTime: swap.scheduledTime,
-                    durationMinutes: swap.durationMinutes
-                }
-            });
+    swap.scheduledTime = new Date(scheduledTime);
+    if (durationMinutes) {
+        const parsed = Number(durationMinutes);
+        if (Number.isFinite(parsed) && parsed >= 15 && parsed <= 180) {
+            swap.durationMinutes = parsed;
         }
-
-        return swap;
-    } catch (err) {
-        console.error("Error in rescheduleSwap:", err);
-        throw err;
     }
+    await swap.save();
+
+    const otherUserId = swap.fromUser.toString() === userId.toString() ? swap.toUser : swap.fromUser;
+    const otherSocketId = await getReceiverSocketId(otherUserId);
+    if (otherSocketId) {
+        await sendMessages(otherSocketId, {
+            event: 'swap-rescheduled',
+            data: {
+                swapId: swap._id,
+                scheduledTime: swap.scheduledTime,
+                durationMinutes: swap.durationMinutes
+            }
+        });
+    }
+
+    return swap;
 };
 
 module.exports.getAllAcceptedSwaps = async (currUserId) => {
-    try {
-        if (!currUserId) throw new Error("No User ID provided");
+    if (!currUserId) throw httpError(400, "No User ID provided");
 
-        const swaps = await SkillSwap.find({
-            status: { $in: ['accepted', 'completed'] },
-            $or: [
-                { fromUser: currUserId },
-                { toUser: currUserId }
-            ]
+    const swaps = await SkillSwap.find({
+        status: { $in: ['accepted', 'completed'] },
+        $or: [
+            { fromUser: currUserId },
+            { toUser: currUserId }
+        ]
+    })
+        .populate('fromUser', SAFE_PARTNER_PROJECTION)
+        .populate('toUser', SAFE_PARTNER_PROJECTION)
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const entries = swaps
+        .map(swap => {
+            if (!swap.fromUser || !swap.toUser) return null;
+
+            const isFrom = swap.fromUser._id.toString() === currUserId.toString();
+            const otherUser = isFrom ? swap.toUser : swap.fromUser;
+
+            return {
+                swapId: swap._id,
+                status: swap.status,
+                otherUser,
+                requestedSkill: isFrom ? swap.requestsSkill : swap.offersSkill,
+                skillOffered: isFrom ? swap.offersSkill : swap.requestsSkill,
+                scheduledTime: swap.scheduledTime || null,
+                durationMinutes: swap.durationMinutes || 30,
+                proposalNotes: swap.proposalNotes || '',
+                milestones: swap.milestones || [],
+                sessionNotes: swap.sessionNotes || '',
+                createdAt: swap.createdAt
+            };
         })
-            .populate('fromUser')
-            .populate('toUser')
-            .lean();
+        .filter(item => item !== null);
 
-        const otherUsers = swaps
-            .map(swap => {
-                if (!swap.fromUser || !swap.toUser) return null;
+    // Keep accepted swaps before completed ones when ordering
+    entries.sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'accepted' ? -1 : 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
-                const isFrom = swap.fromUser._id.toString() === currUserId.toString();
-                const otherUser = isFrom ? swap.toUser : swap.fromUser;
+    if (entries.length > 0) {
+        const uniquePartnerIds = Array.from(new Set(entries.map(u => u.otherUser._id.toString())));
+        const userObjIds = uniquePartnerIds.map(id => new mongoose.Types.ObjectId(id));
+        const currUserObjId = new mongoose.Types.ObjectId(currUserId);
 
-                return {
-                    swapId: swap._id,
-                    status: swap.status,
-                    otherUser,
-                    requestedSkill: isFrom ? swap.requestsSkill : swap.offersSkill,
-                    skillOffered: isFrom ? swap.offersSkill : swap.requestsSkill,
-                    scheduledTime: swap.scheduledTime || null,
-                    durationMinutes: swap.durationMinutes || 30,
-                    proposalNotes: swap.proposalNotes || '',
-                    createdAt: swap.createdAt
-                };
-            })
-            .filter(item => item !== null);
-
-        const uniqueUsers = Array.from(
-            new Map(
-                otherUsers.map(entry => [entry.otherUser._id.toString(), entry])
-            ).values()
-        );
-
-        if (uniqueUsers.length > 0) {
-            const userObjIds = uniqueUsers.map(u => new mongoose.Types.ObjectId(u.otherUser._id));
-            const currUserObjId = new mongoose.Types.ObjectId(currUserId);
-
-            const lastMessages = await Messages.aggregate([
-                {
-                    $match: {
-                        $or: [
-                            { senderId: currUserObjId, receiverId: { $in: userObjIds } },
-                            { receiverId: currUserObjId, senderId: { $in: userObjIds } }
+        const lastMessages = await Messages.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { senderId: currUserObjId, receiverId: { $in: userObjIds } },
+                        { receiverId: currUserObjId, senderId: { $in: userObjIds } }
+                    ]
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+                $project: {
+                    text: 1,
+                    isEncrypted: 1,
+                    iv: 1,
+                    messageType: 1,
+                    senderId: 1,
+                    receiverId: 1,
+                    createdAt: 1,
+                    partnerId: {
+                        $cond: [
+                            { $eq: ["$senderId", currUserObjId] },
+                            "$receiverId",
+                            "$senderId"
                         ]
                     }
-                },
-                {
-                    $sort: { createdAt: -1 }
-                },
-                {
-                    $project: {
-                        text: 1,
-                        isEncrypted: 1,
-                        iv: 1,
-                        messageType: 1,
-                        senderId: 1,
-                        receiverId: 1,
-                        createdAt: 1,
-                        partnerId: {
-                            $cond: [
-                                { $eq: ["$senderId", currUserObjId] },
-                                "$receiverId",
-                                "$senderId"
-                            ]
-                        }
-                    }
-                },
-                {
-                    $group: {
-                        _id: "$partnerId",
-                        lastMessage: { $first: "$$ROOT" }
-                    }
                 }
-            ]);
-
-            const lastMessageMap = new Map(
-                lastMessages.map(item => [item._id.toString(), item.lastMessage])
-            );
-
-            uniqueUsers.forEach(entry => {
-                const partnerId = entry.otherUser._id.toString();
-                const msg = lastMessageMap.get(partnerId);
-                if (msg) {
-                    entry.lastMessage = {
-                        text: msg.text,
-                        senderId: msg.senderId,
-                        receiverId: msg.receiverId,
-                        createdAt: msg.createdAt
-                    };
-                    entry.lastMessageAt = new Date(msg.createdAt).getTime();
-                } else {
-                    entry.lastMessage = null;
-                    entry.lastMessageAt = 0;
+            },
+            {
+                $group: {
+                    _id: "$partnerId",
+                    lastMessage: { $first: "$$ROOT" }
                 }
-            });
+            }
+        ]);
 
-            // Order recipients: whoever has sent the most recent message comes first
-            uniqueUsers.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
-        }
+        const lastMessageMap = new Map(
+            lastMessages.map(item => [item._id.toString(), item.lastMessage])
+        );
 
-        return uniqueUsers;
-    } catch (err) {
-        console.error("Error in getAllAcceptedSwaps:", err);
-        throw err;
+        entries.forEach(entry => {
+            const partnerId = entry.otherUser._id.toString();
+            const msg = lastMessageMap.get(partnerId);
+            if (msg) {
+                entry.lastMessage = {
+                    text: msg.text,
+                    isEncrypted: msg.isEncrypted,
+                    iv: msg.iv,
+                    messageType: msg.messageType,
+                    senderId: msg.senderId,
+                    receiverId: msg.receiverId,
+                    createdAt: msg.createdAt
+                };
+                entry.lastMessageAt = new Date(msg.createdAt).getTime();
+            } else {
+                entry.lastMessage = null;
+                entry.lastMessageAt = 0;
+            }
+        });
+
+        entries.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
     }
+
+    return entries;
 };
 
 module.exports.getPendingSwaps = async (userId) => {
-    try {
-        const pendingSwaps = await SkillSwap.find({ toUser: userId, status: 'pending' })
-            .populate('fromUser')
-            .lean();
-        return pendingSwaps;
-    } catch (err) {
-        throw new Error(err);
-    }
-}
+    const pendingSwaps = await SkillSwap.find({ toUser: userId, status: 'pending' })
+        .populate('fromUser', SAFE_PARTNER_PROJECTION)
+        .sort({ createdAt: -1 })
+        .lean();
+    return pendingSwaps;
+};
 
 module.exports.updateSwapWorkspace = async ({ swapId, userId, milestones, sessionNotes }) => {
-    try {
-        const swap = await SkillSwap.findById(swapId);
-        if (!swap) throw new Error("Skill swap record not found");
+    const swap = await SkillSwap.findById(swapId);
+    if (!swap) throw httpError(404, "Skill swap record not found");
 
-        const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
-        if (!isParticipant) throw new Error("Unauthorized to update workspace for this swap");
+    const isParticipant = swap.fromUser.toString() === userId.toString() || swap.toUser.toString() === userId.toString();
+    if (!isParticipant) throw httpError(403, "Unauthorized to update workspace for this swap");
 
-        if (Array.isArray(milestones)) {
-            swap.milestones = milestones;
-        }
-        if (typeof sessionNotes === 'string') {
-            swap.sessionNotes = sessionNotes;
-        }
-
-        await swap.save();
-        return swap;
-    } catch (err) {
-        console.error("Error updating swap workspace:", err);
-        throw err;
+    if (Array.isArray(milestones)) {
+        swap.milestones = milestones
+            .filter(m => m && typeof m.title === 'string' && m.title.trim())
+            .map(m => ({ title: m.title.trim().slice(0, 200), completed: Boolean(m.completed) }));
     }
+    if (typeof sessionNotes === 'string') {
+        swap.sessionNotes = sessionNotes.slice(0, 20000);
+    }
+
+    await swap.save();
+    return swap;
 };

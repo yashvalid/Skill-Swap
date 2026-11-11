@@ -24,6 +24,8 @@ router.post('/login',
     userController.userLogin
 );
 
+router.post('/logout', userController.userLogout);
+
 router.get('/profile',
     authMiddleware.authUser,
     userController.getUserProfile
@@ -35,18 +37,22 @@ router.get('/all-users',
 );
 
 router.get('/:id',
-    authMiddleware.authUser,
+    authMiddleware.optionalAuth,
     userController.getUserById
 );
 
 router.put('/update-profile',
     authMiddleware.authUser,
+    body('bio').optional().isString().isLength({ min: 3, max: 1000 }).withMessage('Bio must be at least 3 characters'),
+    body('location').optional().isString().isLength({ min: 2, max: 120 }).withMessage('Location must be at least 2 characters'),
+    body('role').optional().isString().isLength({ min: 2, max: 100 }).withMessage('Role must be at least 2 characters'),
     userController.updateProfile
 );
 
 router.post('/rate/:id',
     authMiddleware.authUser,
-    body('rating').isNumeric().withMessage('Rating is required and must be a number'),
+    body('rating').isFloat({ min: 1, max: 5 }).withMessage('Rating must be a number between 1 and 5'),
+    body('review').optional().isString().isLength({ max: 1000 }).withMessage('Review is too long'),
     userController.rateUser
 );
 

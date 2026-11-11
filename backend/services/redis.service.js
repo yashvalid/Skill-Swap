@@ -16,34 +16,36 @@ const isExpired = (key) => {
 let realClient = null;
 let isConnected = false;
 
-try {
-    realClient = redis.createClient({
-        url: process.env.REDIS_URL || 'redis://localhost:6379',
-        socket: {
-            reconnectStrategy: (retries) => {
-                if (retries > 1) {
-                    return false; // Stop reconnection loop if offline
+if (process.env.NODE_ENV !== 'test') {
+    try {
+        realClient = redis.createClient({
+            url: process.env.REDIS_URL || 'redis://localhost:6379',
+            socket: {
+                reconnectStrategy: (retries) => {
+                    if (retries > 1) {
+                        return false; // Stop reconnection loop if offline
+                    }
+                    return 1000;
                 }
-                return 1000;
             }
-        }
-    });
-
-    realClient.on('error', () => {
-        // Swallow unhandled connection errors when offline
-    });
-
-    realClient.connect()
-        .then(() => {
-            isConnected = true;
-            console.log('[Redis] Connected to Redis server.');
-        })
-        .catch(() => {
-            isConnected = false;
-            console.log('[Redis] Redis offline. Transparently using in-memory store.');
         });
-} catch (err) {
-    isConnected = false;
+
+        realClient.on('error', () => {
+            // Swallow unhandled connection errors when offline
+        });
+
+        realClient.connect()
+            .then(() => {
+                isConnected = true;
+                console.log('[Redis] Connected to Redis server.');
+            })
+            .catch(() => {
+                isConnected = false;
+                console.log('[Redis] Redis offline. Transparently using in-memory store.');
+            });
+    } catch {
+        isConnected = false;
+    }
 }
 
 const safeRedisClient = {
@@ -121,10 +123,11 @@ const safeRedisClient = {
         const allKeys = Array.from(inMemoryStore.keys()).filter(k => !isExpired(k));
         const match = options?.MATCH;
         if (match && match.includes('*')) {
-            const regex = new RegExp('^' + match.replace(/\*/g, '.*') + '$');
-            return { cursor: 0, keys: allKeys.filter(k => regex.test(k)) };
+            const escaped = match.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+            const regex = new RegExp('^' + escaped + '$');
+            return { cursor: '0', keys: allKeys.filter(k => regex.test(k)) };
         }
-        return { cursor: 0, keys: allKeys };
+        return { cursor: '0', keys: allKeys };
     }
 };
 

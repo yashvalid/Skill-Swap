@@ -6,13 +6,14 @@ const messagesController = require('../controllers/messages.controllers');
 const { cache } = require('../middlewares/cache');
 
 router.get('/get-messages',
-    query('userToChatId').notEmpty().withMessage('UserToChatId is required'),
     authMiddleWare.authUser,
+    query('userToChatId').notEmpty().withMessage('UserToChatId is required'),
     cache(300, (req) => `cache:messages:${req.user._id}:${req.query.userToChatId}`),
     messagesController.getMessages
 );
 
 router.post('/send-message',
+    authMiddleWare.authUser,
     body('text').custom((val, { req }) => {
         if (!val && !req.body.message && !req.body.content) {
             throw new Error('Message text is required');
@@ -25,7 +26,6 @@ router.post('/send-message',
         }
         return true;
     }),
-    authMiddleWare.authUser,
     messagesController.sendMessage
 );
 

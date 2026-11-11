@@ -50,6 +50,10 @@ const commentSchema = new mongoose.Schema({
   }
 });
 
+postSchema.index({ createdAt: -1 });
+postSchema.index({ user: 1, createdAt: -1 });
+commentSchema.index({ post: 1, createdAt: 1 });
+
 const commentModel = mongoose.model('comment', commentSchema);
 const postModel = mongoose.model('post', postSchema);
 

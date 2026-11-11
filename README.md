@@ -96,7 +96,7 @@ Skill Swap/
    CLOUDINARY_CLOUD_NAME=your_cloudinary_name
    CLOUDINARY_API_KEY=your_cloudinary_api_key
    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-   PORT=5000
+   PORT=9000
    ```
 4. Start the backend server:
    ```bash
@@ -114,7 +114,8 @@ Skill Swap/
    ```
 3. Create a `.env` file if needed (e.g., for API base URL):
    ```env
-   VITE_API_URL=http://localhost:5000/api
+   VITE_API_URL=http://localhost:9000
+   VITE_SOCKET_URL=http://localhost:9000
    ```
 4. Start the frontend dev server:
    ```bash
