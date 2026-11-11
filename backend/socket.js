@@ -209,8 +209,8 @@ const logCallRecord = async ({ callerId, receiverId, status, duration = 0 }) => 
         await emitToUser(rId, 'new-message', message);
 
         await invalidateCache([
-            `cache:messages:${cId}:${rId}`,
-            `cache:messages:${rId}:${cId}`,
+            `cache:messages:${cId}:${rId}*`,
+            `cache:messages:${rId}:${cId}*`,
             `cache:swaps:accepted:${cId}`,
             `cache:swaps:accepted:${rId}`
         ]);

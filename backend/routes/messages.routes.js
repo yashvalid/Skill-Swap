@@ -8,7 +8,7 @@ const { cache } = require('../middlewares/cache');
 router.get('/get-messages',
     authMiddleWare.authUser,
     query('userToChatId').notEmpty().withMessage('UserToChatId is required'),
-    cache(300, (req) => `cache:messages:${req.user._id}:${req.query.userToChatId}`),
+    cache(300, (req) => `cache:messages:${req.user._id}:${req.query.userToChatId}:l=${req.query.limit || 50}:b=${req.query.before || ''}`),
     messagesController.getMessages
 );
 
@@ -27,6 +27,11 @@ router.post('/send-message',
         return true;
     }),
     messagesController.sendMessage
+);
+
+router.patch('/mark-seen',
+    authMiddleWare.authUser,
+    messagesController.markSeen
 );
 
 module.exports = router;

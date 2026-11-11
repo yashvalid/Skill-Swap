@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2,
   Clock,
@@ -25,6 +25,7 @@ import {
   CalendarCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { useVideoCall } from '../context/VideoCallContext';
 import { swapService } from '../services/swapService';
 import { aiService } from '../services/aiService';
@@ -48,7 +49,10 @@ const TIME_SLOTS = [
 
 const Dashboard = () => {
   const { user, refreshProfile } = useAuth();
+  const { swapEvent } = useSocket();
   const { startCall } = useVideoCall();
+  const refreshProfileRef = useRef(refreshProfile);
+  refreshProfileRef.current = refreshProfile;
   const navigate = useNavigate();
   const [pendingSwaps, setPendingSwaps] = useState([]);
   const [acceptedSwaps, setAcceptedSwaps] = useState([]);
@@ -72,8 +76,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       fetchSwaps();
+      if (swapEvent?.type === 'swap-completed') {
+        refreshProfileRef.current();
+      }
     }
-  }, [user]);
+  }, [user, swapEvent]);
 
   const fetchSwaps = async () => {
     try {

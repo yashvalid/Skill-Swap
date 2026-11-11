@@ -195,3 +195,69 @@ export const decryptMessageText = async (ciphertextBase64, ivBase64, sharedKey) 
     return '[Unable to decrypt message]';
   }
 };
+
+export const clearSharedKeyCacheForPartner = (partnerId) => {
+  if (!partnerId) return;
+  const prefix = `${partnerId}:`;
+  for (const key of SHARED_KEY_CACHE.keys()) {
+    if (key.startsWith(prefix)) {
+      SHARED_KEY_CACHE.delete(key);
+    }
+  }
+};
+
+export const exportUserKeyBackup = (userId) => {
+  if (!userId) return null;
+  const storedPriv = localStorage.getItem(`ss_e2ee_priv_${userId}`);
+  const storedPub = localStorage.getItem(`ss_e2ee_pub_${userId}`);
+  if (!storedPriv || !storedPub) return null;
+
+  return JSON.stringify({
+    version: 1,
+    userId,
+    privateJwk: JSON.parse(storedPriv),
+    publicJwk: JSON.parse(storedPub),
+    exportedAt: new Date().toISOString()
+  }, null, 2);
+};
+
+export const importUserKeyBackup = async (userId, backupString) => {
+  if (!window.crypto?.subtle) {
+    throw new Error('Web Crypto API is not supported in this browser');
+  }
+  if (!userId || !backupString?.trim()) {
+    throw new Error('Backup JSON is required');
+  }
+
+  const parsed = JSON.parse(backupString);
+  if (!parsed?.privateJwk || !parsed?.publicJwk) {
+    throw new Error('Invalid E2EE backup format');
+  }
+
+  const privateKey = await window.crypto.subtle.importKey(
+    'jwk',
+    parsed.privateJwk,
+    { name: 'ECDH', namedCurve: 'P-256' },
+    true,
+    ['deriveKey', 'deriveBits']
+  );
+
+  // Verify public JWK imports cleanly too
+  await window.crypto.subtle.importKey(
+    'jwk',
+    parsed.publicJwk,
+    { name: 'ECDH', namedCurve: 'P-256' },
+    true,
+    []
+  );
+
+  const pubString = JSON.stringify(parsed.publicJwk);
+  localStorage.setItem(`ss_e2ee_priv_${userId}`, JSON.stringify(parsed.privateJwk));
+  localStorage.setItem(`ss_e2ee_pub_${userId}`, pubString);
+  SHARED_KEY_CACHE.clear();
+
+  return {
+    privateKey,
+    publicKeyJwkString: pubString
+  };
+};

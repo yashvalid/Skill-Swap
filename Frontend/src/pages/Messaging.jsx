@@ -16,7 +16,12 @@ import {
   ArrowDown,
   Lock,
   Calendar,
-  X
+  X,
+  Check,
+  CheckCheck,
+  KeyRound,
+  Download,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -32,7 +37,10 @@ import {
   getOrInitUserKeyPair,
   getOrDeriveSharedKey,
   encryptMessageText,
-  decryptMessageText
+  decryptMessageText,
+  clearSharedKeyCacheForPartner,
+  exportUserKeyBackup,
+  importUserKeyBackup
 } from '../utils/e2ee';
 
 const SKILLBOT_USER = {
@@ -110,13 +118,16 @@ const Messaging = () => {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { socket } = useSocket();
+  const { socket, isUserOnline, swapEvent } = useSocket();
   const { startCall } = useVideoCall();
 
   const [activeChatUser, setActiveChatUser] = useState(SKILLBOT_USER);
   const [chatUsers, setChatUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [partnerTyping, setPartnerTyping] = useState(false);
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat'
   const [botMessages, setBotMessages] = useState(() => getInitialBotMessages(currentUser?._id));
   const [botLoading, setBotLoading] = useState(false);
@@ -131,15 +142,24 @@ const Messaging = () => {
   const [scheduleDuration, setScheduleDuration] = useState(45);
   const [scheduling, setScheduling] = useState(false);
 
-  // E2EE States
+  // E2EE States & Key Backup Modal
   const [userKeyPair, setUserKeyPair] = useState(null);
   const [partnerSharedKey, setPartnerSharedKey] = useState(null);
   const [isE2EEActive, setIsE2EEActive] = useState(false);
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [backupInput, setBackupInput] = useState('');
+  const [importingKeys, setImportingKeys] = useState(false);
 
   const scrollContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const isSwitchingChatRef = useRef(true);
+  const isPrependingRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
+  const lastTypingEmitRef = useRef(0);
+  const typingTimeoutRef = useRef(null);
+  const partnerTypingTimeoutRef = useRef(null);
+  const activeChatUserRef = useRef(activeChatUser);
+  activeChatUserRef.current = activeChatUser;
   const chatUsersRef = useRef([]);
   chatUsersRef.current = chatUsers;
 
@@ -335,7 +355,64 @@ const Messaging = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers, swapEvent]);
+
+  const decryptMessageBatch = useCallback(async (rawMessages, partnerUser, initialKey) => {
+    let activeKey = initialKey;
+    if (!activeKey && userKeyPair?.privateKey && partnerUser?._id) {
+      let partnerPubKey = partnerUser.publicKey;
+      if (!partnerPubKey && !partnerUser._id.startsWith('peer-')) {
+        try {
+          const res = await userService.getUserById(partnerUser._id);
+          partnerPubKey = res.data?.user?.publicKey;
+        } catch (err) {
+          console.warn('[E2EE] Partner key lookup skipped:', err.message);
+        }
+      }
+      if (partnerPubKey) {
+        activeKey = await getOrDeriveSharedKey(userKeyPair.privateKey, partnerUser._id, partnerPubKey);
+        if (activeKey && activeChatUserRef.current?._id === partnerUser._id) {
+          setPartnerSharedKey(activeKey);
+          setIsE2EEActive(true);
+        }
+      }
+    }
+
+    let attemptedRefresh = false;
+    return Promise.all(
+      rawMessages.map(async (msg) => {
+        if (!msg.isEncrypted || !msg.iv) return msg;
+        if (!activeKey) return { ...msg, text: '[Encrypted message]', isDecrypted: false };
+
+        let decrypted = await decryptMessageText(msg.text, msg.iv, activeKey);
+        if (decrypted === '[Unable to decrypt message]' && !attemptedRefresh && partnerUser?._id && !partnerUser._id.startsWith('peer-') && userKeyPair?.privateKey) {
+          attemptedRefresh = true;
+          try {
+            clearSharedKeyCacheForPartner(partnerUser._id);
+            const res = await userService.getUserById(partnerUser._id);
+            const freshPubKey = res.data?.user?.publicKey;
+            if (freshPubKey) {
+              const refreshedKey = await getOrDeriveSharedKey(userKeyPair.privateKey, partnerUser._id, freshPubKey);
+              if (refreshedKey) {
+                activeKey = refreshedKey;
+                if (activeChatUserRef.current?._id === partnerUser._id) {
+                  setPartnerSharedKey(refreshedKey);
+                }
+                decrypted = await decryptMessageText(msg.text, msg.iv, refreshedKey);
+              }
+            }
+          } catch {
+            // Keep graceful fallback
+          }
+        }
+        return {
+          ...msg,
+          text: decrypted,
+          isDecrypted: decrypted !== '[Unable to decrypt message]'
+        };
+      })
+    );
+  }, [userKeyPair]);
 
   useEffect(() => {
     if (!socket) return;
@@ -355,10 +432,16 @@ const Messaging = () => {
         }
         if (currentKey) {
           const decrypted = await decryptMessageText(data.text, data.iv, currentKey);
-          processedData = { ...data, text: decrypted, isDecrypted: true };
+          processedData = { ...data, text: decrypted, isDecrypted: decrypted !== '[Unable to decrypt message]' };
         } else {
           processedData = { ...data, text: '[Encrypted message]', isDecrypted: false };
         }
+      }
+
+      const isFromOpenPartner = activeChatUser && !activeChatUser.isBot && data.senderId === activeChatUser._id;
+      if (isFromOpenPartner) {
+        setPartnerTyping(false);
+        messageService.markSeen(activeChatUser._id).catch(() => {});
       }
 
       if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
@@ -372,10 +455,12 @@ const Messaging = () => {
       setChatUsers((prev) => {
         const updated = prev.map((item) => {
           if (item.otherUser?._id === partnerId) {
+            const shouldIncrementUnread = data.senderId !== currentUser?._id && !isFromOpenPartner;
             return {
               ...item,
               lastMessage: processedData,
               lastMessageAt: msgTime,
+              unreadCount: shouldIncrementUnread ? (item.unreadCount || 0) + 1 : 0,
             };
           }
           return item;
@@ -384,52 +469,64 @@ const Messaging = () => {
       });
     };
 
+    const handleChatTyping = ({ from, isTyping }) => {
+      if (from !== activeChatUserRef.current?._id) return;
+      setPartnerTyping(Boolean(isTyping));
+      if (partnerTypingTimeoutRef.current) clearTimeout(partnerTypingTimeoutRef.current);
+      if (isTyping) {
+        partnerTypingTimeoutRef.current = setTimeout(() => setPartnerTyping(false), 3200);
+      }
+    };
+
+    const handleMessagesSeen = ({ by }) => {
+      if (by === activeChatUserRef.current?._id) {
+        setMessages((prev) =>
+          prev.map((m) => (m.senderId === currentUser?._id ? { ...m, isSeen: true } : m))
+        );
+      }
+      setChatUsers((prev) =>
+        prev.map((item) =>
+          item.otherUser?._id === by && item.lastMessage
+            ? { ...item, lastMessage: { ...item.lastMessage, isSeen: true } }
+            : item
+        )
+      );
+    };
+
     socket.on('new-message', handleNewMessage);
+    socket.on('chat-typing', handleChatTyping);
+    socket.on('messages-seen', handleMessagesSeen);
     return () => {
       socket.off('new-message', handleNewMessage);
+      socket.off('chat-typing', handleChatTyping);
+      socket.off('messages-seen', handleMessagesSeen);
+      if (partnerTypingTimeoutRef.current) clearTimeout(partnerTypingTimeoutRef.current);
     };
   }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
 
   const fetchMessages = useCallback(async () => {
     if (!activeChatUser?._id || activeChatUser.isBot) return;
+    setPartnerTyping(false);
     try {
-      const { data } = await messageService.getMessages(activeChatUser._id);
+      const { data } = await messageService.getMessages(activeChatUser._id, { limit: 40 });
       const rawMessages = data.messages || [];
+      setHasMoreMessages(Boolean(data.hasMore));
 
-      let currentKey = partnerSharedKey;
-      if (!currentKey && userKeyPair?.privateKey) {
-        let partnerPubKey = activeChatUser.publicKey;
-        if (!partnerPubKey && !activeChatUser._id.startsWith('peer-')) {
-          try {
-            const res = await userService.getUserById(activeChatUser._id);
-            partnerPubKey = res.data?.user?.publicKey;
-          } catch (err) {
-            console.warn('[E2EE] Partner key lookup skipped:', err.message);
-          }
-        }
-        if (partnerPubKey) {
-          currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
-          if (currentKey) {
-            setPartnerSharedKey(currentKey);
-            setIsE2EEActive(true);
-          }
-        }
+      const processed = await decryptMessageBatch(rawMessages, activeChatUser, partnerSharedKey);
+      setMessages(processed);
+
+      const hasUnseenIncoming = rawMessages.some(
+        (m) => m.senderId === activeChatUser._id && !m.isSeen
+      );
+      if (hasUnseenIncoming) {
+        messageService.markSeen(activeChatUser._id).catch(() => {});
       }
-
-      const processed = await Promise.all(
-        rawMessages.map(async (msg) => {
-          if (msg.isEncrypted && msg.iv) {
-            if (currentKey) {
-              const decrypted = await decryptMessageText(msg.text, msg.iv, currentKey);
-              return { ...msg, text: decrypted, isDecrypted: true };
-            }
-            return { ...msg, text: '[Encrypted message]', isDecrypted: false };
-          }
-          return msg;
-        })
+      setChatUsers((prev) =>
+        prev.map((item) =>
+          item.otherUser?._id === activeChatUser._id ? { ...item, unreadCount: 0 } : item
+        )
       );
 
-      setMessages(processed);
       requestAnimationFrame(() => {
         scrollToBottom('auto');
         isSwitchingChatRef.current = false;
@@ -437,9 +534,48 @@ const Messaging = () => {
     } catch (error) {
       console.error('Failed to fetch messages', error);
       setMessages([]);
+      setHasMoreMessages(false);
       isSwitchingChatRef.current = false;
     }
-  }, [activeChatUser, partnerSharedKey, userKeyPair]);
+  }, [activeChatUser, partnerSharedKey, decryptMessageBatch]);
+
+  const handleLoadOlderMessages = async () => {
+    if (!activeChatUser?._id || activeChatUser.isBot || loadingOlder || !hasMoreMessages || messages.length === 0) {
+      return;
+    }
+    const oldestTimestamp = messages[0]?.createdAt;
+    if (!oldestTimestamp) return;
+
+    setLoadingOlder(true);
+    const prevScrollHeight = scrollContainerRef.current?.scrollHeight || 0;
+    try {
+      const { data } = await messageService.getMessages(activeChatUser._id, {
+        limit: 40,
+        before: oldestTimestamp
+      });
+      const olderRaw = data.messages || [];
+      setHasMoreMessages(Boolean(data.hasMore));
+
+      const olderProcessed = await decryptMessageBatch(olderRaw, activeChatUser, partnerSharedKey);
+      isPrependingRef.current = true;
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m._id));
+        const uniqueOlder = olderProcessed.filter((m) => !existingIds.has(m._id));
+        return [...uniqueOlder, ...prev];
+      });
+
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+          container.scrollTop = container.scrollHeight - prevScrollHeight;
+        }
+      });
+    } catch {
+      toast.error('Failed to load older messages');
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   useEffect(() => {
     isSwitchingChatRef.current = true;
@@ -466,6 +602,11 @@ const Messaging = () => {
         scrollToBottom('auto');
         isSwitchingChatRef.current = false;
       });
+      return;
+    }
+
+    if (isPrependingRef.current) {
+      isPrependingRef.current = false;
       return;
     }
 
@@ -531,9 +672,99 @@ const Messaging = () => {
     }
   };
 
+  const emitTypingStatus = useCallback((isTyping) => {
+    if (!socket || !activeChatUser?._id || activeChatUser.isBot) return;
+    socket.emit('chat-typing', { to: activeChatUser._id, isTyping: Boolean(isTyping) });
+  }, [socket, activeChatUser]);
+
+  const handleMessageInputChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
+
+    if (!activeChatUser || activeChatUser.isBot) return;
+    if (!val.trim()) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      emitTypingStatus(false);
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTypingEmitRef.current > 1500) {
+      lastTypingEmitRef.current = now;
+      emitTypingStatus(true);
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingStatus(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
+
+  const handleExportKeys = () => {
+    if (!currentUser?._id) return;
+    const backup = exportUserKeyBackup(currentUser._id);
+    if (!backup) {
+      toast.error('No E2EE keys initialized yet');
+      return;
+    }
+    const blob = new Blob([backup], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skillswap-e2ee-backup-${currentUser._id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Encryption key backup downloaded');
+  };
+
+  const handleCopyKeyBackup = async () => {
+    if (!currentUser?._id) return;
+    const backup = exportUserKeyBackup(currentUser._id);
+    if (!backup) {
+      toast.error('No E2EE keys initialized yet');
+      return;
+    }
+    await navigator.clipboard.writeText(backup);
+    toast.success('Backup JSON copied to clipboard');
+  };
+
+  const handleImportKeys = async (e) => {
+    e.preventDefault();
+    if (!currentUser?._id || !backupInput.trim()) return;
+    setImportingKeys(true);
+    try {
+      const restored = await importUserKeyBackup(currentUser._id, backupInput);
+      await userService.updateProfile({ publicKey: restored.publicKeyJwkString });
+      setUserKeyPair({
+        privateKey: restored.privateKey,
+        publicKeyJwkString: restored.publicKeyJwkString,
+        isNew: false
+      });
+      setPartnerSharedKey(null);
+      setBackupInput('');
+      setKeyModalOpen(false);
+      toast.success('E2EE keys restored! Re-decrypting messages...');
+    } catch (err) {
+      toast.error(err.message || 'Invalid key backup file');
+    } finally {
+      setImportingKeys(false);
+    }
+  };
+
   const handleSendMessage = async (textToSend) => {
     const messageText = (textToSend || newMessage).trim();
     if (!messageText || !activeChatUser) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    emitTypingStatus(false);
 
     setNewMessage('');
 
@@ -687,9 +918,20 @@ const Messaging = () => {
               <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
                 Conversations
               </span>
-              <span className="tag-chip text-[9px]">
-                {chatUsers.length + 1} ACTIVE
-              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setKeyModalOpen(true)}
+                  className="tag-chip text-[9px] hover:bg-[#2B3F74] hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                  title="Backup or Restore E2EE Keys"
+                >
+                  <KeyRound size={10} />
+                  <span>KEYS</span>
+                </button>
+                <span className="tag-chip text-[9px]">
+                  {chatUsers.length + 1} ACTIVE
+                </span>
+              </div>
             </div>
             
             <div className="relative">
@@ -759,19 +1001,32 @@ const Messaging = () => {
                       : 'hover:bg-[#171D2B] border-transparent text-[#A4B0C6]'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="relative w-8 h-8 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {initials}
+                    {isUserOnline(partner._id) && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#22C55E] ring-2 ring-[#202738]"
+                        title="Online"
+                      />
+                    )}
                   </div>
                   <div className="flex-grow min-w-0">
                     <div className="flex justify-between items-baseline gap-1">
                       <p className="font-bold text-xs truncate text-[#F7F8FC]">
                         {partner.fullname?.firstname} {partner.fullname?.lastname}
                       </p>
-                      {lastMsgTime && (
-                        <span className="font-mono text-[9px] text-[#71809B] shrink-0">
-                          {lastMsgTime}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {chat.unreadCount > 0 && !isSelected && (
+                          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#FFEEA8] text-[#171D2B] font-mono text-[9px] font-bold flex items-center justify-center">
+                            {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                          </span>
+                        )}
+                        {lastMsgTime && (
+                          <span className="font-mono text-[9px] text-[#71809B]">
+                            {lastMsgTime}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[10px] text-[#A4B0C6] truncate">
                       {lastMsgText ? (
@@ -823,14 +1078,38 @@ const Messaging = () => {
                       {activeChatUser.fullname?.firstname} {activeChatUser.fullname?.lastname}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="font-mono text-[9px] sm:text-[10px] text-[#FFEEA8] font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFEEA8]" />
-                        {activeChatUser.isBot ? 'AI TUTOR' : 'PARTNER'}
-                      </span>
-                      {!activeChatUser.isBot && isE2EEActive && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255,238,168,0.3)]">
-                          <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
+                      {activeChatUser.isBot ? (
+                        <span className="font-mono text-[9px] sm:text-[10px] text-[#FFEEA8] font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#FFEEA8]" />
+                          AI TUTOR
                         </span>
+                      ) : (
+                        <span className={`font-mono text-[9px] sm:text-[10px] font-medium flex items-center gap-1 ${
+                          partnerTyping
+                            ? 'text-[#FFEEA8]'
+                            : isUserOnline(activeChatUser._id)
+                            ? 'text-[#22C55E]'
+                            : 'text-[#71809B]'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            partnerTyping
+                              ? 'bg-[#FFEEA8] animate-pulse'
+                              : isUserOnline(activeChatUser._id)
+                              ? 'bg-[#22C55E]'
+                              : 'bg-[#71809B]'
+                          }`} />
+                          {partnerTyping ? 'TYPING...' : isUserOnline(activeChatUser._id) ? 'ONLINE' : 'OFFLINE'}
+                        </span>
+                      )}
+                      {!activeChatUser.isBot && isE2EEActive && (
+                        <button
+                          type="button"
+                          onClick={() => setKeyModalOpen(true)}
+                          className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255,238,168,0.3)] hover:bg-[#283144] cursor-pointer"
+                          title="Manage E2EE Keys"
+                        >
+                          <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -893,6 +1172,19 @@ const Messaging = () => {
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {!activeChatUser.isBot && hasMoreMessages && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleLoadOlderMessages}
+                      disabled={loadingOlder}
+                      className="btn btn-secondary text-[11px] font-mono py-1.5 px-3 rounded-full disabled:opacity-50"
+                    >
+                      {loadingOlder ? 'Loading history...' : 'Load older messages'}
+                    </button>
                   </div>
                 )}
 
@@ -969,6 +1261,13 @@ const Messaging = () => {
                             </span>
                           )}
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {isMe && !isBotMsg && (
+                            msg.isSeen ? (
+                              <CheckCheck size={12} className="text-[#FFEEA8]" title="Seen" />
+                            ) : (
+                              <Check size={12} className="text-[#71809B]" title="Sent" />
+                            )
+                          )}
                         </span>
                       </div>
                     </div>
@@ -1014,7 +1313,8 @@ const Messaging = () => {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleMessageInputChange}
+                    onBlur={() => emitTypingStatus(false)}
                     placeholder={activeChatUser.isBot ? "Ask SkillBot anything..." : "Write a message..."}
                     className="input-field text-xs sm:text-sm py-2 px-3 rounded-xl bg-[#171D2B]"
                   />
@@ -1125,6 +1425,73 @@ const Messaging = () => {
                   {scheduling ? 'Scheduling...' : 'Confirm & Share'}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* E2EE Key Backup & Recovery Modal */}
+      {keyModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-2xl max-w-md w-full p-6 bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.1)]">
+              <div>
+                <span className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold">End-to-End Encryption</span>
+                <h3 className="heading-h2 text-base text-[#F7F8FC]">
+                  Encryption Key Backup
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setKeyModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-[#171D2B] text-[#A4B0C6] hover:text-[#F7F8FC]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#A4B0C6] leading-relaxed">
+              Your private key stays only in this browser. Back it up before clearing browser storage or switching devices so you can still decrypt older messages.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleExportKeys}
+                className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
+              >
+                <Download size={14} />
+                <span>Download Backup</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyKeyBackup}
+                className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
+              >
+                <KeyRound size={14} />
+                <span>Copy JSON</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleImportKeys} className="space-y-2.5 pt-2 border-t border-[rgba(255,255,255,0.08)]">
+              <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block">
+                Restore From Backup JSON
+              </label>
+              <textarea
+                rows={4}
+                value={backupInput}
+                onChange={(e) => setBackupInput(e.target.value)}
+                placeholder='Paste your exported {"version":1,"privateJwk":...} backup here'
+                className="input-field w-full p-2.5 text-[11px] font-mono rounded-xl bg-[#171D2B]"
+              />
+              <button
+                type="submit"
+                disabled={importingKeys || !backupInput.trim()}
+                className="w-full btn btn-primary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Upload size={14} />
+                <span>{importingKeys ? 'Restoring...' : 'Restore Encryption Keys'}</span>
+              </button>
             </form>
           </div>
         </div>

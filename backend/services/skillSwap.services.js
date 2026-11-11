@@ -230,6 +230,7 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
                     messageType: 1,
                     senderId: 1,
                     receiverId: 1,
+                    isSeen: 1,
                     createdAt: 1,
                     partnerId: {
                         $cond: [
@@ -243,18 +244,34 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
             {
                 $group: {
                     _id: "$partnerId",
-                    lastMessage: { $first: "$$ROOT" }
+                    lastMessage: { $first: "$$ROOT" },
+                    unreadCount: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ["$receiverId", currUserObjId] },
+                                        { $ne: ["$isSeen", true] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    }
                 }
             }
         ]);
 
-        const lastMessageMap = new Map(
-            lastMessages.map(item => [item._id.toString(), item.lastMessage])
+        const conversationMap = new Map(
+            lastMessages.map(item => [item._id.toString(), item])
         );
 
         entries.forEach(entry => {
             const partnerId = entry.otherUser._id.toString();
-            const msg = lastMessageMap.get(partnerId);
+            const conv = conversationMap.get(partnerId);
+            const msg = conv?.lastMessage;
+            entry.unreadCount = conv?.unreadCount || 0;
             if (msg) {
                 entry.lastMessage = {
                     text: msg.text,
@@ -263,6 +280,7 @@ module.exports.getAllAcceptedSwaps = async (currUserId) => {
                     messageType: msg.messageType,
                     senderId: msg.senderId,
                     receiverId: msg.receiverId,
+                    isSeen: Boolean(msg.isSeen),
                     createdAt: msg.createdAt
                 };
                 entry.lastMessageAt = new Date(msg.createdAt).getTime();
