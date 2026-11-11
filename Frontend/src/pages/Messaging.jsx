@@ -40,7 +40,9 @@ import {
   decryptMessageText,
   clearSharedKeyCacheForPartner,
   exportUserKeyBackup,
-  importUserKeyBackup
+  importUserKeyBackup,
+  encryptKeyBackupWithPassword,
+  decryptKeyBackupWithPassword
 } from '../utils/e2ee';
 
 const SKILLBOT_USER = {
@@ -147,6 +149,8 @@ const Messaging = () => {
   const [partnerSharedKey, setPartnerSharedKey] = useState(null);
   const [isE2EEActive, setIsE2EEActive] = useState(false);
   const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [vaultPassword, setVaultPassword] = useState('');
+  const [syncingVault, setSyncingVault] = useState(false);
   const [backupInput, setBackupInput] = useState('');
   const [importingKeys, setImportingKeys] = useState(false);
 
@@ -873,33 +877,69 @@ const Messaging = () => {
     toast.success('Backup JSON copied to clipboard');
   };
 
+  const applyRestoredPair = async (restored) => {
+    const res = await userService.updateProfile({ publicKey: restored.publicKeyJwkString });
+    if (res.data?.user) {
+      setUser(res.data.user);
+    }
+    derivedKeysByPartnerRef.current.clear();
+    refreshedPartnerKeysRef.current.clear();
+    const nextPair = {
+      privateKey: restored.privateKey,
+      publicKeyJwkString: restored.publicKeyJwkString,
+      isNew: false
+    };
+    userKeyPairRef.current = nextPair;
+    setUserKeyPair(nextPair);
+    partnerSharedKeyRef.current = null;
+    setPartnerSharedKey(null);
+    setMessages((prev) => prev.map((m) => (m._cipherText ? { ...m, isDecrypted: false } : m)));
+    setChatUsers((prev) => prev.map((item) => (
+      item.lastMessage?._cipherText
+        ? { ...item, lastMessage: { ...item.lastMessage, isDecrypted: false } }
+        : item
+    )));
+  };
+
+  const handlePasswordVaultSync = async (e) => {
+    e.preventDefault();
+    if (!currentUser?._id || !vaultPassword) return;
+    setSyncingVault(true);
+    try {
+      if (currentUser.encryptedKeyBackup) {
+        const restored = await decryptKeyBackupWithPassword(vaultPassword, currentUser._id, currentUser.encryptedKeyBackup);
+        await applyRestoredPair(restored);
+        toast.success('Synced encrypted keys from your account!');
+      } else {
+        const encryptedKeyBackup = await encryptKeyBackupWithPassword(vaultPassword, currentUser._id);
+        if (!encryptedKeyBackup) {
+          throw new Error('Could not initialize encryption keys in this browser');
+        }
+        const res = await userService.updateProfile({
+          publicKey: userKeyPairRef.current?.publicKeyJwkString,
+          encryptedKeyBackup
+        });
+        if (res.data?.user) {
+          setUser(res.data.user);
+        }
+        toast.success('Encryption key vault enabled on your account!');
+      }
+      setVaultPassword('');
+      setKeyModalOpen(false);
+    } catch (err) {
+      toast.error(err.name === 'OperationError' ? 'Incorrect password for encrypted key vault' : (err.message || 'Could not sync key vault'));
+    } finally {
+      setSyncingVault(false);
+    }
+  };
+
   const handleImportKeys = async (e) => {
     e.preventDefault();
     if (!currentUser?._id || !backupInput.trim()) return;
     setImportingKeys(true);
     try {
       const restored = await importUserKeyBackup(currentUser._id, backupInput);
-      const res = await userService.updateProfile({ publicKey: restored.publicKeyJwkString });
-      if (res.data?.user) {
-        setUser(res.data.user);
-      }
-      derivedKeysByPartnerRef.current.clear();
-      refreshedPartnerKeysRef.current.clear();
-      const nextPair = {
-        privateKey: restored.privateKey,
-        publicKeyJwkString: restored.publicKeyJwkString,
-        isNew: false
-      };
-      userKeyPairRef.current = nextPair;
-      setUserKeyPair(nextPair);
-      partnerSharedKeyRef.current = null;
-      setPartnerSharedKey(null);
-      setMessages((prev) => prev.map((m) => (m._cipherText ? { ...m, isDecrypted: false } : m)));
-      setChatUsers((prev) => prev.map((item) => (
-        item.lastMessage?._cipherText
-          ? { ...item, lastMessage: { ...item.lastMessage, isDecrypted: false } }
-          : item
-      )));
+      await applyRestoredPair(restored);
       setBackupInput('');
       setKeyModalOpen(false);
       toast.success('E2EE keys restored! Re-decrypting messages...');
@@ -1600,48 +1640,80 @@ const Messaging = () => {
             </div>
 
             <p className="text-xs text-[#A4B0C6] leading-relaxed">
-              Your private key stays only in this browser. Back it up before clearing browser storage or switching devices so you can still decrypt older messages.
+              Encryption keys now sync automatically whenever you sign in with your password. If you stayed signed in from an older session or switched ports, enter your account password below to unlock or back up your keys immediately.
             </p>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleExportKeys}
-                className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
-              >
-                <Download size={14} />
-                <span>Download Backup</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyKeyBackup}
-                className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
-              >
-                <KeyRound size={14} />
-                <span>Copy JSON</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleImportKeys} className="space-y-2.5 pt-2 border-t border-[rgba(255,255,255,0.08)]">
-              <label className="font-mono text-[10px] text-[#A4B0C6] uppercase font-semibold block">
-                Restore From Backup JSON
+            <form onSubmit={handlePasswordVaultSync} className="space-y-2.5 p-3.5 rounded-xl bg-[#171D2B] border border-[rgba(255,238,168,0.2)]">
+              <label className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold block">
+                {currentUser?.encryptedKeyBackup ? 'Unlock Synced Key Vault' : 'Enable Auto-Sync Vault'}
               </label>
-              <textarea
-                rows={4}
-                value={backupInput}
-                onChange={(e) => setBackupInput(e.target.value)}
-                placeholder='Paste your exported {"version":1,"privateJwk":...} backup here'
-                className="input-field w-full p-2.5 text-[11px] font-mono rounded-xl bg-[#171D2B]"
+              <input
+                type="password"
+                value={vaultPassword}
+                onChange={(e) => setVaultPassword(e.target.value)}
+                placeholder="Enter your SkillSwap account password"
+                required
+                className="input-field w-full py-2 px-3 text-xs rounded-xl bg-[#202738]"
               />
               <button
                 type="submit"
-                disabled={importingKeys || !backupInput.trim()}
+                disabled={syncingVault || !vaultPassword}
                 className="w-full btn btn-primary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
-                <Upload size={14} />
-                <span>{importingKeys ? 'Restoring...' : 'Restore Encryption Keys'}</span>
+                <KeyRound size={14} />
+                <span>
+                  {syncingVault
+                    ? 'Syncing...'
+                    : currentUser?.encryptedKeyBackup
+                    ? 'Unlock & Decrypt Messages'
+                    : 'Save Encrypted Key Vault'}
+                </span>
               </button>
             </form>
+
+            <details className="pt-2 border-t border-[rgba(255,255,255,0.08)] text-xs text-[#A4B0C6]">
+              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider hover:text-[#FFEEA8] select-none">
+                Advanced: Manual JSON Backup
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportKeys}
+                    className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
+                  >
+                    <Download size={14} />
+                    <span>Download Backup</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyKeyBackup}
+                    className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
+                  >
+                    <KeyRound size={14} />
+                    <span>Copy JSON</span>
+                  </button>
+                </div>
+
+                <form onSubmit={handleImportKeys} className="space-y-2">
+                  <textarea
+                    rows={3}
+                    value={backupInput}
+                    onChange={(e) => setBackupInput(e.target.value)}
+                    placeholder='Paste your exported {"version":1,"privateJwk":...} backup here'
+                    className="input-field w-full p-2.5 text-[11px] font-mono rounded-xl bg-[#171D2B]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={importingKeys || !backupInput.trim()}
+                    className="w-full btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Upload size={14} />
+                    <span>{importingKeys ? 'Restoring...' : 'Restore From JSON'}</span>
+                  </button>
+                </form>
+              </div>
+            </details>
           </div>
         </div>
       )}

@@ -261,3 +261,78 @@ export const importUserKeyBackup = async (userId, backupString) => {
     publicKeyJwkString: pubString
   };
 };
+
+const derivePasswordWrapKey = async (password, saltBytes, usages) => {
+  const baseKey = await window.crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  return window.crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    usages
+  );
+};
+
+export const encryptKeyBackupWithPassword = async (password, userId) => {
+  if (!window.crypto?.subtle || !password || !userId) return null;
+  const backupJson = exportUserKeyBackup(userId);
+  if (!backupJson) return null;
+
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const wrapKey = await derivePasswordWrapKey(password, salt, ['encrypt']);
+
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    wrapKey,
+    new TextEncoder().encode(backupJson)
+  );
+
+  return JSON.stringify({
+    v: 1,
+    kdf: 'PBKDF2-SHA256',
+    salt: uint8ArrayToBase64(salt),
+    iv: uint8ArrayToBase64(iv),
+    ct: uint8ArrayToBase64(new Uint8Array(encrypted))
+  });
+};
+
+export const decryptKeyBackupWithPassword = async (password, userId, encryptedBackupString) => {
+  if (!window.crypto?.subtle || !password || !userId || !encryptedBackupString) {
+    throw new Error('Password and encrypted backup are required');
+  }
+
+  const envelope = typeof encryptedBackupString === 'string'
+    ? JSON.parse(encryptedBackupString)
+    : encryptedBackupString;
+
+  if (!envelope?.salt || !envelope?.iv || !envelope?.ct) {
+    throw new Error('Invalid encrypted key backup payload');
+  }
+
+  const salt = base64ToUint8Array(envelope.salt);
+  const iv = base64ToUint8Array(envelope.iv);
+  const ct = base64ToUint8Array(envelope.ct);
+  const unwrapKey = await derivePasswordWrapKey(password, salt, ['decrypt']);
+
+  const decryptedBuffer = await window.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    unwrapKey,
+    ct
+  );
+
+  const backupJson = new TextDecoder().decode(decryptedBuffer);
+  return importUserKeyBackup(userId, backupJson);
+};

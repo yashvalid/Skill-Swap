@@ -107,7 +107,7 @@ module.exports.userLogin = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+        const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password +encryptedKeyBackup');
         if (!user)
             return res.status(404).json({ message: "User not found" });
 
@@ -131,7 +131,7 @@ module.exports.userLogout = (req, res) => {
 
 module.exports.getUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select('-password -__v');
+        const user = await User.findById(req.user._id).select('+encryptedKeyBackup -password -__v');
         if (!user)
             return res.status(404).json({ message: "User not found" });
         return res.status(200).json({ user });
@@ -185,6 +185,9 @@ module.exports.updateProfile = async (req, res) => {
         if (typeof req.body.publicKey === 'string' || req.body.publicKey === null) {
             allowedFields.publicKey = req.body.publicKey;
         }
+        if (typeof req.body.encryptedKeyBackup === 'string' && req.body.encryptedKeyBackup.length <= 8192) {
+            allowedFields.encryptedKeyBackup = req.body.encryptedKeyBackup;
+        }
         if (req.body.fullname && typeof req.body.fullname === 'object') {
             if (typeof req.body.fullname.firstname === 'string' && req.body.fullname.firstname.trim()) {
                 allowedFields['fullname.firstname'] = req.body.fullname.firstname.trim();
@@ -202,7 +205,7 @@ module.exports.updateProfile = async (req, res) => {
             req.user._id,
             { $set: allowedFields },
             { new: true, runValidators: true }
-        ).select('-password -__v');
+        ).select('+encryptedKeyBackup -password -__v');
         if (!user) return res.status(404).json({ message: "User not found" });
         if (allowedFields.publicKey !== undefined) {
             await invalidateCache('cache:swaps:accepted:*');
