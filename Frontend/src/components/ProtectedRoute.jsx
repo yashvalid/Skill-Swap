@@ -19,7 +19,7 @@ const ProtectedRoute = ({ children }) => {
                 if (response.status < 200 || response.status >= 300) {
                     navigate('/login');
                 }
-            } catch (err) {
+            } catch {
                 navigate('/login');
             } finally {
                 setLoading(false);

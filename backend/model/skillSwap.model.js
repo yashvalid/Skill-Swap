@@ -52,6 +52,9 @@ const skillSwapSchema = new mongoose.Schema({
     },
 });
 
+skillSwapSchema.index({ fromUser: 1, status: 1, createdAt: -1 });
+skillSwapSchema.index({ toUser: 1, status: 1, createdAt: -1 });
+
 const SkillSwap = mongoose.model('skillSwap', skillSwapSchema);
 
 module.exports = SkillSwap;

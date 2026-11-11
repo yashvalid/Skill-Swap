@@ -1,0 +1,1 @@
+var e=e=>e?!!(e.isVerified===!0||typeof e.totalRatings==`number`&&e.totalRatings>0||Array.isArray(e.ratings)&&e.ratings.length>0||typeof e.credits==`number`&&e.credits>3):!1,t=t=>e(t)?t?.totalRatings&&t.totalRatings>=20?`Master Mentor`:t?.totalRatings&&t.totalRatings>0?`Verified Partner`:`Verified Member`:`Community Member`;export{e as n,t};

@@ -110,7 +110,12 @@ const extractUserDomainVector = (user) => {
     let matchCount = 0;
     for (const kw of domain.keywords) {
       if (kw.includes(' ')) {
-        const combined = (user.role + ' ' + user.bio + ' ' + (user.skillsOffered || []).join(' ')).toLowerCase();
+        const combined = [
+          user.role || '',
+          user.bio || '',
+          ...(user.skillsOffered || []),
+          ...(user.skillsNeeded || [])
+        ].join(' ').toLowerCase();
         if (combined.includes(kw)) matchCount += 2;
       } else {
         if (profileTokens.includes(kw)) matchCount += 1;

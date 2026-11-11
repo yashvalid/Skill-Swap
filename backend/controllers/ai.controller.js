@@ -1,6 +1,9 @@
+const mongoose = require('mongoose');
 const aiService = require('../services/ai.service');
 const matchingService = require('../services/matching.services');
 const User = require('../model/user.model');
+
+const PUBLIC_MATCH_PROJECTION = 'fullname role bio location skillsOffered skillsNeeded isVerified averageRating totalRatings credits';
 
 module.exports.generateCurriculum = async (req, res) => {
     try {
@@ -13,9 +16,9 @@ module.exports.generateCurriculum = async (req, res) => {
         }
 
         const curriculum = await aiService.generateCurriculum({
-            skillToLearn,
-            skillToTeach,
-            partnerName: partnerName || 'Partner'
+            skillToLearn: String(skillToLearn).trim().slice(0, 120),
+            skillToTeach: String(skillToTeach).trim().slice(0, 120),
+            partnerName: partnerName ? String(partnerName).trim().slice(0, 80) : 'Partner'
         });
 
         return res.status(200).json({
@@ -34,12 +37,15 @@ module.exports.generateCurriculum = async (req, res) => {
 module.exports.enhancePitch = async (req, res) => {
     try {
         const { offersSkill, requestsSkill, partnerName, customGoal } = req.body;
+        if (!offersSkill || !requestsSkill) {
+            return res.status(400).json({ message: 'offersSkill and requestsSkill are required' });
+        }
 
         const result = await aiService.enhancePitch({
-            offersSkill,
-            requestsSkill,
-            partnerName,
-            customGoal
+            offersSkill: String(offersSkill).trim().slice(0, 120),
+            requestsSkill: String(requestsSkill).trim().slice(0, 120),
+            partnerName: partnerName ? String(partnerName).trim().slice(0, 80) : 'Partner',
+            customGoal: customGoal ? String(customGoal).trim().slice(0, 300) : ''
         });
 
         return res.status(200).json({
@@ -58,13 +64,13 @@ module.exports.enhancePitch = async (req, res) => {
 module.exports.extractProfileSkills = async (req, res) => {
     try {
         const { rawText } = req.body;
-        if (!rawText || !rawText.trim()) {
+        if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
             return res.status(400).json({
                 message: 'Text is required for skill extraction'
             });
         }
 
-        const result = await aiService.extractProfileSkills({ rawText });
+        const result = await aiService.extractProfileSkills({ rawText: rawText.trim().slice(0, 4000) });
 
         return res.status(200).json({
             success: true,
@@ -84,13 +90,13 @@ module.exports.getCompatibility = async (req, res) => {
         const { candidateUserId } = req.body;
         const currentUserId = req.user._id;
 
-        if (!candidateUserId) {
-            return res.status(400).json({ message: 'candidateUserId is required' });
+        if (!candidateUserId || !mongoose.isValidObjectId(candidateUserId)) {
+            return res.status(400).json({ message: 'Valid candidateUserId is required' });
         }
 
         const [currentUser, candidateUser] = await Promise.all([
-            User.findById(currentUserId),
-            User.findById(candidateUserId)
+            User.findById(currentUserId).select(PUBLIC_MATCH_PROJECTION),
+            User.findById(candidateUserId).select(PUBLIC_MATCH_PROJECTION)
         ]);
 
         if (!currentUser || !candidateUser) {
@@ -124,12 +130,12 @@ module.exports.getRecommendedMatches = async (req, res) => {
         const currentUserId = req.user?._id;
         let currentUser = null;
         if (currentUserId) {
-            currentUser = await User.findById(currentUserId).lean();
+            currentUser = await User.findById(currentUserId).select(PUBLIC_MATCH_PROJECTION).lean();
         }
 
         const filter = currentUserId ? { _id: { $ne: currentUserId } } : {};
         const candidateUsers = await User.find(filter)
-            .select('-password -__v')
+            .select(PUBLIC_MATCH_PROJECTION)
             .lean();
 
         const referenceUser = currentUser || {
@@ -159,24 +165,24 @@ module.exports.getRecommendedMatches = async (req, res) => {
 module.exports.matchByInterest = async (req, res) => {
     try {
         const { query } = req.body;
-        if (!query || !query.trim()) {
+        if (!query || typeof query !== 'string' || !query.trim()) {
             return res.status(400).json({ message: 'Search query is required' });
         }
 
         const currentUserId = req.user?._id;
         let currentUser = null;
         if (currentUserId) {
-            currentUser = await User.findById(currentUserId);
+            currentUser = await User.findById(currentUserId).select(PUBLIC_MATCH_PROJECTION).lean();
         }
 
         const filter = currentUserId ? { _id: { $ne: currentUserId } } : {};
-        const allUsers = await User.find(filter).select('-password -__v').lean();
+        const allUsers = await User.find(filter).select(PUBLIC_MATCH_PROJECTION).lean();
 
-        const matches = matchingService.matchByInterestQuery(query, allUsers, currentUser);
+        const matches = matchingService.matchByInterestQuery(query.trim().slice(0, 300), allUsers, currentUser);
 
         return res.status(200).json({
             success: true,
-            query,
+            query: query.trim(),
             matches
         });
     } catch (error) {
@@ -191,14 +197,21 @@ module.exports.matchByInterest = async (req, res) => {
 module.exports.askTutor = async (req, res) => {
     try {
         const { message, history } = req.body;
-        if (!message) {
+        if (!message || typeof message !== 'string' || !message.trim()) {
             return res.status(400).json({ message: 'Message is required' });
         }
 
-        const user = await User.findById(req.user._id);
+        const safeHistory = Array.isArray(history)
+            ? history.slice(-12).map(h => ({
+                role: h?.role === 'user' ? 'user' : 'assistant',
+                text: String(h?.text || '').slice(0, 1000)
+            }))
+            : [];
+
+        const user = await User.findById(req.user._id).select('skillsNeeded').lean();
         const result = await aiService.askTutor({
-            message,
-            history: history || [],
+            message: message.trim().slice(0, 2000),
+            history: safeHistory,
             learningSkills: user?.skillsNeeded || []
         });
 

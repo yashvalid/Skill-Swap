@@ -59,7 +59,7 @@ const Navbar = () => {
             <span className="font-bold text-base sm:text-lg tracking-[-0.025em] text-[#F7F8FC]">
               SKILL<span className="text-[#FFEEA8]">SWAP</span>
             </span>
-            <span className="hidden sm:inline-block font-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-[rgba(255, 238, 168,0.12)] border border-[rgba(255, 238, 168,0.3)] text-[#FFEEA8]">
+            <span className="hidden sm:inline-block font-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-[rgba(255,238,168,0.12)] border border-[rgba(255,238,168,0.3)] text-[#FFEEA8]">
               PROTO
             </span>
           </div>
@@ -75,7 +75,7 @@ const Navbar = () => {
                 to={link.path}
                 className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm tracking-[-0.01em] transition-all duration-150 ${
                   active
-                    ? 'font-medium text-[#F7F8FC] bg-[#283144] border border-[rgba(43, 63, 116,0.5)] shadow-xs'
+                    ? 'font-medium text-[#F7F8FC] bg-[#283144] border border-[rgba(43,63,116,0.5)] shadow-xs'
                     : 'font-normal text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#283144]/50'
                 }`}
               >
@@ -98,7 +98,7 @@ const Navbar = () => {
                 className={`flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-xl border transition-all duration-150 ${
                   isActive('/profile')
                     ? 'bg-[#283144] border-[#2B3F74] text-[#F7F8FC]'
-                    : 'bg-[#283144]/80 border-[rgba(255,255,255,0.12)] hover:border-[rgba(43, 63, 116,0.4)] text-[#F7F8FC]'
+                    : 'bg-[#283144]/80 border-[rgba(255,255,255,0.12)] hover:border-[rgba(43,63,116,0.4)] text-[#F7F8FC]'
                 }`}
                 title="View Profile"
               >
@@ -117,7 +117,7 @@ const Navbar = () => {
 
               <button
                 onClick={handleLogout}
-                className="hidden md:inline-flex p-2 rounded-lg text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215, 46, 43,0.1)] transition-colors duration-150"
+                className="hidden md:inline-flex p-2 rounded-lg text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215,46,43,0.1)] transition-colors duration-150"
                 title="Log Out"
                 aria-label="Log Out"
               >
@@ -164,7 +164,7 @@ const Navbar = () => {
                   </p>
                 </div>
               </div>
-              <span className="shrink-0 font-mono text-[10px] px-2.5 py-0.5 rounded-full bg-[rgba(255, 238, 168,0.12)] border border-[rgba(255, 238, 168,0.3)] text-[#FFEEA8] font-semibold">
+              <span className="shrink-0 font-mono text-[10px] px-2.5 py-0.5 rounded-full bg-[rgba(255,238,168,0.12)] border border-[rgba(255,238,168,0.3)] text-[#FFEEA8] font-semibold">
                 {user.credits ?? 3} Credits
               </span>
             </div>
@@ -179,7 +179,7 @@ const Navbar = () => {
                   to={link.path}
                   className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-sm tracking-[-0.01em] min-h-[44px] transition-colors ${
                     active 
-                      ? 'bg-[#202738] text-[#F7F8FC] font-medium border border-[rgba(43, 63, 116,0.5)]' 
+                      ? 'bg-[#202738] text-[#F7F8FC] font-medium border border-[rgba(43,63,116,0.5)]' 
                       : 'text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#202738]/60'
                   }`}
                 >
@@ -197,7 +197,7 @@ const Navbar = () => {
                 to="/profile"
                 className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-sm tracking-[-0.01em] min-h-[44px] transition-colors ${
                   isActive('/profile')
-                    ? 'bg-[#202738] text-[#F7F8FC] font-medium border border-[rgba(43, 63, 116,0.5)]'
+                    ? 'bg-[#202738] text-[#F7F8FC] font-medium border border-[rgba(43,63,116,0.5)]'
                     : 'text-[#A4B0C6] hover:text-[#F7F8FC] hover:bg-[#202738]/60'
                 }`}
               >
@@ -214,7 +214,7 @@ const Navbar = () => {
             <div className="pt-2 border-t border-[rgba(255,255,255,0.08)]">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#202738] hover:bg-[#D72E2B]/15 text-[#A4B0C6] hover:text-[#D72E2B] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(215, 46, 43,0.3)] text-xs font-mono font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#202738] hover:bg-[#D72E2B]/15 text-[#A4B0C6] hover:text-[#D72E2B] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(215,46,43,0.3)] text-xs font-mono font-semibold transition-colors"
               >
                 <LogOut size={15} />
                 <span>Log Out</span>

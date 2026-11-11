@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Star,
   MapPin,
   CheckCircle2,
   Share2,
-  Award,
   Sparkles,
   ShieldCheck,
   Plus,
@@ -14,6 +13,7 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { skillService } from '../services/skillService';
 import { feedService } from '../services/feedService';
 import { userService } from '../services/userService';
@@ -22,7 +22,8 @@ import toast from 'react-hot-toast';
 import { isUserVerified, getVerificationLabel } from '../utils/userVerification';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, setUser, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [offeredSkills, setOfferedSkills] = useState([]);
   const [skillsToLearn, setSkillsToLearn] = useState([]);
   const [showAddSkill, setShowAddSkill] = useState(false);
@@ -30,31 +31,36 @@ const Profile = () => {
   const [posts, setPosts] = useState([]);
 
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [editProfileData, setEditProfileData] = useState({ bio: '', location: '' });
+  const [editProfileData, setEditProfileData] = useState({
+    firstname: '',
+    lastname: '',
+    role: '',
+    bio: '',
+    location: ''
+  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [aiRawText, setAiRawText] = useState('');
   const [aiExtracting, setAiExtracting] = useState(false);
 
   const [showEditPost, setShowEditPost] = useState(false);
   const [editPostData, setEditPostData] = useState({ id: '', content: '' });
 
-  useEffect(() => {
-    if (user) {
-      fetchSkills();
-      fetchPosts();
-      setEditProfileData({ bio: user.bio || '', location: user.location || '' });
-    }
-  }, [user]);
+  const userId = user?._id;
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
+    if (!userId) return;
     try {
-      const res = await feedService.getUserPosts(user._id);
+      const res = await feedService.getUserPosts(userId);
       setPosts(res.data.posts || []);
     } catch (error) {
       console.error('Failed to fetch posts', error);
     }
-  };
+  }, [userId]);
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
+    if (!userId) return;
     try {
       const [offeredRes, learnRes] = await Promise.all([
         skillService.getOfferedSkills(),
@@ -65,7 +71,26 @@ const Profile = () => {
     } catch (error) {
       console.error('Failed to fetch skills', error);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchSkills();
+      fetchPosts();
+    }
+  }, [userId, fetchSkills, fetchPosts]);
+
+  useEffect(() => {
+    if (user) {
+      setEditProfileData({
+        firstname: user.fullname?.firstname || '',
+        lastname: user.fullname?.lastname || '',
+        role: user.role || '',
+        bio: user.bio || '',
+        location: user.location || ''
+      });
+    }
+  }, [user]);
 
   const handleAutoFillBio = async () => {
     if (!aiRawText.trim()) {
@@ -79,7 +104,7 @@ const Profile = () => {
         setEditProfileData(prev => ({ ...prev, bio: res.data.suggestedBio }));
         toast.success('Bio synthesized with AI');
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to generate bio');
     } finally {
       setAiExtracting(false);
@@ -97,8 +122,8 @@ const Profile = () => {
       toast.success('Skill added successfully');
       setNewSkill({ skill: '', des: '', type: 'offer' });
       setShowAddSkill(false);
-      fetchSkills();
-    } catch (error) {
+      await Promise.all([fetchSkills(), refreshProfile()]);
+    } catch {
       toast.error('Failed to add skill');
     }
   };
@@ -107,8 +132,8 @@ const Profile = () => {
     try {
       await skillService.deleteSkill(skillId);
       toast.success('Skill removed');
-      fetchSkills();
-    } catch (error) {
+      await Promise.all([fetchSkills(), refreshProfile()]);
+    } catch {
       toast.error('Failed to delete skill');
     }
   };
@@ -116,15 +141,44 @@ const Profile = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      await userService.updateProfile(editProfileData);
+      const payload = {
+        fullname: {
+          firstname: editProfileData.firstname.trim(),
+          lastname: editProfileData.lastname.trim()
+        },
+        role: editProfileData.role.trim(),
+        location: editProfileData.location.trim(),
+        bio: editProfileData.bio.trim()
+      };
+      const res = await userService.updateProfile(payload);
       toast.success('Profile updated');
       setShowEditProfile(false);
-      if (user) {
-        user.bio = editProfileData.bio;
-        user.location = editProfileData.location;
+      if (res.data?.user) {
+        setUser(res.data.user);
+      } else {
+        await refreshProfile();
       }
-    } catch (error) {
-      toast.error('Failed to update profile');
+    } catch (err) {
+      toast.error(err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || 'Failed to update profile');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deletingAccount) return;
+    setDeletingAccount(true);
+    try {
+      await userService.deleteAccount();
+      if (user?._id) {
+        localStorage.removeItem(`ss_e2ee_priv_${user._id}`);
+        localStorage.removeItem(`ss_e2ee_pub_${user._id}`);
+      }
+      localStorage.removeItem('token');
+      setUser(null);
+      toast.success('Your account and personal data have been permanently deleted.');
+      navigate('/');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete account');
+      setDeletingAccount(false);
     }
   };
 
@@ -134,7 +188,7 @@ const Profile = () => {
       await feedService.deletePost(postId);
       toast.success('Showcase removed');
       fetchPosts();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete showcase');
     }
   };
@@ -146,7 +200,7 @@ const Profile = () => {
       toast.success('Showcase updated');
       setShowEditPost(false);
       fetchPosts();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update showcase');
     }
   };
@@ -361,7 +415,7 @@ const Profile = () => {
                     </button>
                     <button
                       onClick={() => handleDeletePost(post._id)}
-                      className="p-1.5 rounded-xl text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215, 46, 43,0.1)] transition-colors"
+                      className="p-1.5 rounded-xl text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215,46,43,0.1)] transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -523,6 +577,38 @@ const Profile = () => {
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="input-group">
+                  <label className="input-label">First Name</label>
+                  <input
+                    type="text"
+                    value={editProfileData.firstname}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, firstname: e.target.value })}
+                    required
+                    className="input-field rounded-xl"
+                  />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Last Name</label>
+                  <input
+                    type="text"
+                    value={editProfileData.lastname}
+                    onChange={(e) => setEditProfileData({ ...editProfileData, lastname: e.target.value })}
+                    className="input-field rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Role / Title</label>
+                <input
+                  type="text"
+                  value={editProfileData.role}
+                  onChange={(e) => setEditProfileData({ ...editProfileData, role: e.target.value })}
+                  required
+                  minLength={2}
+                  className="input-field rounded-xl"
+                />
+              </div>
               <div className="input-group">
                 <label className="input-label">Location & Timezone</label>
                 <input
@@ -530,6 +616,7 @@ const Profile = () => {
                   value={editProfileData.location}
                   onChange={(e) => setEditProfileData({ ...editProfileData, location: e.target.value })}
                   required
+                  minLength={2}
                   className="input-field rounded-xl"
                 />
               </div>
@@ -539,6 +626,7 @@ const Profile = () => {
                   value={editProfileData.bio}
                   onChange={(e) => setEditProfileData({ ...editProfileData, bio: e.target.value })}
                   required
+                  minLength={3}
                   className="input-field min-h-[90px] resize-none rounded-xl"
                 />
               </div>
@@ -546,6 +634,53 @@ const Profile = () => {
                 Save Profile
               </button>
             </form>
+
+            {/* Account Deletion Danger Zone */}
+            <div className="mt-5 pt-4 border-t border-[rgba(215,46,43,0.25)]">
+              {!showDeleteConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-xs font-mono text-[#D72E2B] hover:underline flex items-center gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  <span>Permanently Delete Account</span>
+                </button>
+              ) : (
+                <div className="p-3 rounded-xl bg-[#D72E2B]/10 border border-[rgba(215,46,43,0.3)] space-y-2.5">
+                  <p className="text-[11px] text-[#F7F8FC]">
+                    This permanently deletes your profile, skills, messages, swaps, and showcases. Type <span className="font-mono font-bold text-[#FFEEA8]">DELETE</span> to confirm.
+                  </p>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type DELETE"
+                    className="input-field text-xs py-1.5 rounded-lg bg-[#171D2B]"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteConfirmText('');
+                      }}
+                      className="flex-1 btn btn-secondary text-xs py-1.5 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deletingAccount}
+                      onClick={handleDeleteAccount}
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-[#D72E2B] hover:bg-[#BE2421] text-white text-xs font-semibold disabled:opacity-40 cursor-pointer"
+                    >
+                      {deletingAccount ? 'Deleting...' : 'Confirm Delete'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

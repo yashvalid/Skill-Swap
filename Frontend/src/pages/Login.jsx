@@ -21,6 +21,7 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
@@ -40,31 +41,37 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLogin) {
-      if (await login(formData.email, formData.password)) {
-        navigate('/dashboard');
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      if (isLogin) {
+        if (await login(formData.email, formData.password)) {
+          navigate('/dashboard');
+        }
+      } else {
+        if (!agreedToPolicy) {
+          toast.error('Please read and agree to the Privacy Policy to create an account');
+          return;
+        }
+        const userData = {
+          fullname: {
+            firstname: formData.firstname,
+            lastname: formData.lastname
+          },
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          location: formData.location,
+          bio: formData.bio,
+          agreedToPrivacyPolicy: true,
+          privacyPolicyAccepted: true
+        };
+        if (await register(userData)) {
+          navigate('/dashboard');
+        }
       }
-    } else {
-      if (!agreedToPolicy) {
-        toast.error('Please read and agree to the Privacy Policy to create an account');
-        return;
-      }
-      const userData = {
-        fullname: {
-          firstname: formData.firstname,
-          lastname: formData.lastname
-        },
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-        location: formData.location,
-        bio: formData.bio,
-        agreedToPrivacyPolicy: true,
-        privacyPolicyAccepted: true
-      };
-      if (await register(userData)) {
-        navigate('/dashboard');
-      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -308,9 +315,14 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-xl"
+              disabled={submitting}
+              className="w-full btn btn-cta py-2.5 justify-center text-xs sm:text-sm font-semibold mt-4 flex items-center gap-2 rounded-xl disabled:opacity-50"
             >
-              <span>{isLogin ? 'Sign In to Account' : 'Create Your Account'}</span>
+              <span>
+                {submitting
+                  ? (isLogin ? 'Signing in...' : 'Creating account...')
+                  : (isLogin ? 'Sign In to Account' : 'Create Your Account')}
+              </span>
               <ArrowRight size={15} />
             </button>
           </form>
