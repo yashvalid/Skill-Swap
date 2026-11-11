@@ -2,6 +2,10 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const User = require('../model/user.model');
 const SkillSwap = require('../model/skillSwap.model');
+const Skills = require('../model/Skills.model');
+const Messages = require('../model/message.model');
+const { postModel, commentModel } = require('../model/post.model');
+const { invalidateCache } = require('../middlewares/cache');
 const { validationResult } = require('express-validator');
 const userService = require('../services/user.services');
 
@@ -276,5 +280,43 @@ module.exports.getIceServers = async (req, res) => {
         return res.status(200).json({ iceServers });
     } catch {
         return res.status(500).json({ message: "Failed to build ICE server configuration" });
+    }
+};
+
+module.exports.deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const userPosts = await postModel.find({ user: userId }).select('_id').lean();
+        const userPostIds = userPosts.map(p => p._id);
+
+        const deletedUser = await User.findByIdAndDelete(userId);
+        if (!deletedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        await Promise.all([
+            Skills.deleteMany({ user: userId }),
+            SkillSwap.deleteMany({ $or: [{ fromUser: userId }, { toUser: userId }] }),
+            Messages.deleteMany({ $or: [{ senderId: userId }, { receiverId: userId }] }),
+            postModel.deleteMany({ user: userId }),
+            commentModel.deleteMany(
+                userPostIds.length > 0
+                    ? { $or: [{ user: userId }, { post: { $in: userPostIds } }] }
+                    : { user: userId }
+            ),
+        ]);
+
+        await invalidateCache([
+            'cache:/posts/all*',
+            `cache:messages:*${userId}*`,
+            `cache:swaps:accepted:${userId}`,
+            'cache:swaps:accepted:*'
+        ]);
+
+        const { maxAge: _maxAge, ...clearOpts } = getCookieOptions();
+        res.clearCookie('token', clearOpts);
+        return res.status(200).json({ message: "Account and associated data deleted successfully" });
+    } catch {
+        return res.status(500).json({ message: "Failed to delete account" });
     }
 };

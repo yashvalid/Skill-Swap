@@ -8,5 +8,6 @@ export const userService = {
   getAllUsers: () => api.get('/users/all-users'),
   getUserById: (id) => api.get(`/users/${id}`),
   updateProfile: (data) => api.put('/users/update-profile', data),
+  deleteAccount: () => api.delete('/users/account'),
   rateUser: (id, ratingData) => api.post(`/users/rate/${id}`, ratingData),
 };

@@ -67,10 +67,17 @@ router.get('/:id',
 
 router.put('/update-profile',
     authMiddleware.authUser,
+    body('fullname.firstname').optional().isString().trim().isLength({ min: 1, max: 60 }).withMessage('First name must be 1 to 60 characters'),
+    body('fullname.lastname').optional().isString().trim().isLength({ max: 60 }).withMessage('Last name must be at most 60 characters'),
     body('bio').optional().isString().isLength({ min: 3, max: 1000 }).withMessage('Bio must be at least 3 characters'),
     body('location').optional().isString().isLength({ min: 2, max: 120 }).withMessage('Location must be at least 2 characters'),
     body('role').optional().isString().isLength({ min: 2, max: 100 }).withMessage('Role must be at least 2 characters'),
     userController.updateProfile
+);
+
+router.delete('/account',
+    authMiddleware.authUser,
+    userController.deleteAccount
 );
 
 router.post('/rate/:id',
