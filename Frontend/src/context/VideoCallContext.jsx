@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const VideoCallContext = createContext();
 
-const ICE_CONFIGURATION = {
+const DEFAULT_ICE_CONFIGURATION = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
@@ -49,6 +50,8 @@ export const VideoCallProvider = ({ children }) => {
   const pendingCandidates = useRef([]);
   const screenStreamRef = useRef(null);
   const ringTimeoutRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const isRestartingIceRef = useRef(false);
   const audioCtxRef = useRef(null);
   const ringtoneOscRef = useRef(null);
 
@@ -128,6 +131,12 @@ export const VideoCallProvider = ({ children }) => {
       ringTimeoutRef.current = null;
     }
 
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    isRestartingIceRef.current = false;
+
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(t => t.stop());
       screenStreamRef.current = null;
@@ -196,8 +205,46 @@ export const VideoCallProvider = ({ children }) => {
     }
   };
 
-  const initPeerConnection = useCallback((targetUserId) => {
-    const pc = new RTCPeerConnection(ICE_CONFIGURATION);
+  const fetchIceConfiguration = useCallback(async () => {
+    try {
+      const res = await api.get('/users/ice-servers', { timeout: 3500 });
+      if (Array.isArray(res.data?.iceServers) && res.data.iceServers.length > 0) {
+        return { iceServers: res.data.iceServers };
+      }
+    } catch {
+      // Fallback safely to public STUN configuration
+    }
+    return DEFAULT_ICE_CONFIGURATION;
+  }, []);
+
+  const attemptIceRestart = useCallback(async (targetUserId) => {
+    const pc = peerConnection.current;
+    if (!pc || !socket || !targetUserId || isRestartingIceRef.current) return;
+    if (pc.signalingState !== 'stable') return;
+
+    isRestartingIceRef.current = true;
+    try {
+      if (typeof pc.restartIce === 'function') {
+        pc.restartIce();
+      }
+      const offer = await pc.createOffer({ iceRestart: true });
+      await pc.setLocalDescription(offer);
+      socket.emit('renegotiate-call', {
+        to: targetUserId,
+        offer,
+        iceRestart: true
+      });
+    } catch (err) {
+      console.warn('[WebRTC] ICE restart renegotiation failed:', err.message);
+    } finally {
+      setTimeout(() => {
+        isRestartingIceRef.current = false;
+      }, 3000);
+    }
+  }, [socket]);
+
+  const initPeerConnection = useCallback((targetUserId, iceConfig = DEFAULT_ICE_CONFIGURATION) => {
+    const pc = new RTCPeerConnection(iceConfig);
     peerConnection.current = pc;
 
     pc.onicecandidate = (event) => {
@@ -224,14 +271,20 @@ export const VideoCallProvider = ({ children }) => {
     pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
       if (state === 'failed') {
-        try {
-          pc.restartIce();
-        } catch {
-          // Ignore restartIce unsupported error
-        }
+        attemptIceRestart(targetUserId);
       } else if (state === 'disconnected') {
         toast('Connection unstable, attempting to reconnect...', { id: 'webrtc-reconnect' });
-      } else if (state === 'connected') {
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (peerConnection.current?.iceConnectionState === 'disconnected') {
+            attemptIceRestart(targetUserId);
+          }
+        }, 4000);
+      } else if (state === 'connected' || state === 'completed') {
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
         toast.dismiss('webrtc-reconnect');
       }
     };
@@ -247,7 +300,7 @@ export const VideoCallProvider = ({ children }) => {
     };
 
     return pc;
-  }, [socket, cleanupCall]);
+  }, [socket, cleanupCall, attemptIceRestart]);
 
   const addCandidateSafely = async (candidate) => {
     if (!peerConnection.current || !candidate) return;
@@ -296,14 +349,17 @@ export const VideoCallProvider = ({ children }) => {
     }
 
     try {
-      const stream = await getMediaStream();
+      const [stream, iceConfig] = await Promise.all([
+        getMediaStream(),
+        fetchIceConfiguration()
+      ]);
       localStreamRef.current = stream;
       setLocalStream(stream);
       setRemoteUser(targetUser);
       setCallStatus('calling');
       startAudioTone('calling');
 
-      const pc = initPeerConnection(targetUser._id);
+      const pc = initPeerConnection(targetUser._id, iceConfig);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
       const offer = await pc.createOffer({
@@ -339,6 +395,12 @@ export const VideoCallProvider = ({ children }) => {
       ringTimeoutRef.current = null;
     }
 
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    isRestartingIceRef.current = false;
+
     const targetUser = remoteUserRef.current;
     if (!incomingSignal || !targetUser?._id) {
       setIsAnswering(false);
@@ -347,12 +409,15 @@ export const VideoCallProvider = ({ children }) => {
     }
 
     try {
-      const stream = await getMediaStream();
+      const [stream, iceConfig] = await Promise.all([
+        getMediaStream(),
+        fetchIceConfiguration()
+      ]);
       localStreamRef.current = stream;
       setLocalStream(stream);
       setCallStatus('ongoing');
 
-      const pc = initPeerConnection(targetUser._id);
+      const pc = initPeerConnection(targetUser._id, iceConfig);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
       await pc.setRemoteDescription(new RTCSessionDescription(incomingSignal));
@@ -522,6 +587,37 @@ export const VideoCallProvider = ({ children }) => {
       }
     };
 
+    const handleRenegotiateCall = async ({ from, offer, answer }) => {
+      const pc = peerConnection.current;
+      const peerId = from || remoteUserRef.current?._id;
+      if (!pc || !peerId) return;
+
+      try {
+        if (offer) {
+          await pc.setRemoteDescription(new RTCSessionDescription(offer));
+          const replyAnswer = await pc.createAnswer();
+          await pc.setLocalDescription(replyAnswer);
+          socket.emit('renegotiate-call', { to: peerId, answer: replyAnswer });
+        } else if (answer) {
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+
+        if (pendingCandidates.current.length > 0 && pc.remoteDescription?.type) {
+          for (const cand of pendingCandidates.current) {
+            await addCandidateSafely(cand);
+          }
+          pendingCandidates.current = [];
+        }
+      } catch (err) {
+        console.warn('[WebRTC] Renegotiation error:', err.message);
+      }
+    };
+
+    const handleCallHandled = () => {
+      stopAudioTone();
+      cleanupCall();
+    };
+
     const handleCallRejected = (data) => {
       stopAudioTone();
       if (data?.reason === 'busy') {
@@ -553,20 +649,24 @@ export const VideoCallProvider = ({ children }) => {
 
     socket.on('incoming-call', handleIncomingCall);
     socket.on('call-answered', handleCallAnswered);
+    socket.on('renegotiate-call', handleRenegotiateCall);
     socket.on('ice-candidate', handleIceCandidate);
     socket.on('call-rejected', handleCallRejected);
     socket.on('call-cancelled', handleCallCancelled);
     socket.on('call-failed', handleCallFailed);
     socket.on('call-ended', handleCallEnded);
+    socket.on('call-handled', handleCallHandled);
 
     return () => {
       socket.off('incoming-call', handleIncomingCall);
       socket.off('call-answered', handleCallAnswered);
+      socket.off('renegotiate-call', handleRenegotiateCall);
       socket.off('ice-candidate', handleIceCandidate);
       socket.off('call-rejected', handleCallRejected);
       socket.off('call-cancelled', handleCallCancelled);
       socket.off('call-failed', handleCallFailed);
       socket.off('call-ended', handleCallEnded);
+      socket.off('call-handled', handleCallHandled);
     };
   }, [socket, cleanupCall, startAudioTone, stopAudioTone]);
 

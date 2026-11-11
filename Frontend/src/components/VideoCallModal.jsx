@@ -68,7 +68,10 @@ const VideoCallModal = () => {
   const textareaRef = useRef(null);
   const outgoingTypingTimerRef = useRef(null);
   const partnerTypingTimerRef = useRef(null);
+  const autosaveTimerRef = useRef(null);
   const isLocalTypingRef = useRef(false);
+  const isWorkspaceDirtyRef = useRef(false);
+  const lastAppliedRemoteRef = useRef(0);
   const hasPlayedHalfwayCueRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -100,6 +103,21 @@ const VideoCallModal = () => {
   // Active Linked Swap (if any)
   const [activeSwap, setActiveSwap] = useState(null);
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
+
+  const studioContentRef = useRef(studioContent);
+  studioContentRef.current = studioContent;
+  const studioModeRef = useRef(studioMode);
+  studioModeRef.current = studioMode;
+  const codeLanguageRef = useRef(codeLanguage);
+  codeLanguageRef.current = codeLanguage;
+  const milestonesRef = useRef(milestones);
+  milestonesRef.current = milestones;
+  const targetDurationRef = useRef(targetDuration);
+  targetDurationRef.current = targetDuration;
+  const showStudioRef = useRef(showStudio);
+  showStudioRef.current = showStudio;
+  const activeSwapRef = useRef(activeSwap);
+  activeSwapRef.current = activeSwap;
 
   // Bind local video stream to permanently-mounted video element
   useEffect(() => {
@@ -239,22 +257,84 @@ const VideoCallModal = () => {
     socket.emit('studio-sync', {
       to: remoteUser._id,
       ...payload,
+      updatedAt: Date.now(),
       lastEditedBy: currentUser?.fullname?.firstname || 'Partner'
     });
   }, [socket, remoteUser, currentUser]);
 
-  // Ensure studio opens when call transitions to ongoing without overwriting loaded swap workspace
+  const persistWorkspace = useCallback(async (silent = true) => {
+    const swap = activeSwapRef.current;
+    if (!swap?._id) {
+      if (!silent) toast('Workspace synced live with partner via Socket.io', { icon: '⚡' });
+      return;
+    }
+    if (silent && !isWorkspaceDirtyRef.current) return;
+
+    if (!silent) setIsSavingWorkspace(true);
+    try {
+      await swapService.updateWorkspace({
+        swapId: swap._id,
+        milestones: milestonesRef.current.map(m => ({ title: m.title, completed: m.completed })),
+        sessionNotes: studioContentRef.current
+      });
+      isWorkspaceDirtyRef.current = false;
+      if (!silent) toast.success('Workspace saved to swap history!', { icon: '✅' });
+    } catch {
+      if (!silent) toast.error('Failed to persist workspace to swap');
+    } finally {
+      if (!silent) setIsSavingWorkspace(false);
+    }
+  }, []);
+
+  const scheduleWorkspaceAutosave = useCallback(() => {
+    isWorkspaceDirtyRef.current = true;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      persistWorkspace(true);
+    }, 3000);
+  }, [persistWorkspace]);
+
+  const handleHangupWithSave = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (isWorkspaceDirtyRef.current && activeSwapRef.current?._id) {
+      await Promise.race([
+        persistWorkspace(true),
+        new Promise((resolve) => setTimeout(resolve, 600))
+      ]);
+    }
+    endCall();
+  }, [persistWorkspace, endCall]);
+
+  // Ensure studio opens when call transitions to ongoing and request live partner state
   useEffect(() => {
     if (callStatus === 'ongoing') {
       setShowStudio(true);
+      isWorkspaceDirtyRef.current = false;
+      lastAppliedRemoteRef.current = 0;
+      if (socket && remoteUser?._id) {
+        const timer = setTimeout(() => {
+          socket.emit('studio-sync-request', { to: remoteUser._id });
+        }, 300);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [callStatus]);
+    return undefined;
+  }, [callStatus, socket, remoteUser]);
 
   // Socket listener for real-time collaborative workspace sync
   useEffect(() => {
     if (!socket) return;
 
     const handleStudioSync = (data) => {
+      const incomingTs = Number(data.updatedAt) || Date.now();
+      if (!data.isSyncSnapshot && data.updatedAt && incomingTs < lastAppliedRemoteRef.current) {
+        return;
+      }
+      lastAppliedRemoteRef.current = incomingTs;
+
       if (data.isOpen !== undefined) {
         setShowStudio(Boolean(data.isOpen));
       }
@@ -270,6 +350,22 @@ const VideoCallModal = () => {
       if (data.targetDuration) setTargetDuration(data.targetDuration);
     };
 
+    const handleStudioSyncRequest = ({ from }) => {
+      const targetId = from || remoteUser?._id;
+      if (!targetId) return;
+      socket.emit('studio-sync', {
+        to: targetId,
+        isSyncSnapshot: true,
+        isOpen: showStudioRef.current,
+        content: studioContentRef.current,
+        mode: studioModeRef.current,
+        language: codeLanguageRef.current,
+        milestones: milestonesRef.current,
+        targetDuration: targetDurationRef.current,
+        updatedAt: Date.now()
+      });
+    };
+
     const handleStudioTyping = (data) => {
       setPartnerIsTyping(Boolean(data.isTyping));
       if (data.isTyping) {
@@ -281,18 +377,21 @@ const VideoCallModal = () => {
     };
 
     socket.on('studio-sync', handleStudioSync);
+    socket.on('studio-sync-request', handleStudioSyncRequest);
     socket.on('studio-typing', handleStudioTyping);
 
     return () => {
       socket.off('studio-sync', handleStudioSync);
+      socket.off('studio-sync-request', handleStudioSyncRequest);
       socket.off('studio-typing', handleStudioTyping);
       if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
     };
-  }, [socket]);
+  }, [socket, remoteUser]);
 
   useEffect(() => {
     return () => {
       if (outgoingTypingTimerRef.current) clearTimeout(outgoingTypingTimerRef.current);
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
   }, []);
 
@@ -301,6 +400,7 @@ const VideoCallModal = () => {
     const val = e.target.value;
     isLocalTypingRef.current = true;
     setStudioContent(val);
+    scheduleWorkspaceAutosave();
 
     if (socket && remoteUser?._id) {
       socket.emit('studio-typing', {
@@ -328,6 +428,7 @@ const VideoCallModal = () => {
       const end = e.target.selectionEnd;
       const nextContent = studioContent.substring(0, start) + '  ' + studioContent.substring(end);
       setStudioContent(nextContent);
+      scheduleWorkspaceAutosave();
       broadcastSync({ content: nextContent, mode: studioMode, language: codeLanguage, isOpen: true });
       setTimeout(() => {
         if (textareaRef.current) {
@@ -365,6 +466,7 @@ const VideoCallModal = () => {
     const replacement = `${prefix}${selected || 'text'}${suffix}`;
     const nextContent = studioContent.substring(0, start) + replacement + studioContent.substring(end);
     setStudioContent(nextContent);
+    scheduleWorkspaceAutosave();
     broadcastSync({ content: nextContent, mode: studioMode, isOpen: true });
   };
 
@@ -372,6 +474,7 @@ const VideoCallModal = () => {
   const handleToggleMilestone = (id) => {
     const updated = milestones.map(m => m.id === id ? { ...m, completed: !m.completed } : m);
     setMilestones(updated);
+    scheduleWorkspaceAutosave();
     broadcastSync({ milestones: updated });
   };
 
@@ -386,12 +489,14 @@ const VideoCallModal = () => {
     const updated = [...milestones, item];
     setMilestones(updated);
     setNewMilestoneTitle('');
+    scheduleWorkspaceAutosave();
     broadcastSync({ milestones: updated });
   };
 
   const handleDeleteMilestone = (id) => {
     const updated = milestones.filter(m => m.id !== id);
     setMilestones(updated);
+    scheduleWorkspaceAutosave();
     broadcastSync({ milestones: updated });
   };
 
@@ -429,25 +534,7 @@ const VideoCallModal = () => {
   };
 
   // Save workspace to MongoDB
-  const handleSaveWorkspace = async () => {
-    if (!activeSwap?._id) {
-      toast('Workspace synced live with partner via Socket.io', { icon: '⚡' });
-      return;
-    }
-    setIsSavingWorkspace(true);
-    try {
-      await swapService.updateWorkspace({
-        swapId: activeSwap._id,
-        milestones: milestones.map(m => ({ title: m.title, completed: m.completed })),
-        sessionNotes: studioContent
-      });
-      toast.success('Workspace saved to swap history!', { icon: '✅' });
-    } catch {
-      toast.error('Failed to persist workspace to swap');
-    } finally {
-      setIsSavingWorkspace(false);
-    }
-  };
+  const handleSaveWorkspace = () => persistWorkspace(false);
 
   // Simple Markdown renderer
   const renderMarkdown = (text) => {
@@ -642,7 +729,7 @@ const VideoCallModal = () => {
 
               <button
                 type="button"
-                onClick={endCall}
+                onClick={handleHangupWithSave}
                 className="p-1.5 rounded-lg bg-[#D72E2B]/20 hover:bg-[#D72E2B] text-[#D72E2B] hover:text-[#202738] transition-colors cursor-pointer"
                 title="End Call"
               >
@@ -1148,7 +1235,7 @@ const VideoCallModal = () => {
             {/* End / Hang Up Button */}
             <button 
               type="button"
-              onClick={endCall}
+              onClick={handleHangupWithSave}
               className="h-10 sm:h-11 px-3 sm:px-6 rounded-full bg-[#D72E2B] hover:bg-[#BE2421] text-white flex items-center gap-1.5 sm:gap-2 font-bold transition-colors shadow-md cursor-pointer ml-1 sm:ml-2 shrink-0"
               title="Terminate Call"
             >
