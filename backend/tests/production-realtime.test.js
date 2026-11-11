@@ -295,4 +295,31 @@ describe('Messaging Pagination, Read Receipts, Feed & Account Deletion', () => {
         assert.equal(res.body.stats.totalShowcases, 5);
         assert.equal(res.body.stats.completedSwaps, 12);
     });
+
+    it('keeps encryptedKeyBackup select: false on User schema and allows owner updateProfile persistence', async () => {
+        assert.equal(User.schema.path('encryptedKeyBackup').options.select, false);
+
+        const origFindByIdAndUpdate = User.findByIdAndUpdate;
+        let capturedSet = null;
+        User.findByIdAndUpdate = (_id, update) => {
+            capturedSet = update.$set;
+            return {
+                select: async () => ({ _id: 'u1', ...update.$set })
+            };
+        };
+
+        try {
+            const res = createMockRes();
+            await userController.updateProfile({
+                user: { _id: 'u1' },
+                body: { publicKey: '{"kty":"EC"}', encryptedKeyBackup: '{"v":1,"ct":"abc"}' }
+            }, res);
+
+            assert.equal(res.statusCode, 200);
+            assert.equal(capturedSet.publicKey, '{"kty":"EC"}');
+            assert.equal(capturedSet.encryptedKeyBackup, '{"v":1,"ct":"abc"}');
+        } finally {
+            User.findByIdAndUpdate = origFindByIdAndUpdate;
+        }
+    });
 });
