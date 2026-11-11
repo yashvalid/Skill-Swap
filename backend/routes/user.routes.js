@@ -4,8 +4,26 @@ const User = require('../model/user.model');
 const { body } = require('express-validator');
 const userController = require('../controllers/user.controllers');
 const authMiddleware = require('../middlewares/authentication');
+const { createRateLimiter } = require('../middlewares/rateLimit');
+
+const loginRateLimit = createRateLimiter({
+    prefix: 'auth-login',
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    keyGenerator: (req) => req.ip || req.socket?.remoteAddress || 'anonymous',
+    message: 'Too many login attempts. Please try again in a few minutes.'
+});
+
+const registerRateLimit = createRateLimiter({
+    prefix: 'auth-register',
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    keyGenerator: (req) => req.ip || req.socket?.remoteAddress || 'anonymous',
+    message: 'Too many account creation attempts from this IP. Please try again later.'
+});
 
 router.post('/register',
+    registerRateLimit,
     body('fullname.firstname').notEmpty().withMessage('First name is required'),
     body('email').isEmail().withMessage('Email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
@@ -19,6 +37,7 @@ router.post('/register',
 );
 
 router.post('/login',
+    loginRateLimit,
     body('email').isEmail().withMessage('Email is required'),
     body('password').notEmpty().withMessage('Password is required'),
     userController.userLogin
@@ -34,6 +53,11 @@ router.get('/profile',
 router.get('/all-users',
     authMiddleware.optionalAuth,
     userController.getAllUsers
+);
+
+router.get('/ice-servers',
+    authMiddleware.authUser,
+    userController.getIceServers
 );
 
 router.get('/:id',

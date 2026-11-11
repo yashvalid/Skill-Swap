@@ -5,7 +5,10 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose');
 const connectDB = require('./db/db');
+const redisClient = require('./services/redis.service');
+const { createRateLimiter } = require('./middlewares/rateLimit');
 const userRoutes = require('./routes/user.routes');
 const SkillSwapRoutes = require('./routes/skillSwap.routes');
 const SkillRoutes = require('./routes/skills.routes');
@@ -14,6 +17,19 @@ const postRoutes = require('./routes/post.routes');
 const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), display-capture=(self)');
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    return next();
+});
 
 if (process.env.NODE_ENV !== 'test') {
     connectDB();
@@ -49,12 +65,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (req, res) => {
     return res.send("Server is up and running");
 });
-app.use("/users", userRoutes);
-app.use("/skillswap", SkillSwapRoutes);
-app.use("/skill", SkillRoutes);
-app.use("/messages", MessagesRoutes);
-app.use("/posts", postRoutes);
-app.use("/ai", aiRoutes);
+
+app.get('/ready', async (req, res) => {
+    const dbReady = mongoose.connection.readyState === 1;
+    const redisReady = await redisClient.ping();
+    const status = dbReady ? 'ready' : 'not_ready';
+    return res.status(dbReady ? 200 : 503).json({
+        status,
+        db: dbReady ? 'connected' : 'disconnected',
+        redis: redisReady ? 'connected' : 'fallback',
+        uptime: Math.round(process.uptime())
+    });
+});
+
+const apiRateLimiter = createRateLimiter({
+    prefix: 'api-global',
+    windowMs: 60 * 1000,
+    max: 300,
+    keyGenerator: (req) => req.ip || req.socket?.remoteAddress || 'anonymous'
+});
+
+app.use("/users", apiRateLimiter, userRoutes);
+app.use("/skillswap", apiRateLimiter, SkillSwapRoutes);
+app.use("/skill", apiRateLimiter, SkillRoutes);
+app.use("/messages", apiRateLimiter, MessagesRoutes);
+app.use("/posts", apiRateLimiter, postRoutes);
+app.use("/ai", apiRateLimiter, aiRoutes);
 
 app.use((req, res, next) => {
     if (req.method === 'GET' && req.accepts('html')) {

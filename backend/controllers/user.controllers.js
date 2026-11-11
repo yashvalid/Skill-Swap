@@ -1,8 +1,48 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const User = require('../model/user.model');
 const SkillSwap = require('../model/skillSwap.model');
 const { validationResult } = require('express-validator');
 const userService = require('../services/user.services');
+
+const DEFAULT_STUN_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+];
+
+const buildIceServers = (userId) => {
+    const stunUrls = process.env.STUN_URLS
+        ? process.env.STUN_URLS.split(',').map(u => u.trim()).filter(Boolean)
+        : null;
+    const iceServers = stunUrls?.length
+        ? stunUrls.map(urls => ({ urls }))
+        : [...DEFAULT_STUN_SERVERS];
+
+    const turnUrls = process.env.TURN_URLS
+        ? process.env.TURN_URLS.split(',').map(u => u.trim()).filter(Boolean)
+        : [];
+
+    if (turnUrls.length > 0 && userId) {
+        if (process.env.TURN_STATIC_SECRET) {
+            const ttlSeconds = Number(process.env.TURN_TTL_SECONDS) || 3600;
+            const expiry = Math.floor(Date.now() / 1000) + ttlSeconds;
+            const username = `${expiry}:${userId.toString()}`;
+            const credential = crypto
+                .createHmac('sha1', process.env.TURN_STATIC_SECRET)
+                .update(username)
+                .digest('base64');
+            iceServers.push({ urls: turnUrls, username, credential });
+        } else if (process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
+            iceServers.push({
+                urls: turnUrls,
+                username: process.env.TURN_USERNAME,
+                credential: process.env.TURN_CREDENTIAL
+            });
+        }
+    }
+
+    return iceServers;
+};
 
 const PUBLIC_USER_PROJECTION = 'fullname role location bio skillsOffered skillsNeeded averageRating totalRatings ratings isVerified publicKey credits';
 
@@ -224,5 +264,17 @@ module.exports.rateUser = async (req, res) => {
         return res.status(200).json({ message: "Rating submitted successfully", averageRating: user.averageRating });
     } catch (err) {
         return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+module.exports.buildIceServers = buildIceServers;
+
+module.exports.getIceServers = async (req, res) => {
+    try {
+        const iceServers = buildIceServers(req.user._id);
+        res.setHeader('Cache-Control', 'no-store');
+        return res.status(200).json({ iceServers });
+    } catch {
+        return res.status(500).json({ message: "Failed to build ICE server configuration" });
     }
 };
