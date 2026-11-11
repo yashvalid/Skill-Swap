@@ -54,8 +54,9 @@ module.exports.getAllPosts = async (req, res) => {
       query = query.skip((page - 1) * limit).limit(limit);
     }
 
-    const [posts, commentCounts, completedSwapsCount, ratedUsers] = await Promise.all([
+    const [posts, totalPostsCount, commentCounts, completedSwapsCount, ratedUsers] = await Promise.all([
       query.lean(),
+      postModel.countDocuments(),
       commentModel.aggregate([
         { $group: { _id: '$post', count: { $sum: 1 } } }
       ]),
@@ -73,11 +74,17 @@ module.exports.getAllPosts = async (req, res) => {
       ? Number((ratedUsers.reduce((acc, u) => acc + (u.averageRating || 0), 0) / ratedUsers.length).toFixed(1))
       : null;
 
+    const hasMore = limit > 0 ? (page * limit) < totalPostsCount : false;
+
     res.status(200).json({
       posts: enrichedPosts,
+      page,
+      limit: limit || totalPostsCount,
+      total: totalPostsCount,
+      hasMore,
       stats: {
         completedSwaps: completedSwapsCount,
-        totalShowcases: enrichedPosts.length,
+        totalShowcases: totalPostsCount,
         averageRating: avgCommunityRating
       }
     });

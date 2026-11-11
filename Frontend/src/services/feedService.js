@@ -8,7 +8,7 @@ export const feedService = {
       },
     });
   },
-  getAllPosts: () => api.get('/posts/all'),
+  getAllPosts: (params = {}) => api.get('/posts/all', { params }),
   likePost: (postId) => api.post(`/posts/like/${postId}`),
   commentPost: (postId, comment) => api.post(`/posts/comment/${postId}`, { comment }),
   getComments: (postId) => api.get(`/posts/comments/${postId}`),

@@ -27,6 +27,9 @@ const Feed = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [feedStats, setFeedStats] = useState({ completedSwaps: 0, totalShowcases: 0, averageRating: null });
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -43,25 +46,40 @@ const Feed = () => {
   const [commentsLoading, setCommentsLoading] = useState(false);
 
   useEffect(() => {
-    fetchPosts();
+    fetchPosts(1, false);
   }, []);
 
-  const fetchPosts = async () => {
-    setLoading(true);
+  const fetchPosts = async (targetPage = 1, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const { data } = await feedService.getAllPosts();
+      const { data } = await feedService.getAllPosts({ page: targetPage, limit: 10 });
       const loadedPosts = data.posts || [];
-      setPosts(loadedPosts);
+      setPage(targetPage);
+      setHasMore(Boolean(data.hasMore));
+      setPosts((prev) => {
+        if (!append) return loadedPosts;
+        const existingIds = new Set(prev.map(p => p._id));
+        const nextItems = loadedPosts.filter(p => !existingIds.has(p._id));
+        return [...prev, ...nextItems];
+      });
       if (data.stats) {
         setFeedStats(data.stats);
       } else {
-        setFeedStats({ completedSwaps: 0, totalShowcases: loadedPosts.length, averageRating: null });
+        setFeedStats({ completedSwaps: 0, totalShowcases: data.total ?? loadedPosts.length, averageRating: null });
       }
     } catch (error) {
       console.error('Failed to load posts from database', error);
-      setPosts([]);
+      if (!append) setPosts([]);
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -488,6 +506,19 @@ const Feed = () => {
                   </article>
                 );
               })}
+
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => fetchPosts(page + 1, true)}
+                    disabled={loadingMore}
+                    className="btn btn-secondary text-xs font-mono py-2 px-5 rounded-xl disabled:opacity-50"
+                  >
+                    {loadingMore ? 'Loading more showcases...' : 'Load more showcases'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
