@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const SkillSwap = require('../model/skillSwap.model');
 const User = require('../model/user.model');
 const Messages = require('../model/message.model');
-const { sendMessages, getReceiverSocketId } = require('../socket');
+const { emitToUser } = require('../socket');
 
 const SAFE_PARTNER_PROJECTION = 'fullname role location bio skillsOffered skillsNeeded averageRating totalRatings isVerified publicKey credits';
 
@@ -28,16 +28,10 @@ module.exports.requestSwap = async ({ fromUser, toUser, offersSkill, requestsSki
         proposalNotes: proposalNotes || ''
     });
 
-    const toUserSocketId = await getReceiverSocketId(toUser);
-    if (toUserSocketId) {
-        const swapReq = await SkillSwap.findById(skillSwap._id)
-            .populate('fromUser', SAFE_PARTNER_PROJECTION)
-            .lean();
-        await sendMessages(toUserSocketId, {
-            event: 'swap-request',
-            data: swapReq || skillSwap
-        });
-    }
+    const swapReq = await SkillSwap.findById(skillSwap._id)
+        .populate('fromUser', SAFE_PARTNER_PROJECTION)
+        .lean();
+    await emitToUser(toUser, 'swap-request', swapReq || skillSwap);
 
     return skillSwap;
 };
@@ -59,16 +53,10 @@ module.exports.acceptSwapRequest = async (requestId, userId) => {
     );
     if (!acceptSwap) throw httpError(409, "Swap request already updated");
 
-    const fromSocketId = await getReceiverSocketId(acceptSwap.fromUser);
-    if (fromSocketId) {
-        await sendMessages(fromSocketId, {
-            event: 'swap-accepted',
-            data: {
-                swapId: acceptSwap._id,
-                toUser: acceptSwap.toUser
-            }
-        });
-    }
+    await emitToUser(acceptSwap.fromUser, 'swap-accepted', {
+        swapId: acceptSwap._id,
+        toUser: acceptSwap.toUser
+    });
 
     return acceptSwap;
 };
@@ -114,6 +102,12 @@ module.exports.completeSwap = async (requestId, userId) => {
         }
     );
 
+    const otherUserId = swap.fromUser.toString() === userId.toString() ? swap.toUser : swap.fromUser;
+    await emitToUser(otherUserId, 'swap-completed', {
+        swapId: swap._id,
+        completedAt: swap.completedAt
+    });
+
     return swap;
 };
 
@@ -138,13 +132,7 @@ module.exports.rejectSwap = async (requestId, userId) => {
     const otherUserId = skillSwap.fromUser.toString() === userId.toString()
         ? skillSwap.toUser
         : skillSwap.fromUser;
-    const otherSocketId = await getReceiverSocketId(otherUserId);
-    if (otherSocketId) {
-        await sendMessages(otherSocketId, {
-            event: 'swap-rejected',
-            data: { swapId: skillSwap._id }
-        });
-    }
+    await emitToUser(otherUserId, 'swap-rejected', { swapId: skillSwap._id });
 
     return skillSwap;
 };
@@ -166,17 +154,11 @@ module.exports.rescheduleSwap = async ({ swapId, userId, scheduledTime, duration
     await swap.save();
 
     const otherUserId = swap.fromUser.toString() === userId.toString() ? swap.toUser : swap.fromUser;
-    const otherSocketId = await getReceiverSocketId(otherUserId);
-    if (otherSocketId) {
-        await sendMessages(otherSocketId, {
-            event: 'swap-rescheduled',
-            data: {
-                swapId: swap._id,
-                scheduledTime: swap.scheduledTime,
-                durationMinutes: swap.durationMinutes
-            }
-        });
-    }
+    await emitToUser(otherUserId, 'swap-rescheduled', {
+        swapId: swap._id,
+        scheduledTime: swap.scheduledTime,
+        durationMinutes: swap.durationMinutes
+    });
 
     return swap;
 };

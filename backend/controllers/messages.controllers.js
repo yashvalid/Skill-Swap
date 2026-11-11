@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const User = require('../model/user.model');
 const messagesService = require('../services/messages.services');
-const { getReceiverSocketId, sendMessages } = require('../socket');
+const { emitToUser } = require('../socket');
 const { invalidateCache } = require('../middlewares/cache');
 
 module.exports.getMessages = async (req, res) => {
@@ -49,13 +49,7 @@ module.exports.sendMessage = async (req, res) => {
         }
 
         const messages = await messagesService.sendMessage(text, receiverId, req.user._id, isEncrypted, iv);
-        const receiverSocketID = await getReceiverSocketId(receiverId);
-        if (receiverSocketID) {
-            await sendMessages(receiverSocketID, {
-                event: 'new-message',
-                data: messages
-            });
-        }
+        await emitToUser(receiverId, 'new-message', messages);
 
         await invalidateCache([
             `cache:messages:${req.user._id}:${receiverId}`,
