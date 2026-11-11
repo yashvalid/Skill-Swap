@@ -78,24 +78,39 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    encryptedKeyBackup: {
+        type: String,
+        default: null,
+        select: false
+    },
     isVerified: {
         type: Boolean,
         default: false
     },
 });
 
+userSchema.set('toJSON', {
+    transform: (_doc, ret) => {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+    }
+});
+
 userSchema.methods.generateToken = function() {
-    const token = jwt.sign({ _id : this._id }, process.env.JWT_SECRET);
+    const token = jwt.sign({ _id : this._id }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    });
     return token;
-}
+};
 
 userSchema.methods.comparePass = async function(password){
     return await bcrypt.compare(password, this.password);
-}
+};
 
 userSchema.statics.hashPass = async function(password){
     return await bcrypt.hash(password, 10);
-}
+};
 
 const User = mongoose.model('user', userSchema);
 

@@ -45,6 +45,8 @@ const VideoCallModal = () => {
     remoteUser, 
     localStream, 
     remoteStream, 
+    hasRemoteVideo,
+    iceStatus,
     isMuted, 
     isVideoDisabled, 
     isScreenSharing, 
@@ -66,13 +68,17 @@ const VideoCallModal = () => {
   const remoteVideoRef = useRef(null);
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
-  const typingTimerRef = useRef(null);
+  const outgoingTypingTimerRef = useRef(null);
+  const partnerTypingTimerRef = useRef(null);
+  const autosaveTimerRef = useRef(null);
   const isLocalTypingRef = useRef(false);
+  const isWorkspaceDirtyRef = useRef(false);
+  const lastAppliedRemoteRef = useRef(0);
   const hasPlayedHalfwayCueRef = useRef(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // Default showStudio to true during ongoing call so both users immediately see the collaborative studio!
-  const [showStudio, setShowStudio] = useState(true);
+  // Keep Collaborative Studio local to each user (never forced by partner toggles)
+  const [showStudio, setShowStudio] = useState(false);
   const [studioTab, setStudioTab] = useState('scratchpad'); // 'scratchpad' | 'agenda'
   const [studioMode, setStudioMode] = useState('notes'); // 'notes' | 'code'
   const [codeLanguage, setCodeLanguage] = useState('javascript');
@@ -83,7 +89,6 @@ const VideoCallModal = () => {
     '# Pair Learning Session Notes\n\n- Discuss swap objectives\n- Live code walkthrough\n- Next steps & review\n'
   );
   const [partnerIsTyping, setPartnerIsTyping] = useState(false);
-  const [lastEditedBy, setLastEditedBy] = useState('');
 
   // Bilateral Split-Timer & Role
   const [targetDuration, setTargetDuration] = useState(30); // minutes
@@ -100,6 +105,20 @@ const VideoCallModal = () => {
   // Active Linked Swap (if any)
   const [activeSwap, setActiveSwap] = useState(null);
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false);
+  const [remoteAudioBlocked, setRemoteAudioBlocked] = useState(false);
+
+  const studioContentRef = useRef(studioContent);
+  studioContentRef.current = studioContent;
+  const studioModeRef = useRef(studioMode);
+  studioModeRef.current = studioMode;
+  const codeLanguageRef = useRef(codeLanguage);
+  codeLanguageRef.current = codeLanguage;
+  const milestonesRef = useRef(milestones);
+  milestonesRef.current = milestones;
+  const targetDurationRef = useRef(targetDuration);
+  targetDurationRef.current = targetDuration;
+  const activeSwapRef = useRef(activeSwap);
+  activeSwapRef.current = activeSwap;
 
   // Bind local video stream to permanently-mounted video element
   useEffect(() => {
@@ -113,23 +132,44 @@ const VideoCallModal = () => {
         playPromise.catch(() => {});
       }
     }
-  }, [localStream]);
+  }, [localStream, callStatus, isVideoDisabled]);
+
+  const attemptPlayRemoteVideo = useCallback(() => {
+    const video = remoteVideoRef.current;
+    if (!video || !remoteStream) return;
+    if (video.srcObject !== remoteStream) {
+      video.srcObject = remoteStream;
+    }
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          if (!video.muted) setRemoteAudioBlocked(false);
+        })
+        .catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+          setRemoteAudioBlocked(true);
+        });
+    }
+  }, [remoteStream]);
 
   // Bind remote video stream to permanently-mounted video element with autoplay safeguard
   useEffect(() => {
-    const video = remoteVideoRef.current;
-    if (video && remoteStream) {
-      if (video.srcObject !== remoteStream) {
-        video.srcObject = remoteStream;
-      }
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn('[WebRTC] Remote video autoplay waiting for user interaction:', err.message);
-        });
-      }
+    if (!remoteStream || callStatus === 'idle') {
+      setRemoteAudioBlocked(false);
+      return;
     }
-  }, [remoteStream]);
+    attemptPlayRemoteVideo();
+  }, [remoteStream, hasRemoteVideo, callStatus, attemptPlayRemoteVideo]);
+
+  const handleUnmuteRemoteAudio = () => {
+    const video = remoteVideoRef.current;
+    if (!video) return;
+    video.muted = false;
+    video.play().catch(() => {});
+    setRemoteAudioBlocked(false);
+  };
 
   // Fullscreen toggle
   const toggleFullscreen = async () => {
@@ -210,7 +250,9 @@ const VideoCallModal = () => {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.45);
-    } catch (e) {}
+    } catch {
+      // Web Audio playback skipped without user gesture
+    }
   }, []);
 
   // Halfway Split Timer monitor
@@ -237,80 +279,149 @@ const VideoCallModal = () => {
     socket.emit('studio-sync', {
       to: remoteUser._id,
       ...payload,
+      updatedAt: Date.now(),
       lastEditedBy: currentUser?.fullname?.firstname || 'Partner'
     });
   }, [socket, remoteUser, currentUser]);
 
-  // Auto initial workspace sync on call start
-  useEffect(() => {
-    if (callStatus === 'ongoing' && remoteUser?._id) {
-      setShowStudio(true);
-      const timer = setTimeout(() => {
-        broadcastSync({
-          isOpen: true,
-          content: studioContent,
-          milestones: milestones,
-          mode: studioMode,
-          language: codeLanguage,
-          currentPhase: currentTeacher,
-          targetDuration: targetDuration
-        });
-      }, 400);
-      return () => clearTimeout(timer);
+  const persistWorkspace = useCallback(async (silent = true) => {
+    const swap = activeSwapRef.current;
+    if (!swap?._id) {
+      if (!silent) toast('Workspace synced live with partner via Socket.io', { icon: '⚡' });
+      return;
     }
-  }, [callStatus]);
+    if (silent && !isWorkspaceDirtyRef.current) return;
+
+    if (!silent) setIsSavingWorkspace(true);
+    try {
+      await swapService.updateWorkspace({
+        swapId: swap._id,
+        milestones: milestonesRef.current.map(m => ({ title: m.title, completed: m.completed })),
+        sessionNotes: studioContentRef.current
+      });
+      isWorkspaceDirtyRef.current = false;
+      if (!silent) toast.success('Workspace saved to swap history!', { icon: '✅' });
+    } catch {
+      if (!silent) toast.error('Failed to persist workspace to swap');
+    } finally {
+      if (!silent) setIsSavingWorkspace(false);
+    }
+  }, []);
+
+  const scheduleWorkspaceAutosave = useCallback(() => {
+    isWorkspaceDirtyRef.current = true;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      persistWorkspace(true);
+    }, 3000);
+  }, [persistWorkspace]);
+
+  const handleHangupWithSave = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (isWorkspaceDirtyRef.current && activeSwapRef.current?._id) {
+      await Promise.race([
+        persistWorkspace(true),
+        new Promise((resolve) => setTimeout(resolve, 600))
+      ]);
+    }
+    endCall();
+  }, [persistWorkspace, endCall]);
+
+  // Sync live collaborative workspace state in the background when call becomes active
+  useEffect(() => {
+    if (callStatus === 'idle') {
+      setShowStudio(false);
+      return undefined;
+    }
+    if (callStatus === 'ongoing') {
+      isWorkspaceDirtyRef.current = false;
+      lastAppliedRemoteRef.current = 0;
+      if (socket && remoteUser?._id) {
+        const timer = setTimeout(() => {
+          socket.emit('studio-sync-request', { to: remoteUser._id });
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+    return undefined;
+  }, [callStatus, socket, remoteUser]);
 
   // Socket listener for real-time collaborative workspace sync
   useEffect(() => {
     if (!socket) return;
 
     const handleStudioSync = (data) => {
-      // Synchronize open/closed state so both participants see the notepad
-      if (data.isOpen !== undefined) {
-        setShowStudio(Boolean(data.isOpen));
+      const incomingTs = Number(data.updatedAt) || Date.now();
+      if (!data.isSyncSnapshot && data.updatedAt && incomingTs < lastAppliedRemoteRef.current) {
+        return;
       }
-      if (data.content !== undefined) {
-        // Only update if not actively typing to preserve caret position
-        if (!isLocalTypingRef.current) {
-          setStudioContent(data.content);
-        }
+      lastAppliedRemoteRef.current = incomingTs;
+
+      if (data.content !== undefined && !isLocalTypingRef.current) {
+        setStudioContent(data.content);
       }
       if (data.mode) setStudioMode(data.mode);
       if (data.language) setCodeLanguage(data.language);
       if (data.milestones) setMilestones(data.milestones);
       if (data.currentPhase) {
-        // Invert partner's relative perspective: if partner says 'you', it means them!
         setCurrentTeacher(data.currentPhase === 'you' ? 'partner' : 'you');
       }
       if (data.targetDuration) setTargetDuration(data.targetDuration);
-      if (data.lastEditedBy) setLastEditedBy(data.lastEditedBy);
+    };
+
+    const handleStudioSyncRequest = ({ from }) => {
+      const targetId = from || remoteUser?._id;
+      if (!targetId) return;
+      socket.emit('studio-sync', {
+        to: targetId,
+        isSyncSnapshot: true,
+        content: studioContentRef.current,
+        mode: studioModeRef.current,
+        language: codeLanguageRef.current,
+        milestones: milestonesRef.current,
+        targetDuration: targetDurationRef.current,
+        updatedAt: Date.now()
+      });
     };
 
     const handleStudioTyping = (data) => {
       setPartnerIsTyping(Boolean(data.isTyping));
       if (data.isTyping) {
-        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = setTimeout(() => {
+        if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
+        partnerTypingTimerRef.current = setTimeout(() => {
           setPartnerIsTyping(false);
         }, 2000);
       }
     };
 
     socket.on('studio-sync', handleStudioSync);
+    socket.on('studio-sync-request', handleStudioSyncRequest);
     socket.on('studio-typing', handleStudioTyping);
 
     return () => {
       socket.off('studio-sync', handleStudioSync);
+      socket.off('studio-sync-request', handleStudioSyncRequest);
       socket.off('studio-typing', handleStudioTyping);
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
     };
-  }, [socket]);
+  }, [socket, remoteUser]);
+
+  useEffect(() => {
+    return () => {
+      if (outgoingTypingTimerRef.current) clearTimeout(outgoingTypingTimerRef.current);
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, []);
 
   // Content edit with debounce & typing status
   const handleContentChange = (e) => {
     const val = e.target.value;
     isLocalTypingRef.current = true;
     setStudioContent(val);
+    scheduleWorkspaceAutosave();
 
     if (socket && remoteUser?._id) {
       socket.emit('studio-typing', {
@@ -320,10 +431,10 @@ const VideoCallModal = () => {
       });
     }
 
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => {
+    if (outgoingTypingTimerRef.current) clearTimeout(outgoingTypingTimerRef.current);
+    outgoingTypingTimerRef.current = setTimeout(() => {
       isLocalTypingRef.current = false;
-      broadcastSync({ content: val, mode: studioMode, language: codeLanguage, isOpen: true });
+      broadcastSync({ content: val, mode: studioMode, language: codeLanguage });
       if (socket && remoteUser?._id) {
         socket.emit('studio-typing', { to: remoteUser._id, isTyping: false });
       }
@@ -338,7 +449,8 @@ const VideoCallModal = () => {
       const end = e.target.selectionEnd;
       const nextContent = studioContent.substring(0, start) + '  ' + studioContent.substring(end);
       setStudioContent(nextContent);
-      broadcastSync({ content: nextContent, mode: studioMode, language: codeLanguage, isOpen: true });
+      scheduleWorkspaceAutosave();
+      broadcastSync({ content: nextContent, mode: studioMode, language: codeLanguage });
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 2;
@@ -347,11 +459,9 @@ const VideoCallModal = () => {
     }
   };
 
-  // Toggle studio visibility with synchronization
+  // Toggle studio visibility locally for this participant only
   const handleToggleStudio = () => {
-    const nextShow = !showStudio;
-    setShowStudio(nextShow);
-    broadcastSync({ isOpen: nextShow });
+    setShowStudio(prev => !prev);
   };
 
   // Toggle mode (Notes vs Code)
@@ -375,13 +485,15 @@ const VideoCallModal = () => {
     const replacement = `${prefix}${selected || 'text'}${suffix}`;
     const nextContent = studioContent.substring(0, start) + replacement + studioContent.substring(end);
     setStudioContent(nextContent);
-    broadcastSync({ content: nextContent, mode: studioMode, isOpen: true });
+    scheduleWorkspaceAutosave();
+    broadcastSync({ content: nextContent, mode: studioMode });
   };
 
   // Milestones handlers
   const handleToggleMilestone = (id) => {
     const updated = milestones.map(m => m.id === id ? { ...m, completed: !m.completed } : m);
     setMilestones(updated);
+    scheduleWorkspaceAutosave();
     broadcastSync({ milestones: updated });
   };
 
@@ -396,12 +508,14 @@ const VideoCallModal = () => {
     const updated = [...milestones, item];
     setMilestones(updated);
     setNewMilestoneTitle('');
+    scheduleWorkspaceAutosave();
     broadcastSync({ milestones: updated });
   };
 
   const handleDeleteMilestone = (id) => {
     const updated = milestones.filter(m => m.id !== id);
     setMilestones(updated);
+    scheduleWorkspaceAutosave();
     broadcastSync({ milestones: updated });
   };
 
@@ -439,25 +553,7 @@ const VideoCallModal = () => {
   };
 
   // Save workspace to MongoDB
-  const handleSaveWorkspace = async () => {
-    if (!activeSwap?._id) {
-      toast('Workspace synced live with partner via Socket.io', { icon: '⚡' });
-      return;
-    }
-    setIsSavingWorkspace(true);
-    try {
-      await swapService.updateWorkspace({
-        swapId: activeSwap._id,
-        milestones: milestones.map(m => ({ title: m.title, completed: m.completed })),
-        sessionNotes: studioContent
-      });
-      toast.success('Workspace saved to swap history!', { icon: '✅' });
-    } catch (err) {
-      toast.error('Failed to persist workspace to swap');
-    } finally {
-      setIsSavingWorkspace(false);
-    }
-  };
+  const handleSaveWorkspace = () => persistWorkspace(false);
 
   // Simple Markdown renderer
   const renderMarkdown = (text) => {
@@ -652,7 +748,7 @@ const VideoCallModal = () => {
 
               <button
                 type="button"
-                onClick={endCall}
+                onClick={handleHangupWithSave}
                 className="p-1.5 rounded-lg bg-[#D72E2B]/20 hover:bg-[#D72E2B] text-[#D72E2B] hover:text-[#202738] transition-colors cursor-pointer"
                 title="End Call"
               >
@@ -662,10 +758,10 @@ const VideoCallModal = () => {
           </div>
 
           {/* Central Workspace Area (Split when Studio is active) */}
-          <div className="relative flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#0E131C]">
+          <div className="relative flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden bg-[#0E131C]">
             
             {/* Video Viewport Column */}
-            <div className={`relative flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
+            <div className={`relative min-h-0 flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
               showStudio ? 'w-full lg:w-[52%] h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-[rgba(255,255,255,0.1)]' : 'w-full h-full'
             }`}>
               
@@ -674,10 +770,21 @@ const VideoCallModal = () => {
                 ref={remoteVideoRef} 
                 autoPlay 
                 playsInline 
-                className={`w-full h-full object-contain bg-black ${remoteStream ? 'block' : 'hidden'}`}
+                onLoadedMetadata={attemptPlayRemoteVideo}
+                className={`w-full h-full object-contain bg-black transition-opacity ${hasRemoteVideo ? 'opacity-100' : 'opacity-0 pointer-events-none absolute inset-0'}`}
               />
 
-              {!remoteStream && (
+              {remoteStream && remoteAudioBlocked && (
+                <button
+                  type="button"
+                  onClick={handleUnmuteRemoteAudio}
+                  className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1.5 rounded-full bg-[#FFEEA8] text-[#171D2B] font-mono text-xs font-bold shadow-xl cursor-pointer hover:bg-[#FFDF80]"
+                >
+                  Tap to Enable Partner Audio
+                </button>
+              )}
+
+              {!hasRemoteVideo && (
                 <div className="flex flex-col items-center justify-center text-[#F7F8FC] gap-4 p-8 text-center">
                   <div className="w-24 h-24 rounded-full overflow-hidden bg-[#171D2B] flex items-center justify-center border border-[rgba(255,255,255,0.15)] shadow-xl relative">
                     <img
@@ -685,16 +792,26 @@ const VideoCallModal = () => {
                       alt=""
                       className="w-full h-full object-cover opacity-85"
                     />
-                    {callStatus === 'calling' && (
+                    {(callStatus === 'calling' || iceStatus === 'connecting' || iceStatus === 'reconnecting') && (
                       <div className="absolute inset-0 border-2 border-[#FFEEA8] animate-ping pointer-events-none" />
                     )}
                   </div>
                   <div>
                     <h3 className="heading-h2 text-base sm:text-lg text-[#F7F8FC] mb-1">
-                      {callStatus === 'calling' ? `Calling ${partnerName}...` : `Connecting with ${partnerName}...`}
+                      {callStatus === 'calling'
+                        ? `Calling ${partnerName}...`
+                        : remoteStream
+                        ? `${partnerName} • Audio Connected`
+                        : `Connecting with ${partnerName}...`}
                     </h3>
                     <p className="text-[#A4B0C6] text-xs font-mono tracking-wider uppercase">
-                      {callStatus === 'calling' ? 'Waiting for answer...' : 'Connecting WebRTC stream...'}
+                      {callStatus === 'calling'
+                        ? 'Waiting for answer...'
+                        : remoteStream
+                        ? 'Partner camera is off or unavailable'
+                        : iceStatus === 'reconnecting'
+                        ? 'Reconnecting WebRTC peer...'
+                        : 'Establishing WebRTC stream...'}
                     </p>
                   </div>
                 </div>
@@ -707,12 +824,13 @@ const VideoCallModal = () => {
                   autoPlay 
                   muted 
                   playsInline 
-                  className={`w-full h-full object-cover scale-x-[-1] ${isVideoDisabled ? 'hidden' : 'block'}`}
+                  onLoadedMetadata={() => localVideoRef.current?.play().catch(() => {})}
+                  className={`w-full h-full object-cover scale-x-[-1] ${(isVideoDisabled || !localStream || localStream.getVideoTracks().length === 0) ? 'hidden' : 'block'}`}
                 />
-                {isVideoDisabled && (
+                {(isVideoDisabled || !localStream || localStream.getVideoTracks().length === 0) && (
                   <div className="w-full h-full flex flex-col items-center justify-center text-[#A4B0C6] text-[10px] font-mono bg-[#202738] gap-1 p-1 text-center">
                     <VideoOff size={13} className="text-[#D72E2B]" />
-                    <span>Camera Off</span>
+                    <span>{localStream && localStream.getVideoTracks().length === 0 ? 'Audio / Listen Only' : 'Camera Off'}</span>
                   </div>
                 )}
                 <div className="absolute bottom-1 left-1.5 font-mono text-[8px] bg-black/80 px-1 py-0.5 rounded text-white/90">
@@ -748,7 +866,7 @@ const VideoCallModal = () => {
 
             {/* Stage 2 Collaborative Studio Column */}
             {showStudio && (
-              <div className="w-full lg:w-[48%] h-1/2 lg:h-full flex flex-col bg-[#141A26] overflow-hidden animate-in fade-in duration-200">
+              <div className="w-full lg:w-[48%] h-1/2 lg:h-full min-h-0 flex flex-col bg-[#141A26] overflow-hidden animate-in fade-in duration-200">
                 
                 {/* Studio Header: Tabs & Quick Actions */}
                 <div className="p-2 sm:p-3 bg-[#171D2B] border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between gap-2 flex-wrap">
@@ -1158,7 +1276,7 @@ const VideoCallModal = () => {
             {/* End / Hang Up Button */}
             <button 
               type="button"
-              onClick={endCall}
+              onClick={handleHangupWithSave}
               className="h-10 sm:h-11 px-3 sm:px-6 rounded-full bg-[#D72E2B] hover:bg-[#BE2421] text-white flex items-center gap-1.5 sm:gap-2 font-bold transition-colors shadow-md cursor-pointer ml-1 sm:ml-2 shrink-0"
               title="Terminate Call"
             >

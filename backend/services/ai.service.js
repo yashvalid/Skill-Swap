@@ -103,6 +103,9 @@ Return ONLY a valid JSON object matching this schema:
         if (!text) throw new Error('Empty response from AI model');
 
         const parsed = JSON.parse(text);
+        if (!parsed || !Array.isArray(parsed.weeks) || parsed.weeks.length === 0) {
+            throw new Error('Malformed curriculum schema from AI model');
+        }
         parsed.isFallback = false;
         return parsed;
     } catch (err) {

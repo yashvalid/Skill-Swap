@@ -11,13 +11,11 @@ const cache = (ttl = 300, keyFn = null) => async (req, res, next) => {
     }
 
     const _json = res.json.bind(res);
-    res.json = async (body) => {
-        try {
-            if (res.statusCode === 200)
-                await redisClient.setEx(key, ttl, JSON.stringify(body));
-
-        } catch (err) {
-            console.error("Redis write error:", err.message);
+    res.json = (body) => {
+        if (res.statusCode === 200) {
+            redisClient.setEx(key, ttl, JSON.stringify(body)).catch((err) => {
+                console.error("Redis write error:", err.message);
+            });
         }
         return _json(body);
     };
@@ -30,20 +28,21 @@ const invalidateCache = async (patterns) => {
         try {
             if (pattern.includes("*")) {
                 let cursor = '0';
-                let total = 0;
                 do {
+                    const prevCursor = cursor;
                     const { cursor: next, keys } = await redisClient.scan(cursor, {
                         MATCH: pattern,
                         COUNT: 100,
                     });
 
-                    cursor = next;
+                    cursor = String(next ?? '0');
                     if (keys.length) {
                         await redisClient.del(keys);
-                        total += keys.length;
+                    }
+                    if (cursor === prevCursor && cursor !== '0') {
+                        break;
                     }
                 } while (cursor !== '0');
-
             } else {
                 await redisClient.del(pattern);
             }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send,
   Video,
@@ -15,10 +15,13 @@ import {
   RotateCcw,
   ArrowDown,
   Lock,
-  ShieldCheck,
   Calendar,
   X,
-  Clock
+  Check,
+  CheckCheck,
+  KeyRound,
+  Download,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -34,7 +37,12 @@ import {
   getOrInitUserKeyPair,
   getOrDeriveSharedKey,
   encryptMessageText,
-  decryptMessageText
+  decryptMessageText,
+  clearSharedKeyCacheForPartner,
+  exportUserKeyBackup,
+  importUserKeyBackup,
+  encryptKeyBackupWithPassword,
+  decryptKeyBackupWithPassword
 } from '../utils/e2ee';
 
 const SKILLBOT_USER = {
@@ -47,7 +55,7 @@ const SKILLBOT_USER = {
 const DEFAULT_BOT_MESSAGE = {
   _id: 'welcome',
   senderId: 'skillbot',
-  text: "Hey! I'm SkillBot. Ask me anything about what you're learning?from coding and design to languages and music?or get help planning your next swap session.",
+  text: "Hey! I'm SkillBot. Ask me anything about what you're learning — from coding and design to languages and music — or get help planning your next swap session.",
   createdAt: new Date().toISOString()
 };
 
@@ -109,16 +117,19 @@ const TIME_SLOTS = [
 ];
 
 const Messaging = () => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { socket } = useSocket();
+  const { socket, isUserOnline, swapEvent } = useSocket();
   const { startCall } = useVideoCall();
 
   const [activeChatUser, setActiveChatUser] = useState(SKILLBOT_USER);
   const [chatUsers, setChatUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [partnerTyping, setPartnerTyping] = useState(false);
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat'
   const [botMessages, setBotMessages] = useState(() => getInitialBotMessages(currentUser?._id));
   const [botLoading, setBotLoading] = useState(false);
@@ -133,15 +144,83 @@ const Messaging = () => {
   const [scheduleDuration, setScheduleDuration] = useState(45);
   const [scheduling, setScheduling] = useState(false);
 
-  // E2EE States
+  // E2EE States & Key Backup Modal
   const [userKeyPair, setUserKeyPair] = useState(null);
   const [partnerSharedKey, setPartnerSharedKey] = useState(null);
   const [isE2EEActive, setIsE2EEActive] = useState(false);
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [vaultPassword, setVaultPassword] = useState('');
+  const [syncingVault, setSyncingVault] = useState(false);
+  const [backupInput, setBackupInput] = useState('');
+  const [importingKeys, setImportingKeys] = useState(false);
 
   const scrollContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const isSwitchingChatRef = useRef(true);
+  const isPrependingRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
+  const lastTypingEmitRef = useRef(0);
+  const typingTimeoutRef = useRef(null);
+  const partnerTypingTimeoutRef = useRef(null);
+  const activeChatUserRef = useRef(activeChatUser);
+  activeChatUserRef.current = activeChatUser;
+  const userKeyPairRef = useRef(userKeyPair);
+  userKeyPairRef.current = userKeyPair;
+  const partnerSharedKeyRef = useRef(partnerSharedKey);
+  partnerSharedKeyRef.current = partnerSharedKey;
+  const refreshedPartnerKeysRef = useRef(new Set());
+  const derivedKeysByPartnerRef = useRef(new Map());
+  const rawMessagesRef = useRef([]);
+  const messagesRef = useRef([]);
+  messagesRef.current = messages;
+  const chatUsersRef = useRef([]);
+  chatUsersRef.current = chatUsers;
+
+  const activePartnerId = activeChatUser?.isBot ? null : activeChatUser?._id || null;
+
+  const resolvePartnerSharedKey = useCallback(async (partnerUser, { forceRefresh = false } = {}) => {
+    const partnerId = partnerUser?._id;
+    const privKey = userKeyPairRef.current?.privateKey;
+    if (!privKey || !partnerId || partnerId === 'skillbot' || partnerId.startsWith('peer-')) {
+      return null;
+    }
+
+    if (!forceRefresh && derivedKeysByPartnerRef.current.has(partnerId)) {
+      const cached = derivedKeysByPartnerRef.current.get(partnerId);
+      if (activeChatUserRef.current?._id === partnerId) {
+        partnerSharedKeyRef.current = cached;
+        setPartnerSharedKey(cached);
+        setIsE2EEActive(true);
+      }
+      return cached;
+    }
+
+    let partnerPubKey = forceRefresh ? null : partnerUser.publicKey;
+    if (!partnerPubKey) {
+      try {
+        const res = await userService.getUserById(partnerId);
+        partnerPubKey = res.data?.user?.publicKey || null;
+      } catch (err) {
+        console.warn('[E2EE] Partner public key lookup skipped:', err.message);
+      }
+    }
+    if (!partnerPubKey) return null;
+
+    if (forceRefresh) {
+      clearSharedKeyCacheForPartner(partnerId);
+    }
+
+    const sharedKey = await getOrDeriveSharedKey(privKey, partnerId, partnerPubKey);
+    if (sharedKey) {
+      derivedKeysByPartnerRef.current.set(partnerId, sharedKey);
+      if (activeChatUserRef.current?._id === partnerId) {
+        partnerSharedKeyRef.current = sharedKey;
+        setPartnerSharedKey(sharedKey);
+        setIsE2EEActive(true);
+      }
+    }
+    return sharedKey;
+  }, []);
 
   // Initialize E2EE Key Pair
   useEffect(() => {
@@ -151,9 +230,15 @@ const Messaging = () => {
       try {
         const keyInfo = await getOrInitUserKeyPair(currentUser._id);
         if (keyInfo && !isCancelled) {
+          derivedKeysByPartnerRef.current.clear();
+          refreshedPartnerKeysRef.current.clear();
+          userKeyPairRef.current = keyInfo;
           setUserKeyPair(keyInfo);
-          if (keyInfo.isNew || !currentUser.publicKey) {
-            await userService.updateProfile({ publicKey: keyInfo.publicKeyJwkString });
+          if (keyInfo.isNew || !currentUser.publicKey || currentUser.publicKey !== keyInfo.publicKeyJwkString) {
+            const res = await userService.updateProfile({ publicKey: keyInfo.publicKeyJwkString });
+            if (res.data?.user && !isCancelled) {
+              setUser(res.data.user);
+            }
           }
         }
       } catch (err) {
@@ -162,36 +247,23 @@ const Messaging = () => {
     };
     initCrypto();
     return () => { isCancelled = true; };
-  }, [currentUser?._id, currentUser?.publicKey]);
+  }, [currentUser?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derive E2EE Shared Key for Active Conversation
   useEffect(() => {
     let isCancelled = false;
     const deriveKeyForChat = async () => {
-      if (!activeChatUser || activeChatUser.isBot || !userKeyPair?.privateKey) {
+      if (!activePartnerId || !userKeyPair?.privateKey) {
+        partnerSharedKeyRef.current = null;
         setPartnerSharedKey(null);
         setIsE2EEActive(false);
         return;
       }
 
-      let partnerPubKey = activeChatUser.publicKey;
-      if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
-        try {
-          const res = await userService.getUserById(activeChatUser._id);
-          partnerPubKey = res.data?.user?.publicKey;
-        } catch (e) {}
-      }
-
-      if (partnerPubKey && !isCancelled) {
-        const derivedKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
-        if (!isCancelled && derivedKey) {
-          setPartnerSharedKey(derivedKey);
-          setIsE2EEActive(true);
-          return;
-        }
-      }
-
-      if (!isCancelled) {
+      const partnerObj = activeChatUserRef.current;
+      const derivedKey = await resolvePartnerSharedKey(partnerObj);
+      if (!isCancelled && !derivedKey) {
+        partnerSharedKeyRef.current = null;
         setPartnerSharedKey(null);
         setIsE2EEActive(false);
       }
@@ -199,7 +271,7 @@ const Messaging = () => {
 
     deriveKeyForChat();
     return () => { isCancelled = true; };
-  }, [activeChatUser, userKeyPair]);
+  }, [activePartnerId, userKeyPair, resolvePartnerSharedKey]);
 
   // Sync botMessages to localStorage on change
   useEffect(() => {
@@ -267,73 +339,400 @@ const Messaging = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, [userKeyPair]);
+  const handleSelectChat = useCallback((user) => {
+    setActiveChatUser(prev => {
+      if (prev?._id === user._id) return prev;
+      isSwitchingChatRef.current = true;
+      setShowScrollBottomPill(false);
+      const cachedKey = user?.isBot ? null : (derivedKeysByPartnerRef.current.get(user._id) || null);
+      partnerSharedKeyRef.current = cachedKey;
+      setPartnerSharedKey(cachedKey);
+      setIsE2EEActive(Boolean(cachedKey));
+      if (!user?.isBot) {
+        setMessages([]);
+        rawMessagesRef.current = [];
+      }
+      return user;
+    });
+    setMobileView('chat');
+  }, []);
 
-  useEffect(() => {
-    if (socket) {
-      const handleNewMessage = async (data) => {
-        let processedData = data;
-        if (data.isEncrypted && data.iv) {
-          let currentKey = partnerSharedKey;
-          if (!currentKey && userKeyPair?.privateKey && activeChatUser?.publicKey) {
-            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, activeChatUser.publicKey);
-          }
-          if (currentKey) {
-            const decrypted = await decryptMessageText(data.text, data.iv, currentKey);
-            processedData = { ...data, text: decrypted, isDecrypted: true };
-          } else {
-            processedData = { ...data, text: '[Encrypted message]', isDecrypted: false };
-          }
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await swapService.getAcceptedSwaps();
+      const rawUsers = response.data.allUsers || [];
+
+      // Keep one conversation entry per unique partner
+      const uniquePartnersMap = new Map();
+      for (const item of rawUsers) {
+        const pid = item.otherUser?._id;
+        if (!pid) continue;
+        if (!uniquePartnersMap.has(pid)) {
+          uniquePartnersMap.set(pid, item);
         }
+      }
+      const users = Array.from(uniquePartnersMap.values());
 
-        if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
-          setMessages((prev) => {
-            if (data._id && prev.some((m) => m._id === data._id)) return prev;
-            return [...prev, processedData];
-          });
-        }
-
-        // Reorder recipient list: partner with latest message moves to top
-        const partnerId = data.senderId === currentUser?._id ? data.receiverId : data.senderId;
-        const msgTime = new Date(data.createdAt || Date.now()).getTime();
-
-        setChatUsers((prev) => {
-          const updated = prev.map((item) => {
-            if (item.otherUser?._id === partnerId) {
+      const processedUsers = await Promise.all(
+        users.map(async (item) => {
+          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv) {
+            try {
+              const key = await resolvePartnerSharedKey(item.otherUser);
+              if (key) {
+                let dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, key);
+                if (dec === '[Unable to decrypt message]' && !refreshedPartnerKeysRef.current.has(`prev:${item.otherUser?._id}`)) {
+                  refreshedPartnerKeysRef.current.add(`prev:${item.otherUser?._id}`);
+                  const freshKey = await resolvePartnerSharedKey(item.otherUser, { forceRefresh: true });
+                  if (freshKey) {
+                    dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, freshKey);
+                  }
+                }
+                return {
+                  ...item,
+                  lastMessage: {
+                    ...item.lastMessage,
+                    _cipherText: item.lastMessage.text,
+                    text: dec,
+                    isDecrypted: dec !== '[Unable to decrypt message]'
+                  }
+                };
+              }
               return {
                 ...item,
-                lastMessage: processedData,
-                lastMessageAt: msgTime,
+                lastMessage: {
+                  ...item.lastMessage,
+                  _cipherText: item.lastMessage.text,
+                  isDecrypted: false
+                }
               };
+            } catch (err) {
+              console.warn('[E2EE] Last message decryption skipped:', err.message);
             }
-            return item;
-          });
-          return sortByRecentMessage(updated);
-        });
-      };
+          }
+          return item;
+        })
+      );
+      setChatUsers(sortByRecentMessage(processedUsers));
 
-      socket.on('new-message', handleNewMessage);
-
-      return () => {
-        socket.off('new-message', handleNewMessage);
-      };
+      if (location.state?.partnerId) {
+        const found = processedUsers.find(u => u.otherUser?._id === location.state.partnerId);
+        if (found?.otherUser) {
+          handleSelectChat(found.otherUser);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch chat users', error);
+    } finally {
+      setLoading(false);
     }
-  }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
+  }, [location.state?.partnerId, handleSelectChat, resolvePartnerSharedKey]);
+
+  useEffect(() => {
+    if (currentUser?._id) {
+      fetchUsers();
+    }
+  }, [currentUser?._id, fetchUsers, swapEvent]);
+
+  // Re-decrypt sidebar lastMessage previews locally once E2EE keypair loads or keys are restored
+  useEffect(() => {
+    if (!userKeyPair?.privateKey || chatUsersRef.current.length === 0) return;
+    const hasPendingPreview = chatUsersRef.current.some(
+      (item) => item.lastMessage?.isEncrypted && !item.lastMessage?.isDecrypted && item.lastMessage?.iv && (item.lastMessage?._cipherText || item.lastMessage?.text)
+    );
+    if (!hasPendingPreview) return;
+
+    let cancelled = false;
+    const decryptPreviews = async () => {
+      const updated = await Promise.all(
+        chatUsersRef.current.map(async (item) => {
+          const cipherText = item.lastMessage?._cipherText || item.lastMessage?.text;
+          if (item.lastMessage?.isEncrypted && !item.lastMessage?.isDecrypted && item.lastMessage?.iv && cipherText) {
+            try {
+              let key = await resolvePartnerSharedKey(item.otherUser);
+              if (key) {
+                let dec = await decryptMessageText(cipherText, item.lastMessage.iv, key);
+                if (dec === '[Unable to decrypt message]' && !refreshedPartnerKeysRef.current.has(`prev:${item.otherUser?._id}`)) {
+                  refreshedPartnerKeysRef.current.add(`prev:${item.otherUser?._id}`);
+                  const freshKey = await resolvePartnerSharedKey(item.otherUser, { forceRefresh: true });
+                  if (freshKey) {
+                    key = freshKey;
+                    dec = await decryptMessageText(cipherText, item.lastMessage.iv, freshKey);
+                  }
+                }
+                return {
+                  ...item,
+                  lastMessage: {
+                    ...item.lastMessage,
+                    _cipherText: cipherText,
+                    text: dec,
+                    isDecrypted: dec !== '[Unable to decrypt message]'
+                  }
+                };
+              }
+            } catch {
+              // Keep existing preview
+            }
+          }
+          return item;
+        })
+      );
+      if (!cancelled) {
+        setChatUsers(sortByRecentMessage(updated));
+      }
+    };
+    decryptPreviews();
+    return () => { cancelled = true; };
+  }, [userKeyPair, loading, resolvePartnerSharedKey]);
+
+  const decryptMessageBatch = useCallback(async (rawMessages, partnerUser) => {
+    let activeKey = await resolvePartnerSharedKey(partnerUser);
+    let attemptedRefresh = partnerUser?._id ? refreshedPartnerKeysRef.current.has(`retry:${partnerUser._id}`) : true;
+
+    const decryptedBatch = await Promise.all(
+      rawMessages.map(async (msg) => {
+        if (!msg.isEncrypted || !msg.iv) return msg;
+        if (!activeKey) return { ...msg, _cipherText: msg.text, text: '[Encrypted message]', isDecrypted: false };
+
+        let decrypted = await decryptMessageText(msg.text, msg.iv, activeKey);
+        if (decrypted === '[Unable to decrypt message]' && !attemptedRefresh && partnerUser?._id) {
+          attemptedRefresh = true;
+          refreshedPartnerKeysRef.current.add(`retry:${partnerUser._id}`);
+          const refreshedKey = await resolvePartnerSharedKey(partnerUser, { forceRefresh: true });
+          if (refreshedKey) {
+            activeKey = refreshedKey;
+            decrypted = await decryptMessageText(msg.text, msg.iv, refreshedKey);
+          }
+        }
+        return {
+          ...msg,
+          _cipherText: msg.text,
+          text: decrypted,
+          isDecrypted: decrypted !== '[Unable to decrypt message]'
+        };
+      })
+    );
+
+    return decryptedBatch;
+  }, [resolvePartnerSharedKey]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = async (data) => {
+      const partnerId = data.senderId === currentUser?._id ? data.receiverId : data.senderId;
+      let processedData = data;
+
+      if (data.isEncrypted && data.iv) {
+        const partnerEntry = chatUsersRef.current.find(u => u.otherUser?._id === partnerId);
+        const partnerObj = partnerEntry?.otherUser || (partnerId === activeChatUserRef.current?._id ? activeChatUserRef.current : { _id: partnerId });
+        let currentKey = await resolvePartnerSharedKey(partnerObj);
+
+        if (currentKey) {
+          let decrypted = await decryptMessageText(data.text, data.iv, currentKey);
+          if (decrypted === '[Unable to decrypt message]' && !refreshedPartnerKeysRef.current.has(`sock:${partnerId}`)) {
+            refreshedPartnerKeysRef.current.add(`sock:${partnerId}`);
+            const refreshedKey = await resolvePartnerSharedKey(partnerObj, { forceRefresh: true });
+            if (refreshedKey) {
+              currentKey = refreshedKey;
+              decrypted = await decryptMessageText(data.text, data.iv, refreshedKey);
+            }
+          }
+          processedData = {
+            ...data,
+            _cipherText: data.text,
+            text: decrypted,
+            isDecrypted: decrypted !== '[Unable to decrypt message]'
+          };
+        } else {
+          processedData = { ...data, _cipherText: data.text, text: '[Encrypted message]', isDecrypted: false };
+        }
+      }
+
+      const currentOpenPartner = activeChatUserRef.current;
+      const isFromOpenPartner = currentOpenPartner && !currentOpenPartner.isBot && data.senderId === currentOpenPartner._id;
+      if (isFromOpenPartner) {
+        setPartnerTyping(false);
+        messageService.markSeen(currentOpenPartner._id).catch(() => {});
+      }
+
+      if (currentOpenPartner && !currentOpenPartner.isBot && (data.senderId === currentOpenPartner._id || data.receiverId === currentOpenPartner._id)) {
+        setMessages((prev) => {
+          if (data._id && prev.some((m) => m._id === data._id)) return prev;
+          return [...prev, processedData];
+        });
+      }
+
+      const msgTime = new Date(data.createdAt || Date.now()).getTime();
+      setChatUsers((prev) => {
+        const updated = prev.map((item) => {
+          if (item.otherUser?._id === partnerId) {
+            const shouldIncrementUnread = data.senderId !== currentUser?._id && !isFromOpenPartner;
+            return {
+              ...item,
+              lastMessage: processedData,
+              lastMessageAt: msgTime,
+              unreadCount: shouldIncrementUnread ? (item.unreadCount || 0) + 1 : 0,
+            };
+          }
+          return item;
+        });
+        return sortByRecentMessage(updated);
+      });
+    };
+
+    const handleChatTyping = ({ from, isTyping }) => {
+      if (from !== activeChatUserRef.current?._id) return;
+      setPartnerTyping(Boolean(isTyping));
+      if (partnerTypingTimeoutRef.current) clearTimeout(partnerTypingTimeoutRef.current);
+      if (isTyping) {
+        partnerTypingTimeoutRef.current = setTimeout(() => setPartnerTyping(false), 3200);
+      }
+    };
+
+    const handleMessagesSeen = ({ by }) => {
+      if (by === activeChatUserRef.current?._id) {
+        setMessages((prev) =>
+          prev.map((m) => (m.senderId === currentUser?._id ? { ...m, isSeen: true } : m))
+        );
+      }
+      setChatUsers((prev) =>
+        prev.map((item) =>
+          item.otherUser?._id === by && item.lastMessage
+            ? { ...item, lastMessage: { ...item.lastMessage, isSeen: true } }
+            : item
+        )
+      );
+    };
+
+    socket.on('new-message', handleNewMessage);
+    socket.on('chat-typing', handleChatTyping);
+    socket.on('messages-seen', handleMessagesSeen);
+    return () => {
+      socket.off('new-message', handleNewMessage);
+      socket.off('chat-typing', handleChatTyping);
+      socket.off('messages-seen', handleMessagesSeen);
+      if (partnerTypingTimeoutRef.current) clearTimeout(partnerTypingTimeoutRef.current);
+    };
+  }, [socket, currentUser?._id, resolvePartnerSharedKey]);
+
+  const fetchMessages = useCallback(async (partnerId) => {
+    const partnerObj = activeChatUserRef.current;
+    if (!partnerId || !partnerObj || partnerObj.isBot) return;
+    setPartnerTyping(false);
+    rawMessagesRef.current = [];
+    try {
+      const { data } = await messageService.getMessages(partnerId, { limit: 40 });
+      if (activeChatUserRef.current?._id !== partnerId) return;
+
+      const rawMessages = data.messages || [];
+      rawMessagesRef.current = rawMessages;
+      setHasMoreMessages(Boolean(data.hasMore));
+
+      const processed = await decryptMessageBatch(rawMessages, partnerObj);
+      if (activeChatUserRef.current?._id !== partnerId) return;
+
+      setMessages(processed);
+
+      const hasUnseenIncoming = rawMessages.some(
+        (m) => m.senderId === partnerId && !m.isSeen
+      );
+      if (hasUnseenIncoming) {
+        messageService.markSeen(partnerId).catch(() => {});
+      }
+      setChatUsers((prev) =>
+        prev.map((item) =>
+          item.otherUser?._id === partnerId ? { ...item, unreadCount: 0 } : item
+        )
+      );
+
+      requestAnimationFrame(() => {
+        scrollToBottom('auto');
+        isSwitchingChatRef.current = false;
+      });
+    } catch (error) {
+      console.error('Failed to fetch messages', error);
+      setMessages([]);
+      setHasMoreMessages(false);
+      isSwitchingChatRef.current = false;
+    }
+  }, [decryptMessageBatch]);
+
+  const handleLoadOlderMessages = async () => {
+    if (!activeChatUser?._id || activeChatUser.isBot || loadingOlder || !hasMoreMessages || messages.length === 0) {
+      return;
+    }
+    const oldestTimestamp = messages[0]?.createdAt;
+    if (!oldestTimestamp) return;
+
+    setLoadingOlder(true);
+    const prevScrollHeight = scrollContainerRef.current?.scrollHeight || 0;
+    try {
+      const { data } = await messageService.getMessages(activeChatUser._id, {
+        limit: 40,
+        before: oldestTimestamp
+      });
+      const olderRaw = data.messages || [];
+      rawMessagesRef.current = [...olderRaw, ...rawMessagesRef.current];
+      setHasMoreMessages(Boolean(data.hasMore));
+
+      const olderProcessed = await decryptMessageBatch(olderRaw, activeChatUser);
+      isPrependingRef.current = true;
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m._id));
+        const uniqueOlder = olderProcessed.filter((m) => !existingIds.has(m._id));
+        return [...uniqueOlder, ...prev];
+      });
+
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+          container.scrollTop = container.scrollHeight - prevScrollHeight;
+        }
+      });
+    } catch {
+      toast.error('Failed to load older messages');
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   useEffect(() => {
     isSwitchingChatRef.current = true;
     setShowScrollBottomPill(false);
-    if (activeChatUser && !activeChatUser.isBot) {
-      fetchMessages();
+    if (activePartnerId) {
+      fetchMessages(activePartnerId);
     } else if (activeChatUser?.isBot) {
       requestAnimationFrame(() => {
         scrollToBottom('auto');
         isSwitchingChatRef.current = false;
       });
     }
-  }, [activeChatUser]);
+  }, [activePartnerId, activeChatUser?.isBot, fetchMessages]);
+
+  // In-memory re-decryption when shared key finishes deriving or keys are restored (no extra HTTP call)
+  useEffect(() => {
+    if (!partnerSharedKey || !activePartnerId) return;
+    const current = messagesRef.current;
+    const needsDecrypt = current.some((m) => m.isEncrypted && m._cipherText && !m.isDecrypted);
+    if (!needsDecrypt) return;
+
+    let cancelled = false;
+    Promise.all(
+      current.map(async (m) => {
+        if (m.isEncrypted && !m.isDecrypted && m._cipherText && m.iv) {
+          const dec = await decryptMessageText(m._cipherText, m.iv, partnerSharedKey);
+          return { ...m, text: dec, isDecrypted: dec !== '[Unable to decrypt message]' };
+        }
+        return m;
+      })
+    ).then((updated) => {
+      if (!cancelled) {
+        isPrependingRef.current = true;
+        setMessages(updated);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [partnerSharedKey, activePartnerId]);
 
   const currentChatMessages = activeChatUser?.isBot ? botMessages : messages;
 
@@ -342,12 +741,16 @@ const Messaging = () => {
     const prevCount = prevMessagesCountRef.current;
     prevMessagesCountRef.current = currentCount;
 
-    // Opening or switching chat: immediately snap to the bottom to see latest message
     if (isSwitchingChatRef.current) {
       requestAnimationFrame(() => {
         scrollToBottom('auto');
         isSwitchingChatRef.current = false;
       });
+      return;
+    }
+
+    if (isPrependingRef.current) {
+      isPrependingRef.current = false;
       return;
     }
 
@@ -357,21 +760,15 @@ const Messaging = () => {
     const isSentByMe = lastMessage?.senderId === currentUser?._id;
 
     if (isSentByMe) {
-      // Sent by current user: scroll down smoothly
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+    } else if (isNearBottom()) {
       requestAnimationFrame(() => {
         scrollToBottom('smooth');
       });
     } else {
-      // Incoming message from peer or bot:
-      // Only scroll down if user is ALREADY near the bottom!
-      if (isNearBottom()) {
-        requestAnimationFrame(() => {
-          scrollToBottom('smooth');
-        });
-      } else {
-        // Scrolled up reading history: DO NOT auto-scroll down!
-        setShowScrollBottomPill(true);
-      }
+      setShowScrollBottomPill(true);
     }
   }, [currentChatMessages, currentUser?._id]);
 
@@ -382,107 +779,6 @@ const Messaging = () => {
       });
     }
   }, [botLoading]);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await swapService.getAcceptedSwaps();
-      const users = response.data.allUsers || [];
-      
-      const processedUsers = await Promise.all(
-        users.map(async (item) => {
-          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv && userKeyPair?.privateKey && item.otherUser?.publicKey) {
-            try {
-              const key = await getOrDeriveSharedKey(userKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
-              if (key) {
-                const dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, key);
-                return {
-                  ...item,
-                  lastMessage: {
-                    ...item.lastMessage,
-                    text: dec,
-                    isDecrypted: true
-                  }
-                };
-              }
-            } catch (e) {}
-          }
-          return item;
-        })
-      );
-      setChatUsers(sortByRecentMessage(processedUsers));
-
-      // Auto-select partner if navigated from Dashboard
-      if (location.state?.partnerId) {
-        const found = processedUsers.find(u => u.otherUser?._id === location.state.partnerId);
-        if (found?.otherUser) {
-          handleSelectChat(found.otherUser);
-          setMobileView('chat');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch chat users', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMessages = async () => {
-    try {
-      const { data } = await messageService.getMessages(activeChatUser._id);
-      const rawMessages = data.messages || [];
-
-      // Determine shared key if needed
-      let currentKey = partnerSharedKey;
-      if (!currentKey && userKeyPair?.privateKey) {
-        let partnerPubKey = activeChatUser.publicKey;
-        if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
-          try {
-            const res = await userService.getUserById(activeChatUser._id);
-            partnerPubKey = res.data?.user?.publicKey;
-          } catch (e) {}
-        }
-        if (partnerPubKey) {
-          currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
-          if (currentKey) {
-            setPartnerSharedKey(currentKey);
-            setIsE2EEActive(true);
-          }
-        }
-      }
-
-      const processed = await Promise.all(
-        rawMessages.map(async (msg) => {
-          if (msg.isEncrypted && msg.iv) {
-            if (currentKey) {
-              const decrypted = await decryptMessageText(msg.text, msg.iv, currentKey);
-              return { ...msg, text: decrypted, isDecrypted: true };
-            }
-            return { ...msg, text: '[Encrypted message]', isDecrypted: false };
-          }
-          return msg;
-        })
-      );
-
-      setMessages(processed);
-      requestAnimationFrame(() => {
-        scrollToBottom('auto');
-        isSwitchingChatRef.current = false;
-      });
-    } catch (error) {
-      console.error('Failed to fetch messages', error);
-      setMessages([]);
-      isSwitchingChatRef.current = false;
-    }
-  };
-
-  const handleSelectChat = (user) => {
-    if (activeChatUser?._id !== user._id) {
-      isSwitchingChatRef.current = true;
-      setShowScrollBottomPill(false);
-      setActiveChatUser(user);
-      setMobileView('chat');
-    }
-  };
 
   const handleOpenSchedule = () => {
     setScheduleDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
@@ -520,9 +816,149 @@ const Messaging = () => {
     }
   };
 
+  const emitTypingStatus = useCallback((isTyping) => {
+    if (!socket || !activeChatUser?._id || activeChatUser.isBot) return;
+    socket.emit('chat-typing', { to: activeChatUser._id, isTyping: Boolean(isTyping) });
+  }, [socket, activeChatUser]);
+
+  const handleMessageInputChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
+
+    if (!activeChatUser || activeChatUser.isBot) return;
+    if (!val.trim()) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      emitTypingStatus(false);
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTypingEmitRef.current > 1500) {
+      lastTypingEmitRef.current = now;
+      emitTypingStatus(true);
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingStatus(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
+
+  const handleExportKeys = () => {
+    if (!currentUser?._id) return;
+    const backup = exportUserKeyBackup(currentUser._id);
+    if (!backup) {
+      toast.error('No E2EE keys initialized yet');
+      return;
+    }
+    const blob = new Blob([backup], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skillswap-e2ee-backup-${currentUser._id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Encryption key backup downloaded');
+  };
+
+  const handleCopyKeyBackup = async () => {
+    if (!currentUser?._id) return;
+    const backup = exportUserKeyBackup(currentUser._id);
+    if (!backup) {
+      toast.error('No E2EE keys initialized yet');
+      return;
+    }
+    await navigator.clipboard.writeText(backup);
+    toast.success('Backup JSON copied to clipboard');
+  };
+
+  const applyRestoredPair = async (restored) => {
+    const res = await userService.updateProfile({ publicKey: restored.publicKeyJwkString });
+    if (res.data?.user) {
+      setUser(res.data.user);
+    }
+    derivedKeysByPartnerRef.current.clear();
+    refreshedPartnerKeysRef.current.clear();
+    const nextPair = {
+      privateKey: restored.privateKey,
+      publicKeyJwkString: restored.publicKeyJwkString,
+      isNew: false
+    };
+    userKeyPairRef.current = nextPair;
+    setUserKeyPair(nextPair);
+    partnerSharedKeyRef.current = null;
+    setPartnerSharedKey(null);
+    setMessages((prev) => prev.map((m) => (m._cipherText ? { ...m, isDecrypted: false } : m)));
+    setChatUsers((prev) => prev.map((item) => (
+      item.lastMessage?._cipherText
+        ? { ...item, lastMessage: { ...item.lastMessage, isDecrypted: false } }
+        : item
+    )));
+  };
+
+  const handlePasswordVaultSync = async (e) => {
+    e.preventDefault();
+    if (!currentUser?._id || !vaultPassword) return;
+    setSyncingVault(true);
+    try {
+      if (currentUser.encryptedKeyBackup) {
+        const restored = await decryptKeyBackupWithPassword(vaultPassword, currentUser._id, currentUser.encryptedKeyBackup);
+        await applyRestoredPair(restored);
+        toast.success('Synced encrypted keys from your account!');
+      } else {
+        const encryptedKeyBackup = await encryptKeyBackupWithPassword(vaultPassword, currentUser._id);
+        if (!encryptedKeyBackup) {
+          throw new Error('Could not initialize encryption keys in this browser');
+        }
+        const res = await userService.updateProfile({
+          publicKey: userKeyPairRef.current?.publicKeyJwkString,
+          encryptedKeyBackup
+        });
+        if (res.data?.user) {
+          setUser(res.data.user);
+        }
+        toast.success('Encryption key vault enabled on your account!');
+      }
+      setVaultPassword('');
+      setKeyModalOpen(false);
+    } catch (err) {
+      toast.error(err.name === 'OperationError' ? 'Incorrect password for encrypted key vault' : (err.message || 'Could not sync key vault'));
+    } finally {
+      setSyncingVault(false);
+    }
+  };
+
+  const handleImportKeys = async (e) => {
+    e.preventDefault();
+    if (!currentUser?._id || !backupInput.trim()) return;
+    setImportingKeys(true);
+    try {
+      const restored = await importUserKeyBackup(currentUser._id, backupInput);
+      await applyRestoredPair(restored);
+      setBackupInput('');
+      setKeyModalOpen(false);
+      toast.success('E2EE keys restored! Re-decrypting messages...');
+    } catch (err) {
+      toast.error(err.message || 'Invalid key backup file');
+    } finally {
+      setImportingKeys(false);
+    }
+  };
+
   const handleSendMessage = async (textToSend) => {
     const messageText = (textToSend || newMessage).trim();
     if (!messageText || !activeChatUser) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    emitTypingStatus(false);
 
     setNewMessage('');
 
@@ -554,7 +990,7 @@ const Messaging = () => {
           createdAt: new Date().toISOString()
         };
         setBotMessages(prev => [...prev, botReply]);
-      } catch (err) {
+      } catch {
         setBotMessages(prev => [
           ...prev,
           {
@@ -569,23 +1005,7 @@ const Messaging = () => {
       }
     } else {
       try {
-        let currentKey = partnerSharedKey;
-        if (!currentKey && userKeyPair?.privateKey) {
-          let partnerPubKey = activeChatUser.publicKey;
-          if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
-            try {
-              const res = await userService.getUserById(activeChatUser._id);
-              partnerPubKey = res.data?.user?.publicKey;
-            } catch (e) {}
-          }
-          if (partnerPubKey) {
-            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
-            if (currentKey) {
-              setPartnerSharedKey(currentKey);
-              setIsE2EEActive(true);
-            }
-          }
-        }
+        const currentKey = await resolvePartnerSharedKey(activeChatUser);
 
         let payload = {
           receiverId: activeChatUser._id,
@@ -665,18 +1085,29 @@ const Messaging = () => {
       <div className="ui-card bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl overflow-hidden h-[calc(100dvh-5rem)] sm:h-[78vh] flex shadow-2xl">
         
         {/* Left Side: Channel List */}
-        <div className={`w-full md:w-80 border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#202738] shrink-0 ${
+        <div className={`w-full md:w-80 min-h-0 h-full border-r border-[rgba(255,255,255,0.1)] flex flex-col bg-[#202738] shrink-0 ${
           mobileView === 'chat' ? 'hidden md:flex' : 'flex'
         }`}>
           {/* Header */}
-          <div className="p-3 sm:p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#171D2B]">
+          <div className="shrink-0 p-3 sm:p-4 border-b border-[rgba(255,255,255,0.08)] bg-[#171D2B]">
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-xs uppercase text-[#FFEEA8] font-semibold tracking-wider">
                 Conversations
               </span>
-              <span className="tag-chip text-[9px]">
-                {chatUsers.length + 1} ACTIVE
-              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setKeyModalOpen(true)}
+                  className="tag-chip text-[9px] hover:bg-[#2B3F74] hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                  title="Backup or Restore E2EE Keys"
+                >
+                  <KeyRound size={10} />
+                  <span>KEYS</span>
+                </button>
+                <span className="tag-chip text-[9px]">
+                  {chatUsers.length + 1} ACTIVE
+                </span>
+              </div>
             </div>
             
             <div className="relative">
@@ -692,7 +1123,7 @@ const Messaging = () => {
           </div>
 
           {/* Contact Items */}
-          <div className="flex-grow overflow-y-auto p-2 space-y-1">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1">
             {/* SkillBot */}
             <div
               onClick={() => handleSelectChat(SKILLBOT_USER)}
@@ -746,19 +1177,32 @@ const Messaging = () => {
                       : 'hover:bg-[#171D2B] border-transparent text-[#A4B0C6]'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                  <div className="relative w-8 h-8 rounded-full bg-[#2B3F74] text-white font-mono font-bold text-xs flex items-center justify-center shrink-0">
                     {initials}
+                    {isUserOnline(partner._id) && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#22C55E] ring-2 ring-[#202738]"
+                        title="Online"
+                      />
+                    )}
                   </div>
                   <div className="flex-grow min-w-0">
                     <div className="flex justify-between items-baseline gap-1">
                       <p className="font-bold text-xs truncate text-[#F7F8FC]">
                         {partner.fullname?.firstname} {partner.fullname?.lastname}
                       </p>
-                      {lastMsgTime && (
-                        <span className="font-mono text-[9px] text-[#71809B] shrink-0">
-                          {lastMsgTime}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {chat.unreadCount > 0 && !isSelected && (
+                          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#FFEEA8] text-[#171D2B] font-mono text-[9px] font-bold flex items-center justify-center">
+                            {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                          </span>
+                        )}
+                        {lastMsgTime && (
+                          <span className="font-mono text-[9px] text-[#71809B]">
+                            {lastMsgTime}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[10px] text-[#A4B0C6] truncate">
                       {lastMsgText ? (
@@ -786,13 +1230,13 @@ const Messaging = () => {
         </div>
 
         {/* Right Side: Conversation Panel */}
-        <div className={`flex-grow flex flex-col relative bg-[#202738] ${
+        <div className={`flex-1 min-w-0 min-h-0 h-full flex flex-col relative bg-[#202738] ${
           mobileView === 'list' ? 'hidden md:flex' : 'flex'
         }`}>
           {activeChatUser ? (
             <>
               {/* Header */}
-              <div className="p-3 px-3 sm:px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
+              <div className="shrink-0 p-3 px-3 sm:px-6 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     onClick={() => setMobileView('list')}
@@ -810,14 +1254,38 @@ const Messaging = () => {
                       {activeChatUser.fullname?.firstname} {activeChatUser.fullname?.lastname}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="font-mono text-[9px] sm:text-[10px] text-[#FFEEA8] font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFEEA8]" />
-                        {activeChatUser.isBot ? 'AI TUTOR' : 'PARTNER'}
-                      </span>
-                      {!activeChatUser.isBot && isE2EEActive && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255, 238, 168,0.3)]">
-                          <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
+                      {activeChatUser.isBot ? (
+                        <span className="font-mono text-[9px] sm:text-[10px] text-[#FFEEA8] font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#FFEEA8]" />
+                          AI TUTOR
                         </span>
+                      ) : (
+                        <span className={`font-mono text-[9px] sm:text-[10px] font-medium flex items-center gap-1 ${
+                          partnerTyping
+                            ? 'text-[#FFEEA8]'
+                            : isUserOnline(activeChatUser._id)
+                            ? 'text-[#22C55E]'
+                            : 'text-[#71809B]'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            partnerTyping
+                              ? 'bg-[#FFEEA8] animate-pulse'
+                              : isUserOnline(activeChatUser._id)
+                              ? 'bg-[#22C55E]'
+                              : 'bg-[#71809B]'
+                          }`} />
+                          {partnerTyping ? 'TYPING...' : isUserOnline(activeChatUser._id) ? 'ONLINE' : 'OFFLINE'}
+                        </span>
+                      )}
+                      {!activeChatUser.isBot && isE2EEActive && (
+                        <button
+                          type="button"
+                          onClick={() => setKeyModalOpen(true)}
+                          className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255,238,168,0.3)] hover:bg-[#283144] cursor-pointer"
+                          title="Manage E2EE Keys"
+                        >
+                          <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -861,7 +1329,7 @@ const Messaging = () => {
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-grow p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-3.5 bg-[#202738]"
+                className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto overscroll-contain space-y-3 sm:space-y-3.5 bg-[#202738]"
               >
                 {activeChatUser.isBot && (
                   <div className="mb-4 p-3.5 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)]">
@@ -883,9 +1351,22 @@ const Messaging = () => {
                   </div>
                 )}
 
+                {!activeChatUser.isBot && hasMoreMessages && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleLoadOlderMessages}
+                      disabled={loadingOlder}
+                      className="btn btn-secondary text-[11px] font-mono py-1.5 px-3 rounded-full disabled:opacity-50"
+                    >
+                      {loadingOlder ? 'Loading history...' : 'Load older messages'}
+                    </button>
+                  </div>
+                )}
+
                 {!activeChatUser.isBot && isE2EEActive && (
                   <div className="flex justify-center my-3">
-                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#171D2B] rounded-full border border-[rgba(255, 238, 168,0.25)] text-[#A4B0C6] text-[10px] font-mono max-w-md text-center">
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#171D2B] rounded-full border border-[rgba(255,238,168,0.25)] text-[#A4B0C6] text-[10px] font-mono max-w-md text-center">
                       <Lock size={12} className="text-[#FFEEA8] shrink-0" />
                       <span>Messages in this conversation are end-to-end encrypted. No one outside of this chat can read them.</span>
                     </div>
@@ -907,8 +1388,8 @@ const Messaging = () => {
                         <div className="flex items-center gap-3 px-4 py-2.5 bg-[#171D2B] border border-[rgba(255,255,255,0.12)] rounded-xl shadow-sm max-w-md w-full sm:w-auto">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                             isMissedOrDeclined 
-                              ? 'bg-[#D72E2B]/20 text-[#D72E2B] border border-[rgba(215, 46, 43,0.3)]' 
-                              : 'bg-[#FFEEA8]/20 text-[#FFEEA8] border border-[rgba(255, 238, 168,0.3)]'
+                              ? 'bg-[#D72E2B]/20 text-[#D72E2B] border border-[rgba(215,46,43,0.3)]' 
+                              : 'bg-[#FFEEA8]/20 text-[#FFEEA8] border border-[rgba(255,238,168,0.3)]'
                           }`}>
                             <Video size={15} />
                           </div>
@@ -943,11 +1424,24 @@ const Messaging = () => {
                             isMe
                               ? 'bg-[#2B3F74] text-white font-medium shadow-sm'
                               : isBotMsg
-                              ? 'bg-[#202738] text-[#F7F8FC] border border-[rgba(255, 238, 168,0.3)] shadow-xs'
+                              ? 'bg-[#202738] text-[#F7F8FC] border border-[rgba(255,238,168,0.3)] shadow-xs'
                               : 'bg-[#283144] text-[#F7F8FC] border border-[rgba(255,255,255,0.1)] shadow-xs'
                           }`}
                         >
-                          {msg.text}
+                          {msg.isEncrypted && !msg.isDecrypted && msg.text === '[Unable to decrypt message]' ? (
+                            <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] opacity-85 italic">
+                              <span>Encrypted with a previous device key</span>
+                              <button
+                                type="button"
+                                onClick={() => setKeyModalOpen(true)}
+                                className="underline text-[#FFEEA8] not-italic font-mono text-[10px] hover:opacity-80 cursor-pointer"
+                              >
+                                Restore key
+                              </button>
+                            </span>
+                          ) : (
+                            msg.text
+                          )}
                         </div>
                         <span className="font-mono text-[9px] text-[#71809B] px-1 flex items-center gap-1">
                           {msg.isEncrypted && (
@@ -956,6 +1450,13 @@ const Messaging = () => {
                             </span>
                           )}
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {isMe && !isBotMsg && (
+                            msg.isSeen ? (
+                              <CheckCheck size={12} className="text-[#FFEEA8]" title="Seen" />
+                            ) : (
+                              <Check size={12} className="text-[#71809B]" title="Sent" />
+                            )
+                          )}
                         </span>
                       </div>
                     </div>
@@ -990,7 +1491,7 @@ const Messaging = () => {
               )}
 
               {/* Input Area */}
-              <div className="p-2.5 sm:p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#202738]">
+              <div className="shrink-0 p-2.5 sm:p-3.5 border-t border-[rgba(255,255,255,0.1)] bg-[#202738]">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1001,7 +1502,8 @@ const Messaging = () => {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleMessageInputChange}
+                    onBlur={() => emitTypingStatus(false)}
                     placeholder={activeChatUser.isBot ? "Ask SkillBot anything..." : "Write a message..."}
                     className="input-field text-xs sm:text-sm py-2 px-3 rounded-xl bg-[#171D2B]"
                   />
@@ -1113,6 +1615,105 @@ const Messaging = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* E2EE Key Backup & Recovery Modal */}
+      {keyModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="z-[300] ui-card rounded-2xl max-w-md w-full p-6 bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.1)]">
+              <div>
+                <span className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold">End-to-End Encryption</span>
+                <h3 className="heading-h2 text-base text-[#F7F8FC]">
+                  Encryption Key Backup
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setKeyModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-[#171D2B] text-[#A4B0C6] hover:text-[#F7F8FC]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#A4B0C6] leading-relaxed">
+              Encryption keys now sync automatically whenever you sign in with your password. If you stayed signed in from an older session or switched ports, enter your account password below to unlock or back up your keys immediately.
+            </p>
+
+            <form onSubmit={handlePasswordVaultSync} className="space-y-2.5 p-3.5 rounded-xl bg-[#171D2B] border border-[rgba(255,238,168,0.2)]">
+              <label className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold block">
+                {currentUser?.encryptedKeyBackup ? 'Unlock Synced Key Vault' : 'Enable Auto-Sync Vault'}
+              </label>
+              <input
+                type="password"
+                value={vaultPassword}
+                onChange={(e) => setVaultPassword(e.target.value)}
+                placeholder="Enter your SkillSwap account password"
+                required
+                className="input-field w-full py-2 px-3 text-xs rounded-xl bg-[#202738]"
+              />
+              <button
+                type="submit"
+                disabled={syncingVault || !vaultPassword}
+                className="w-full btn btn-primary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <KeyRound size={14} />
+                <span>
+                  {syncingVault
+                    ? 'Syncing...'
+                    : currentUser?.encryptedKeyBackup
+                    ? 'Unlock & Decrypt Messages'
+                    : 'Save Encrypted Key Vault'}
+                </span>
+              </button>
+            </form>
+
+            <details className="pt-2 border-t border-[rgba(255,255,255,0.08)] text-xs text-[#A4B0C6]">
+              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider hover:text-[#FFEEA8] select-none">
+                Advanced: Manual JSON Backup
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportKeys}
+                    className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
+                  >
+                    <Download size={14} />
+                    <span>Download Backup</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyKeyBackup}
+                    className="flex-1 btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5"
+                  >
+                    <KeyRound size={14} />
+                    <span>Copy JSON</span>
+                  </button>
+                </div>
+
+                <form onSubmit={handleImportKeys} className="space-y-2">
+                  <textarea
+                    rows={3}
+                    value={backupInput}
+                    onChange={(e) => setBackupInput(e.target.value)}
+                    placeholder='Paste your exported {"version":1,"privateJwk":...} backup here'
+                    className="input-field w-full p-2.5 text-[11px] font-mono rounded-xl bg-[#171D2B]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={importingKeys || !backupInput.trim()}
+                    className="w-full btn btn-secondary text-xs py-2 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Upload size={14} />
+                    <span>{importingKeys ? 'Restoring...' : 'Restore From JSON'}</span>
+                  </button>
+                </form>
+              </div>
+            </details>
           </div>
         </div>
       )}

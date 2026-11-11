@@ -1,17 +1,27 @@
 const socket = require('socket.io');
-const User = require('./model/user.model');
-const SkillSwap = require('./model/skillSwap.model');
 const Messages = require('./model/message.model');
 const redisClient = require('./services/redis.service');
 const { invalidateCache } = require('./middlewares/cache');
+const { verifyJwtToken } = require('./middlewares/authentication');
 
 let io;
 
-// Track active calls in memory: callKey -> { callerId, receiverId, status, connectedAt, startedRingingAt }
-const activeCalls = new Map();
+const PRESENCE_ONLINE_KEY = 'presence:online';
+const PRESENCE_TTL_SECONDS = 180;
+const CALL_RING_TTL_SECONDS = 75;
+const CALL_ONGOING_TTL_SECONDS = 4 * 3600;
+const MAX_STUDIO_SYNC_BYTES = 128 * 1024;
 
-const getCallKey = (user1, user2) => {
-    return [user1.toString(), user2.toString()].sort().join('_');
+const userRoom = (userId) => `user:${userId.toString()}`;
+const presenceSocketsKey = (userId) => `presence:sockets:${userId.toString()}`;
+const getCallKey = (user1, user2) => [user1.toString(), user2.toString()].sort().join('_');
+const callPairKey = (callKey) => `call:pair:${callKey}`;
+const callUserKey = (userId) => `call:user:${userId.toString()}`;
+
+const extractTargetId = (target) => {
+    if (!target) return null;
+    if (typeof target === 'object' && target._id) return target._id.toString();
+    return target.toString();
 };
 
 const formatCallDuration = (seconds) => {
@@ -20,31 +30,151 @@ const formatCallDuration = (seconds) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-const isSocketAlive = (socketId) => {
-    if (!io || !socketId) return false;
-    return Boolean(io.sockets.sockets.get(socketId));
+const parseCookieToken = (cookieHeader = '') => {
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    for (const cookie of cookies) {
+        if (cookie.startsWith('token=')) {
+            return decodeURIComponent(cookie.slice('token='.length));
+        }
+    }
+    return null;
 };
 
-const isUserInCall = (userId) => {
+const parseCallJson = (raw) => {
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+};
+
+const getCallByKey = async (callKey) => {
+    if (!callKey) return null;
+    const raw = await redisClient.get(callPairKey(callKey));
+    return parseCallJson(raw);
+};
+
+const saveCallState = async (callData, ttlSeconds) => {
+    const ttl = ttlSeconds || CALL_RING_TTL_SECONDS;
+    const key = callData.callKey;
+    await Promise.all([
+        redisClient.set(callPairKey(key), JSON.stringify(callData), { EX: ttl }),
+        redisClient.set(callUserKey(callData.callerId), key, { EX: ttl }),
+        redisClient.set(callUserKey(callData.receiverId), key, { EX: ttl }),
+    ]);
+};
+
+const clearCallState = async (callKey, callerId, receiverId) => {
+    if (!callKey) return;
+    await redisClient.del(callPairKey(callKey));
+
+    const userIds = [callerId, receiverId].filter(Boolean).map(id => id.toString());
+    await Promise.all(
+        userIds.map(async (uid) => {
+            const activeKey = await redisClient.get(callUserKey(uid));
+            if (activeKey === callKey) {
+                await redisClient.del(callUserKey(uid));
+            }
+        })
+    );
+};
+
+const isUserInCall = async (userId) => {
     if (!userId) return false;
     const uid = userId.toString();
+    const activeCallKey = await redisClient.get(callUserKey(uid));
+    if (!activeCallKey) return false;
+
+    const call = await getCallByKey(activeCallKey);
+    if (!call) {
+        await redisClient.del(callUserKey(uid));
+        return false;
+    }
+
     const now = Date.now();
-    for (const [key, call] of activeCalls.entries()) {
-        if (call.status === 'ringing' && call.startedRingingAt && (now - call.startedRingingAt > 45000)) {
-            activeCalls.delete(key);
-            continue;
-        }
-        if (call.status === 'ongoing' && call.connectedAt && (now - call.connectedAt > 3 * 3600 * 1000)) {
-            activeCalls.delete(key);
-            continue;
-        }
-        const callerMatch = call.callerId && call.callerId.toString() === uid;
-        const receiverMatch = call.receiverId && call.receiverId.toString() === uid;
-        if ((callerMatch || receiverMatch) && (call.status === 'ongoing' || call.status === 'ringing')) {
-            return true;
+    if (call.status === 'ringing' && call.startedRingingAt && (now - call.startedRingingAt > 60000)) {
+        await clearCallState(activeCallKey, call.callerId, call.receiverId);
+        return false;
+    }
+    if (call.status === 'ongoing' && call.connectedAt && (now - call.connectedAt > CALL_ONGOING_TTL_SECONDS * 1000)) {
+        await clearCallState(activeCallKey, call.callerId, call.receiverId);
+        return false;
+    }
+
+    return call.status === 'ongoing' || call.status === 'ringing';
+};
+
+const registerUserSocket = async (userId, socketId) => {
+    const uid = userId.toString();
+    const setKey = presenceSocketsKey(uid);
+    const prevCount = await redisClient.sCard(setKey);
+    await redisClient.sAdd(setKey, socketId);
+    await redisClient.expire(setKey, PRESENCE_TTL_SECONDS);
+    await redisClient.sAdd(PRESENCE_ONLINE_KEY, uid);
+    return prevCount === 0;
+};
+
+const unregisterUserSocket = async (userId, socketId) => {
+    const uid = userId.toString();
+    const setKey = presenceSocketsKey(uid);
+    await redisClient.sRem(setKey, socketId);
+    const remaining = await redisClient.sCard(setKey);
+    if (remaining === 0) {
+        await redisClient.del(setKey);
+        await redisClient.sRem(PRESENCE_ONLINE_KEY, uid);
+        return { remaining: 0, becameOffline: true };
+    }
+    await redisClient.expire(setKey, PRESENCE_TTL_SECONDS);
+    return { remaining, becameOffline: false };
+};
+
+const isUserOnline = async (userId) => {
+    if (!userId) return false;
+    const count = await redisClient.sCard(presenceSocketsKey(userId));
+    if (count > 0) return true;
+
+    // Self-heal presence from live Socket.IO room across adapter nodes if Redis TTL lapsed
+    if (io) {
+        try {
+            const roomSockets = await io.in(userRoom(userId)).fetchSockets();
+            if (roomSockets.length > 0) {
+                const setKey = presenceSocketsKey(userId);
+                await redisClient.sAdd(setKey, roomSockets.map(s => s.id));
+                await redisClient.expire(setKey, PRESENCE_TTL_SECONDS);
+                await redisClient.sAdd(PRESENCE_ONLINE_KEY, userId.toString());
+                return true;
+            }
+        } catch {
+            // Fall through safely
         }
     }
     return false;
+};
+
+const getOnlineUserIds = async () => {
+    const candidates = await redisClient.sMembers(PRESENCE_ONLINE_KEY);
+    if (!candidates.length) return [];
+
+    const checks = await Promise.all(
+        candidates.map(async (uid) => ({
+            uid,
+            online: (await redisClient.sCard(presenceSocketsKey(uid))) > 0
+        }))
+    );
+
+    const stale = checks.filter(c => !c.online).map(c => c.uid);
+    if (stale.length > 0) {
+        await redisClient.sRem(PRESENCE_ONLINE_KEY, stale);
+    }
+
+    return checks.filter(c => c.online).map(c => c.uid);
+};
+
+const emitToUser = async (userId, event, data) => {
+    if (!io || !userId || !event) return false;
+    io.to(userRoom(userId)).emit(event, data);
+    return true;
 };
 
 const logCallRecord = async ({ callerId, receiverId, status, duration = 0 }) => {
@@ -53,13 +183,11 @@ const logCallRecord = async ({ callerId, receiverId, status, duration = 0 }) => 
         const cId = callerId.toString();
         const rId = receiverId.toString();
 
-        // Guard against corrupted identical participant IDs
         if (cId === rId) {
             console.warn('[Socket] Blocked attempt to log call record with identical caller and receiver:', cId);
             return null;
         }
 
-        // Deduplication: prevent duplicate call logs within 5 seconds for same pair
         const recentLog = await Messages.findOne({
             messageType: 'call',
             $or: [
@@ -94,21 +222,12 @@ const logCallRecord = async ({ callerId, receiverId, status, duration = 0 }) => 
             }
         });
 
-        // Broadcast real-time call log message to both caller and receiver sockets
-        const callerSocketId = await getReceiverSocketId(cId);
-        const receiverSocketId = await getReceiverSocketId(rId);
+        await emitToUser(cId, 'new-message', message);
+        await emitToUser(rId, 'new-message', message);
 
-        if (callerSocketId) {
-            io.to(callerSocketId).emit('new-message', message);
-        }
-        if (receiverSocketId && receiverSocketId !== callerSocketId) {
-            io.to(receiverSocketId).emit('new-message', message);
-        }
-
-        // Invalidate message and swap partner cache keys
         await invalidateCache([
-            `cache:messages:${cId}:${rId}`,
-            `cache:messages:${rId}:${cId}`,
+            `cache:messages:${cId}:${rId}*`,
+            `cache:messages:${rId}:${cId}*`,
             `cache:swaps:accepted:${cId}`,
             `cache:swaps:accepted:${rId}`
         ]);
@@ -122,99 +241,156 @@ const logCallRecord = async ({ callerId, receiverId, status, duration = 0 }) => 
 
 const getReceiverSocketId = async (receiverId) => {
     if (!receiverId) return null;
-    let candidateSocketId = null;
+    const online = await isUserOnline(receiverId);
+    return online ? userRoom(receiverId) : null;
+};
 
+const attachRedisAdapter = async (ioInstance) => {
     try {
-        candidateSocketId = await redisClient.get(receiverId);
+        const clients = await redisClient.createPubSubClients();
+        if (!clients) return false;
+        const { createAdapter } = require('@socket.io/redis-adapter');
+        ioInstance.adapter(createAdapter(clients.pubClient, clients.subClient));
+        console.log('[Socket] @socket.io/redis-adapter enabled for horizontal scaling.');
+        return true;
     } catch (err) {
-        console.warn('[Socket] Redis lookup error:', err.message);
+        console.warn('[Socket] Redis adapter unavailable, using in-memory adapter:', err.message);
+        return false;
     }
-
-    // Verify candidate socket is ACTUALLY connected right now
-    if (candidateSocketId && isSocketAlive(candidateSocketId)) {
-        return candidateSocketId;
-    }
-
-    try {
-        const user = await User.findById(receiverId).select('socketId');
-        if (user?.socketId && isSocketAlive(user.socketId)) {
-            await redisClient.set(receiverId, user.socketId, { EX: 24 * 60 * 60 });
-            return user.socketId;
-        }
-    } catch (err) { }
-
-    // Clean up stale entries if offline
-    try {
-        if (candidateSocketId) {
-            await redisClient.del(receiverId);
-            await redisClient.del(candidateSocketId);
-        }
-    } catch (e) { }
-
-    return null;
 };
 
 const initSocket = async (server) => {
+    const configuredOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL;
+    const allowedOrigins = configuredOrigins
+        ? configuredOrigins.split(',').map(o => o.trim()).filter(Boolean)
+        : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000'];
+
     io = socket(server, {
+        pingInterval: 20000,
+        pingTimeout: 25000,
+        maxHttpBufferSize: 1e6,
         cors: {
-            origin: '*',
+            origin: (origin, callback) => {
+                if (!origin || process.env.NODE_ENV !== 'production' || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+                    return callback(null, true);
+                }
+                return callback(new Error('Not allowed by CORS'));
+            },
             methods: ['GET', 'POST'],
+            credentials: true,
         },
     });
 
-    io.on('connection', (socket) => {
+    await attachRedisAdapter(io);
 
-        socket.on('join', async (data) => {
+    io.use(async (sock, next) => {
+        try {
+            const authHeader = sock.handshake.headers?.authorization;
+            const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+            const cookieToken = parseCookieToken(sock.handshake.headers?.cookie);
+            const token = sock.handshake.auth?.token || bearerToken || cookieToken;
+
+            const verified = await verifyJwtToken(token);
+            if (!verified) {
+                return next(new Error('Unauthorized'));
+            }
+
+            sock.userId = verified.decoded._id.toString();
+            sock.userProfile = {
+                _id: verified.user._id.toString(),
+                fullname: verified.user.fullname,
+            };
+            return next();
+        } catch {
+            return next(new Error('Unauthorized'));
+        }
+    });
+
+    io.on('connection', async (sock) => {
+        const authenticatedUserId = sock.userId;
+        sock.join(userRoom(authenticatedUserId));
+
+        try {
+            const wasOffline = await registerUserSocket(authenticatedUserId, sock.id);
+            if (wasOffline) {
+                io.emit('presence-update', { userId: authenticatedUserId, online: true });
+            }
+            const onlineIds = await getOnlineUserIds();
+            sock.emit('online-users', onlineIds);
+        } catch (err) {
+            console.warn('[Socket] Error registering user presence:', err.message);
+        }
+
+        sock.on('join', async () => {
             try {
-                const { userId } = data;
-                if (!userId) return;
-
-                await redisClient.set(userId, socket.id, {
-                    EX: 24 * 60 * 60
-                });
-
-                await redisClient.set(socket.id, userId, {
-                    EX: 24 * 60 * 60
-                });
-
-                await User.findOneAndUpdate({ _id: userId }, { socketId: socket.id }, { new: true });
+                sock.join(userRoom(authenticatedUserId));
+                const wasOffline = await registerUserSocket(authenticatedUserId, sock.id);
+                if (wasOffline) {
+                    io.emit('presence-update', { userId: authenticatedUserId, online: true });
+                }
+                const onlineIds = await getOnlineUserIds();
+                sock.emit('online-users', onlineIds);
             } catch (err) {
                 console.warn('[Socket] Error on join:', err.message);
             }
         });
 
-        socket.on('call-user', async (data) => {
+        sock.on('presence-heartbeat', async (ack) => {
             try {
-                const { to, offer, from } = data;
-                const callerId = from?._id ? from._id.toString() : from?.toString();
-                const receiverId = to?._id ? to._id.toString() : to?.toString();
+                sock.join(userRoom(authenticatedUserId));
+                await registerUserSocket(authenticatedUserId, sock.id);
+                if (typeof ack === 'function') ack({ ok: true });
+            } catch {
+                if (typeof ack === 'function') ack({ ok: false });
+            }
+        });
+
+        sock.on('call-user', async (data) => {
+            try {
+                const { to, offer } = data || {};
+                const callerId = authenticatedUserId;
+                const receiverId = extractTargetId(to);
 
                 if (!receiverId || !callerId || callerId === receiverId) {
-                    socket.emit('call-failed', {
+                    sock.emit('call-failed', {
                         reason: 'invalid',
                         message: 'Invalid call recipient'
                     });
                     return;
                 }
 
-                // 1. Check if recipient is already engaged in an active call
-                if (isUserInCall(receiverId)) {
-                    socket.emit('call-rejected', {
-                        reason: 'busy',
-                        message: 'Partner is currently in another exchange call'
-                    });
-                    return;
+                const callKey = getCallKey(callerId, receiverId);
+                const existingPairCall = await getCallByKey(callKey);
+                if (existingPairCall && existingPairCall.status === 'ringing' && existingPairCall.callerId?.toString() === callerId) {
+                    // Allow same caller to retry an unanswered ringing call cleanly
+                    await clearCallState(callKey, existingPairCall.callerId, existingPairCall.receiverId);
+                } else if (await isUserInCall(receiverId) || await isUserInCall(callerId)) {
+                    // If the caller already holds a stale lock pointing to an offline peer, clear it automatically
+                    const callerCallKey = await redisClient.get(callUserKey(callerId));
+                    const callerCall = callerCallKey ? await getCallByKey(callerCallKey) : null;
+                    if (callerCall) {
+                        const peerId = callerCall.callerId?.toString() === callerId ? callerCall.receiverId : callerCall.callerId;
+                        if (!(await isUserOnline(peerId))) {
+                            await clearCallState(callerCallKey, callerCall.callerId, callerCall.receiverId);
+                        }
+                    }
+
+                    if (await isUserInCall(receiverId) || await isUserInCall(callerId)) {
+                        sock.emit('call-rejected', {
+                            reason: 'busy',
+                            message: 'Partner is currently in another exchange call'
+                        });
+                        return;
+                    }
                 }
 
-                // 2. Check if recipient is currently online and connected
-                const receiverSocketId = await getReceiverSocketId(receiverId);
-                if (!receiverSocketId) {
-                    socket.emit('call-failed', {
+                const online = await isUserOnline(receiverId);
+                if (!online) {
+                    sock.emit('call-failed', {
                         reason: 'offline',
                         message: 'Partner is currently offline'
                     });
 
-                    // Log missed call record immediately
                     await logCallRecord({
                         callerId,
                         receiverId,
@@ -224,41 +400,41 @@ const initSocket = async (server) => {
                     return;
                 }
 
-                // 3. Available and online: record ringing state & dispatch offer
-                const callKey = getCallKey(callerId, receiverId);
-                activeCalls.delete(callKey);
-                activeCalls.set(callKey, {
+                await saveCallState({
+                    callKey,
                     callerId,
                     receiverId,
+                    callerSocketId: sock.id,
+                    receiverSocketId: null,
                     status: 'ringing',
                     startedRingingAt: Date.now()
+                }, CALL_RING_TTL_SECONDS);
+
+                await emitToUser(receiverId, 'incoming-call', {
+                    from: sock.userProfile,
+                    offer
                 });
-
-                io.to(receiverSocketId).emit('incoming-call', { from, offer });
-
             } catch (err) {
                 console.warn('[Socket] Error on call-user:', err.message);
-                socket.emit('call-failed', {
+                sock.emit('call-failed', {
                     reason: 'error',
                     message: 'Could not connect call'
                 });
             }
         });
 
-        socket.on('cancel-call', async (data) => {
+        sock.on('cancel-call', async (data) => {
             try {
-                const { to, from } = data;
-                const callerId = from?._id ? from._id.toString() : (from ? from.toString() : await redisClient.get(socket.id));
-                const receiverId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(receiverId);
+                const { to } = data || {};
+                const callerId = authenticatedUserId;
+                const receiverId = extractTargetId(to);
+                if (!receiverId) return;
 
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('call-cancelled');
-                }
+                await emitToUser(receiverId, 'call-cancelled', { from: callerId });
 
-                if (callerId && receiverId && callerId !== receiverId) {
+                if (callerId !== receiverId) {
                     const callKey = getCallKey(callerId, receiverId);
-                    activeCalls.delete(callKey);
+                    await clearCallState(callKey, callerId, receiverId);
 
                     await logCallRecord({
                         callerId,
@@ -272,87 +448,145 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('answer-call', async (data) => {
+        sock.on('answer-call', async (data) => {
             try {
-                const { to, answer, from } = data;
-                const currentUserId = from?._id ? from._id.toString() : (from ? from.toString() : await redisClient.get(socket.id));
-                const callerId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(callerId);
+                const { to, answer } = data || {};
+                const currentUserId = authenticatedUserId;
+                const callerId = extractTargetId(to);
+                if (!callerId) return;
 
-                if (currentUserId && callerId) {
+                if (currentUserId !== callerId) {
                     const callKey = getCallKey(callerId, currentUserId);
-                    const existing = activeCalls.get(callKey) || {};
-                    activeCalls.set(callKey, {
+                    const existing = (await getCallByKey(callKey)) || {};
+                    await saveCallState({
                         ...existing,
+                        callKey,
                         callerId: existing.callerId || callerId,
                         receiverId: existing.receiverId || currentUserId,
+                        receiverSocketId: sock.id,
                         status: 'ongoing',
                         connectedAt: Date.now()
-                    });
+                    }, CALL_ONGOING_TTL_SECONDS);
                 }
 
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('call-answered', { answer });
-                }
+                await emitToUser(callerId, 'call-answered', { answer });
+                sock.to(userRoom(currentUserId)).emit('call-handled', { peerId: callerId, action: 'answered' });
             } catch (err) {
                 console.warn('[Socket] Error on answer-call:', err.message);
             }
         });
 
-        socket.on('ice-candidate', async (data) => {
+        sock.on('renegotiate-call', async (data) => {
             try {
-                const { to, candidate } = data;
-                const targetId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(targetId);
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('ice-candidate', { candidate });
-                }
+                const { to, offer, answer, iceRestart } = data || {};
+                const targetId = extractTargetId(to);
+                if (!targetId || targetId === authenticatedUserId) return;
+
+                await emitToUser(targetId, 'renegotiate-call', {
+                    from: authenticatedUserId,
+                    offer,
+                    answer,
+                    iceRestart: Boolean(iceRestart)
+                });
+            } catch (err) {
+                console.warn('[Socket] Error on renegotiate-call:', err.message);
+            }
+        });
+
+        sock.on('ice-candidate', async (data) => {
+            try {
+                const { to, candidate } = data || {};
+                const targetId = extractTargetId(to);
+                if (!targetId) return;
+
+                await emitToUser(targetId, 'ice-candidate', {
+                    from: authenticatedUserId,
+                    candidate
+                });
             } catch (err) {
                 console.warn('[Socket] Error on ice-candidate:', err.message);
             }
         });
 
-        // Stage 2: Collaborative Studio Synchronization
-        socket.on('studio-sync', async (data) => {
+        sock.on('chat-typing', async (data) => {
             try {
-                const { to, ...payload } = data;
-                const targetId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(targetId);
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('studio-sync', payload);
+                const { to, isTyping } = data || {};
+                const targetId = extractTargetId(to);
+                if (!targetId || targetId === authenticatedUserId) return;
+
+                await emitToUser(targetId, 'chat-typing', {
+                    from: authenticatedUserId,
+                    isTyping: Boolean(isTyping)
+                });
+            } catch (err) {
+                console.warn('[Socket] Error on chat-typing:', err.message);
+            }
+        });
+
+        sock.on('studio-sync-request', async (data) => {
+            try {
+                const { to } = data || {};
+                const targetId = extractTargetId(to);
+                if (!targetId || targetId === authenticatedUserId) return;
+
+                await emitToUser(targetId, 'studio-sync-request', {
+                    from: authenticatedUserId
+                });
+            } catch (err) {
+                console.warn('[Socket] Error on studio-sync-request:', err.message);
+            }
+        });
+
+        sock.on('studio-sync', async (data) => {
+            try {
+                const { to, ...payload } = data || {};
+                const targetId = extractTargetId(to);
+                if (!targetId) return;
+
+                const serializedSize = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+                if (serializedSize > MAX_STUDIO_SYNC_BYTES) {
+                    console.warn('[Socket] Dropped oversized studio-sync payload from user:', authenticatedUserId);
+                    return;
                 }
+
+                await emitToUser(targetId, 'studio-sync', {
+                    ...payload,
+                    from: authenticatedUserId
+                });
             } catch (err) {
                 console.warn('[Socket] Error on studio-sync:', err.message);
             }
         });
 
-        socket.on('studio-typing', async (data) => {
+        sock.on('studio-typing', async (data) => {
             try {
-                const { to, isTyping, user } = data;
-                const targetId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(targetId);
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('studio-typing', { isTyping, user });
-                }
+                const { to, isTyping, user } = data || {};
+                const targetId = extractTargetId(to);
+                if (!targetId) return;
+
+                await emitToUser(targetId, 'studio-typing', {
+                    from: authenticatedUserId,
+                    isTyping: Boolean(isTyping),
+                    user
+                });
             } catch (err) {
                 console.warn('[Socket] Error on studio-typing:', err.message);
             }
         });
 
-        socket.on('reject-call', async (data) => {
+        sock.on('reject-call', async (data) => {
             try {
-                const { to, reason, from } = data;
-                const targetId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(targetId);
-                const currentUserId = from?._id ? from._id.toString() : (from ? from.toString() : await redisClient.get(socket.id));
+                const { to, reason } = data || {};
+                const targetId = extractTargetId(to);
+                const currentUserId = authenticatedUserId;
+                if (!targetId) return;
 
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('call-rejected', { reason: reason || 'declined' });
-                }
+                await emitToUser(targetId, 'call-rejected', { reason: reason || 'declined' });
+                sock.to(userRoom(currentUserId)).emit('call-handled', { peerId: targetId, action: 'rejected' });
 
-                if (targetId && currentUserId && targetId !== currentUserId) {
+                if (targetId !== currentUserId) {
                     const callKey = getCallKey(targetId, currentUserId);
-                    activeCalls.delete(callKey);
+                    await clearCallState(callKey, targetId, currentUserId);
 
                     await logCallRecord({
                         callerId: targetId,
@@ -366,42 +600,38 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('end-call', async (data) => {
+        sock.on('end-call', async (data) => {
             try {
-                const { to, duration: clientDuration, from } = data;
-                const currentUserId = from?._id ? from._id.toString() : (from ? from.toString() : await redisClient.get(socket.id));
-                const targetId = to?._id ? to._id.toString() : to?.toString();
-                const receiverSocketId = await getReceiverSocketId(targetId);
+                const { to, duration: clientDuration } = data || {};
+                const currentUserId = authenticatedUserId;
+                const targetId = extractTargetId(to);
+                if (!targetId) return;
 
-                if (receiverSocketId) {
-                    io.to(receiverSocketId).emit('call-ended', {
-                        duration: clientDuration || 0
-                    });
-                }
+                await emitToUser(targetId, 'call-ended', {
+                    duration: clientDuration || 0
+                });
 
-                if (targetId && currentUserId && targetId !== currentUserId) {
+                if (targetId !== currentUserId) {
                     const callKey = getCallKey(targetId, currentUserId);
-                    const callData = activeCalls.get(callKey);
-                    activeCalls.delete(callKey);
+                    const callData = await getCallByKey(callKey);
+                    await clearCallState(callKey, targetId, currentUserId);
 
+                    const wasOngoing = callData?.status === 'ongoing';
                     let duration = 0;
-                    if (typeof clientDuration === 'number' && clientDuration > 0) {
-                        duration = clientDuration;
-                    } else if (callData?.connectedAt) {
-                        duration = Math.max(1, Math.round((Date.now() - callData.connectedAt) / 1000));
+                    if (wasOngoing) {
+                        if (typeof clientDuration === 'number' && clientDuration > 0) {
+                            duration = clientDuration;
+                        } else if (callData?.connectedAt) {
+                            duration = Math.max(1, Math.round((Date.now() - callData.connectedAt) / 1000));
+                        } else {
+                            duration = 1;
+                        }
                     }
 
-                    // A call that was ongoing in activeCalls or has duration is logged as completed
-                    const isSuccess = Boolean(callData?.status === 'ongoing' || duration > 0);
-                    const finalDuration = isSuccess ? Math.max(1, duration) : 0;
-
-                    // Guarantee two distinct participants:
-                    // If callData was initialized, use its original callerId and receiverId
                     let callerId = callData?.callerId?.toString();
                     let receiverId = callData?.receiverId?.toString();
 
                     if (!callerId || !receiverId || callerId === receiverId) {
-                        // Fallback: the person who was called is targetId, initiator is currentUserId (or vice-versa)
                         callerId = currentUserId;
                         receiverId = targetId;
                     }
@@ -410,8 +640,8 @@ const initSocket = async (server) => {
                         await logCallRecord({
                             callerId,
                             receiverId,
-                            status: isSuccess ? 'completed' : 'missed',
-                            duration: finalDuration
+                            status: wasOngoing ? 'completed' : 'missed',
+                            duration: wasOngoing ? Math.max(1, duration) : 0
                         });
                     }
                 }
@@ -420,57 +650,82 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('disconnect', async () => {
+        sock.on('disconnect', async () => {
             try {
-                const userId = await redisClient.get(socket.id);
-                if (userId) {
-                    for (const [key, callData] of activeCalls.entries()) {
-                        const isCaller = callData.callerId?.toString() === userId.toString();
-                        const isReceiver = callData.receiverId?.toString() === userId.toString();
+                const userId = authenticatedUserId;
+                if (!userId) return;
 
-                        if (isCaller || isReceiver) {
-                            activeCalls.delete(key);
-                            const otherUserId = isCaller ? callData.receiverId : callData.callerId;
-                            const otherSocketId = await getReceiverSocketId(otherUserId);
-                            const duration = callData.connectedAt ? Math.max(1, Math.round((Date.now() - callData.connectedAt) / 1000)) : 0;
+                const { remaining, becameOffline } = await unregisterUserSocket(userId, sock.id);
+                if (becameOffline) {
+                    io.emit('presence-update', { userId, online: false });
+                }
 
-                            if (otherSocketId) {
-                                io.to(otherSocketId).emit('call-ended', { duration });
-                            }
+                const activeCallKey = await redisClient.get(callUserKey(userId));
+                if (!activeCallKey) return;
 
-                            const isSuccess = Boolean(callData.status === 'ongoing' || duration > 0);
-                            const cId = callData.callerId?.toString();
-                            const rId = callData.receiverId?.toString();
+                const callData = await getCallByKey(activeCallKey);
+                if (!callData) {
+                    await redisClient.del(callUserKey(userId));
+                    return;
+                }
 
-                            if (cId && rId && cId !== rId) {
-                                await logCallRecord({
-                                    callerId: cId,
-                                    receiverId: rId,
-                                    status: isSuccess ? 'completed' : 'missed',
-                                    duration: isSuccess ? Math.max(1, duration) : 0
-                                });
-                            }
-                        }
+                const socketOwnedCall =
+                    sock.id === callData.callerSocketId ||
+                    sock.id === callData.receiverSocketId;
+
+                if (remaining === 0 || socketOwnedCall) {
+                    await clearCallState(activeCallKey, callData.callerId, callData.receiverId);
+
+                    const isCaller = callData.callerId?.toString() === userId.toString();
+                    const otherUserId = isCaller ? callData.receiverId : callData.callerId;
+                    const wasOngoing = callData.status === 'ongoing';
+                    const duration = (wasOngoing && callData.connectedAt)
+                        ? Math.max(1, Math.round((Date.now() - callData.connectedAt) / 1000))
+                        : 0;
+
+                    if (otherUserId) {
+                        await emitToUser(otherUserId, 'call-ended', { duration });
                     }
 
-                    await redisClient.del(userId);
-                    await redisClient.del(socket.id);
-                    await User.findByIdAndUpdate(userId, { socketId: null });
+                    const cId = callData.callerId?.toString();
+                    const rId = callData.receiverId?.toString();
+                    if (cId && rId && cId !== rId) {
+                        await logCallRecord({
+                            callerId: cId,
+                            receiverId: rId,
+                            status: wasOngoing ? 'completed' : 'missed',
+                            duration: wasOngoing ? Math.max(1, duration) : 0
+                        });
+                    }
                 }
             } catch (err) {
                 console.warn('[Socket] Error on disconnect cleanup:', err.message);
             }
         });
     });
+
+    return io;
 };
 
-async function sendMessages(socketId, message) {
-    if (io && socketId)
-        io.to(socketId).emit(message.event, message.data);
+const closeSocket = async () => {
+    if (!io) return;
+    const instance = io;
+    io = null;
+    await new Promise((resolve) => instance.close(() => resolve()));
+};
+
+async function sendMessages(targetRoomOrSocketId, message) {
+    if (io && targetRoomOrSocketId && message?.event) {
+        io.to(targetRoomOrSocketId).emit(message.event, message.data);
+    }
 }
 
 module.exports = {
     initSocket,
+    closeSocket,
+    emitToUser,
+    isUserOnline,
+    getOnlineUserIds,
     sendMessages,
     getReceiverSocketId
 };

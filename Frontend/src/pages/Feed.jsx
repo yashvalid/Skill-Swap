@@ -7,23 +7,13 @@ import {
   Image as ImageIcon,
   X,
   Send,
-  Sparkles,
   ArrowRight,
   ArrowUpRight,
   ArrowLeftRight,
   ShieldCheck,
-  ExternalLink,
   Layers,
-  Award,
-  TrendingUp,
   CheckCircle2,
-  Users,
-  Video,
-  Star,
-  Flame,
-  Clock,
-  Tag,
-  Filter
+  Flame
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { feedService } from '../services/feedService';
@@ -37,6 +27,10 @@ const Feed = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [feedStats, setFeedStats] = useState({ completedSwaps: 0, totalShowcases: 0, averageRating: null });
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -52,25 +46,50 @@ const Feed = () => {
   const [commentsLoading, setCommentsLoading] = useState(false);
 
   useEffect(() => {
-    fetchPosts();
+    fetchPosts(1, false);
   }, []);
 
-  const fetchPosts = async () => {
-    setLoading(true);
+  const fetchPosts = async (targetPage = 1, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
-      const { data } = await feedService.getAllPosts();
-      setPosts(data.posts || []);
+      const { data } = await feedService.getAllPosts({ page: targetPage, limit: 10 });
+      const loadedPosts = data.posts || [];
+      setPage(targetPage);
+      setHasMore(Boolean(data.hasMore));
+      setPosts((prev) => {
+        if (!append) return loadedPosts;
+        const existingIds = new Set(prev.map(p => p._id));
+        const nextItems = loadedPosts.filter(p => !existingIds.has(p._id));
+        return [...prev, ...nextItems];
+      });
+      if (data.stats) {
+        setFeedStats(data.stats);
+      } else {
+        setFeedStats({ completedSwaps: 0, totalShowcases: data.total ?? loadedPosts.length, averageRating: null });
+      }
     } catch (error) {
       console.error('Failed to load posts from database', error);
-      setPosts([]);
+      if (!append) setPosts([]);
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File exceeds the 10MB upload limit');
+        return;
+      }
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -97,17 +116,8 @@ const Feed = () => {
       try {
         const { data } = await feedService.getComments(postId);
         setCommentsMap(prev => ({ ...prev, [postId]: data.comments || [] }));
-      } catch (error) {
-        setCommentsMap(prev => ({
-          ...prev,
-          [postId]: [
-            {
-              _id: 'cm1',
-              content: 'Clean execution on the architecture boundaries and milestone proofs!',
-              user: { fullname: { firstname: 'Devon' } }
-            }
-          ]
-        }));
+      } catch {
+        toast.error('Failed to load comments');
       } finally {
         setCommentsLoading(false);
       }
@@ -126,22 +136,14 @@ const Feed = () => {
       const response = await feedService.commentPost(postId, newComment.trim());
       if (response.status === 201 || response.status === 200) {
         const { data } = await feedService.getComments(postId);
-        setCommentsMap(prev => ({ ...prev, [postId]: data.comments || [] }));
+        const updatedComments = data.comments || [];
+        setCommentsMap(prev => ({ ...prev, [postId]: updatedComments }));
+        setPosts(prev => prev.map(p => p._id === postId ? { ...p, commentsCount: updatedComments.length } : p));
         setNewComment('');
         toast.success('Comment posted');
       }
-    } catch (error) {
-      const mockComment = {
-        _id: String(Date.now()),
-        content: newComment.trim(),
-        user: { fullname: { firstname: user.fullname?.firstname || 'You' } }
-      };
-      setCommentsMap(prev => ({
-        ...prev,
-        [postId]: [...(prev[postId] || []), mockComment]
-      }));
-      setNewComment('');
-      toast.success('Comment posted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to post comment');
     }
   };
 
@@ -154,17 +156,9 @@ const Feed = () => {
 
     try {
       const { data } = await feedService.likePost(postId);
-      setPosts(posts.map(p => p._id === postId ? { ...p, likes: data.post.likes } : p));
-    } catch (error) {
-      setPosts(posts.map(p => {
-        if (p._id !== postId) return p;
-        const currentLikes = p.likes || [];
-        const isLiked = currentLikes.includes(user._id);
-        const updated = isLiked
-          ? currentLikes.filter(id => id !== user._id)
-          : [...currentLikes, user._id];
-        return { ...p, likes: updated };
-      }));
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes: data.post.likes } : p));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update like');
     }
   };
 
@@ -181,14 +175,15 @@ const Feed = () => {
 
     try {
       const { data } = await feedService.createPost(formData);
-      setPosts([data.post, ...posts]);
+      setPosts(prev => [{ ...data.post, commentsCount: 0 }, ...prev]);
+      setFeedStats(prev => ({ ...prev, totalShowcases: (prev.totalShowcases || 0) + 1 }));
       setIsUploadModalOpen(false);
       setNewPostContent('');
       setSelectedFile(null);
       setPreviewUrl(null);
       toast.success('Showcase published to the community feed!');
-    } catch (error) {
-      toast.error('Failed to create post');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create post');
     } finally {
       setUploading(false);
     }
@@ -435,7 +430,9 @@ const Feed = () => {
                             }`}
                           >
                             <MessageCircle size={14} />
-                            <span className="font-mono">Comments ({postComments.length})</span>
+                            <span className="font-mono">
+                              Comments ({commentsMap[post._id]?.length ?? post.commentsCount ?? 0})
+                            </span>
                           </button>
                         </div>
 
@@ -509,14 +506,27 @@ const Feed = () => {
                   </article>
                 );
               })}
+
+              {hasMore && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => fetchPosts(page + 1, true)}
+                    disabled={loadingMore}
+                    className="btn btn-secondary text-xs font-mono py-2 px-5 rounded-xl disabled:opacity-50"
+                  >
+                    {loadingMore ? 'Loading more showcases...' : 'Load more showcases'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Right Column: Engaging Community Sidebar (4 cols) */}
+        {/* Right Column: Community Sidebar (4 cols) */}
         <aside className="lg:col-span-4 space-y-6">
           
-          {/* Widget 1: Community Momentum Stats */}
+          {/* Widget 1: Community Momentum Stats (sourced from backend DB) */}
           <div className="ui-card p-5 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl space-y-4 shadow-sm">
             <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.08)]">
               <div className="flex items-center gap-2">
@@ -530,41 +540,47 @@ const Feed = () => {
 
             <div className="grid grid-cols-3 gap-2.5 text-center">
               <div className="p-3 bg-[#202738] rounded-xl border border-[rgba(255,255,255,0.06)]">
-                <p className="text-xl font-bold text-[#FFEEA8] font-mono">142</p>
+                <p className="text-xl font-bold text-[#FFEEA8] font-mono">
+                  {feedStats.completedSwaps ?? 0}
+                </p>
                 <p className="text-[10px] text-[#A4B0C6] font-mono mt-0.5 uppercase">Swaps Done</p>
               </div>
               <div className="p-3 bg-[#202738] rounded-xl border border-[rgba(255,255,255,0.06)]">
-                <p className="text-xl font-bold text-[#F7F8FC] font-mono">98.4%</p>
-                <p className="text-[10px] text-[#A4B0C6] font-mono mt-0.5 uppercase">Mutual Rating</p>
+                <p className="text-xl font-bold text-[#F7F8FC] font-mono">
+                  {feedStats.averageRating != null ? `${feedStats.averageRating}/5` : '—'}
+                </p>
+                <p className="text-[10px] text-[#A4B0C6] font-mono mt-0.5 uppercase">Avg Rating</p>
               </div>
               <div className="p-3 bg-[#202738] rounded-xl border border-[rgba(255,255,255,0.06)]">
-                <p className="text-xl font-bold text-[#D72E2B] font-mono">52h</p>
-                <p className="text-[10px] text-[#A4B0C6] font-mono mt-0.5 uppercase">Live Calls</p>
+                <p className="text-xl font-bold text-[#D72E2B] font-mono">
+                  {feedStats.totalShowcases ?? posts.length}
+                </p>
+                <p className="text-[10px] text-[#A4B0C6] font-mono mt-0.5 uppercase">Showcases</p>
               </div>
             </div>
 
             <p className="text-xs text-[#A4B0C6] leading-relaxed">
-              Every showcase represents a completed peer milestone with zero monetary fees exchanged.
+              Every showcase represents a peer milestone shared with zero monetary fees exchanged.
             </p>
           </div>
 
-          {/* Widget 2: Trending Swap Exchanges */}
+          {/* Widget 2: Trending Swap Showcases */}
           <div className="ui-card p-5 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl space-y-4 shadow-sm">
             <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.08)]">
               <div className="flex items-center gap-2">
                 <Flame size={15} className="text-[#D72E2B]" />
                 <h3 className="font-mono text-xs uppercase tracking-wider text-[#F7F8FC] font-bold">
-                  Trending Exchanges
+                  Recent Showcases
                 </h3>
               </div>
-              <span className="font-mono text-[10px] text-[#71809B]">THIS WEEK</span>
+              <span className="font-mono text-[10px] text-[#71809B]">COMMUNITY</span>
             </div>
 
             <div className="space-y-2.5">
-              {posts.slice(0, 4).map((p, idx) => (
+              {posts.slice(0, 4).map((p) => (
                 <div
-                  key={idx}
-                  onClick={() => navigate('/marketplace')}
+                  key={p._id}
+                  onClick={() => p.user?._id ? navigate(`/profile/${p.user._id}`) : navigate('/marketplace')}
                   className="p-3 bg-[#202738] hover:bg-[#171D2B] rounded-xl border border-[rgba(255,255,255,0.06)] hover:border-[#2B3F74] transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center justify-between text-xs font-semibold text-[#F7F8FC] mb-1">
@@ -594,41 +610,51 @@ const Feed = () => {
             </Link>
           </div>
 
-          {/* Widget 3: Featured Mentor Spotlight */}
-          <div className="ui-card p-5 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl space-y-3.5 shadow-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <span className="tag-chip text-[9px] py-0 px-2 font-mono">SPOTLIGHT</span>
-              <span className="font-mono text-[10px] text-[#FFEEA8] font-semibold flex items-center gap-1">
-                <Star size={11} fill="currentColor" className="text-[#FFA502]" /> 4.95 RATING
-              </span>
-            </div>
+          {/* Widget 3: Top Showcase Contributor (live from posts) */}
+          {(() => {
+            const topPost = [...posts].sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0))[0];
+            if (!topPost?.user) return null;
+            return (
+              <div className="ui-card p-5 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl space-y-3.5 shadow-sm">
+                <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
+                  <span className="tag-chip text-[9px] py-0 px-2 font-mono">TOP SHOWCASE</span>
+                  <span className="font-mono text-[10px] text-[#FFEEA8] font-semibold">
+                    {topPost.likes?.length || 0} LIKES
+                  </span>
+                </div>
 
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#171D2B] border border-[rgba(255,255,255,0.15)] shrink-0">
-                <img
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus"
-                  alt="Marcus Thorne"
-                  className="w-full h-full object-cover"
-                />
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl overflow-hidden bg-[#171D2B] border border-[rgba(255,255,255,0.15)] shrink-0">
+                    <img
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${topPost.user.fullname?.firstname || 'Member'}`}
+                      alt={topPost.user.fullname?.firstname || 'Member'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-sm text-[#F7F8FC] truncate">
+                      {topPost.user.fullname?.firstname} {topPost.user.fullname?.lastname}
+                    </h4>
+                    <p className="text-xs text-[#A4B0C6] truncate">
+                      {topPost.user.role || 'Community Member'}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#A4B0C6] leading-relaxed line-clamp-3">
+                  "{topPost.content}"
+                </p>
+
+                <Link
+                  to={`/profile/${topPost.user._id}`}
+                  className="btn btn-primary w-full text-xs py-2 justify-center rounded-xl"
+                >
+                  <span>View {topPost.user.fullname?.firstname}'s Profile</span>
+                  <ArrowUpRight size={13} />
+                </Link>
               </div>
-              <div>
-                <h4 className="font-bold text-sm text-[#F7F8FC]">Marcus Thorne</h4>
-                <p className="text-xs text-[#A4B0C6]">Backend Architect • Distributed Systems</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-[#A4B0C6] leading-relaxed">
-              "Looking to exchange high-throughput Node/Redis architecture lessons for conversational Spanish or video cutting."
-            </p>
-
-            <Link
-              to="/marketplace"
-              className="btn btn-primary w-full text-xs py-2 justify-center rounded-xl"
-            >
-              <span>Propose Swap with Marcus</span>
-              <ArrowUpRight size={13} />
-            </Link>
-          </div>
+            );
+          })()}
 
           {/* Widget 4: Reciprocal Honor Code */}
           <div className="ui-card p-5 bg-[#202738] border border-[rgba(255,255,255,0.08)] rounded-2xl space-y-2.5">
@@ -691,7 +717,7 @@ const Feed = () => {
                       <ImageIcon size={20} />
                     </div>
                     <p className="text-xs font-semibold text-[#F7F8FC]">Upload screenshot or video clip</p>
-                    <p className="font-mono text-[10px] text-[#71809B]">PNG, JPG, MP4 up to 25MB</p>
+                    <p className="font-mono text-[10px] text-[#71809B]">PNG, JPG, MP4 up to 10MB</p>
                   </label>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#171D2B] group border border-[rgba(255,255,255,0.12)]">

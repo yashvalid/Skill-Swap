@@ -180,7 +180,7 @@ const Marketplace = () => {
     }
     setSelectedUser(targetUser);
     setSwapData({
-      offersSkill: '',
+      offersSkill: currentUser.skillsOffered?.[0] || '',
       requestsSkill: targetUser.skillsOffered?.[0] || ''
     });
     if (targetUser.affinity?.icebreaker) {
@@ -225,7 +225,7 @@ const Marketplace = () => {
       if (res.data?.pitch) {
         setPitchData(res.data);
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to generate pitch');
     } finally {
       setGeneratingPitch(false);
@@ -612,7 +612,7 @@ const Marketplace = () => {
       {guestModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="z-[300] ui-card rounded-2xl p-6 sm:p-8 max-w-md w-full bg-[#283144] text-center border border-[rgba(255,255,255,0.15)] shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-[#202738] text-[#FFEEA8] flex items-center justify-center mx-auto mb-4 border border-[rgba(255, 238, 168,0.3)]">
+            <div className="w-12 h-12 rounded-2xl bg-[#202738] text-[#FFEEA8] flex items-center justify-center mx-auto mb-4 border border-[rgba(255,238,168,0.3)]">
               <ArrowLeftRight size={20} strokeWidth={2.5} />
             </div>
             <h3 className="heading-h2 text-[#F7F8FC] mb-2">

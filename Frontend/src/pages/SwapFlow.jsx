@@ -15,6 +15,7 @@ import {
   ExternalLink 
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { swapService } from '../services/swapService';
 import toast from 'react-hot-toast';
 import { isUserVerified } from '../utils/userVerification';
@@ -38,6 +39,7 @@ const DURATIONS = [
 const SwapFlow = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: currentUser } = useAuth();
   const [step, setStep] = useState(1);
   const totalSteps = 4;
 
@@ -45,13 +47,13 @@ const SwapFlow = () => {
   const partner = passedPartner ? {
     _id: passedPartner._id,
     name: `${passedPartner.fullname?.firstname || ''} ${passedPartner.fullname?.lastname || ''}`.trim() || 'Partner',
-    skill: passedPartner.skillsOffered?.[0] || 'Technical Mentorship',
-    seeking: passedPartner.skillsNeeded?.[0] || 'Peer Exchange'
+    skill: passedPartner.skillsOffered?.[0] || passedPartner.role || 'Mentorship',
+    seeking: passedPartner.skillsNeeded?.[0] || ''
   } : {
     _id: null,
     name: "Partner",
     skill: "Mentorship",
-    seeking: "Skill Exchange"
+    seeking: ""
   };
 
   useEffect(() => {
@@ -61,9 +63,36 @@ const SwapFlow = () => {
     }
   }, [passedPartner, navigate]);
 
-  const [selectedOffering, setSelectedOffering] = useState("Web Development (React & Node)");
+  const offeringChoices = React.useMemo(() => {
+    const items = [];
+    const seen = new Set();
+    const userSkills = currentUser?.skillsOffered || [];
+
+    if (partner.seeking) {
+      const lowerSeek = partner.seeking.toLowerCase();
+      const matchesUser = userSkills.some(s => s.toLowerCase().includes(lowerSeek) || lowerSeek.includes(s.toLowerCase()));
+      items.push({ title: partner.seeking, match: matchesUser || true, source: 'Partner Goal' });
+      seen.add(partner.seeking.toLowerCase());
+    }
+
+    for (const sk of userSkills) {
+      if (sk && !seen.has(sk.toLowerCase())) {
+        seen.add(sk.toLowerCase());
+        items.push({ title: sk, match: false, source: 'Your Profile Skill' });
+      }
+    }
+
+    if (items.length === 0 && currentUser?.role) {
+      items.push({ title: currentUser.role, match: false, source: 'Your Role' });
+    }
+
+    return items;
+  }, [currentUser, partner.seeking]);
+
+  const [selectedOffering, setSelectedOffering] = useState(() => offeringChoices[0]?.title || currentUser?.skillsOffered?.[0] || currentUser?.role || '');
+  const [customOffering, setCustomOffering] = useState('');
   const [proposalNotes, setProposalNotes] = useState(
-    `Hi ${partner.name.split(' ')[0]}! I'd love to swap skills with you. I can help you with ${partner.seeking || 'what you want to learn'} in exchange for practicing ${partner.skill}. Let's build a great milestone together!`
+    `Hi ${partner.name.split(' ')[0]}! I'd love to swap skills with you. I can help you with ${partner.seeking || currentUser?.skillsOffered?.[0] || 'my domain'} in exchange for practicing ${partner.skill}. Let's build a great milestone together!`
   );
 
   // Scheduling state
@@ -96,7 +125,15 @@ const SwapFlow = () => {
   const [submitting, setSubmitting] = useState(false);
   const [proposalSentData, setProposalSentData] = useState(null);
 
-  const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
+  const effectiveOffering = customOffering.trim() || selectedOffering;
+
+  const nextStep = () => {
+    if (step === 1 && !effectiveOffering) {
+      toast.error('Please select or enter a skill you offer to teach');
+      return;
+    }
+    setStep(s => Math.min(s + 1, totalSteps));
+  };
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
   const steps = [
@@ -107,12 +144,12 @@ const SwapFlow = () => {
   ];
 
   const handleFinish = async () => {
-    if (!partner._id) return;
+    if (!partner._id || !effectiveOffering) return;
     setSubmitting(true);
     try {
       const payload = {
         toUserId: partner._id,
-        offersSkill: selectedOffering,
+        offersSkill: effectiveOffering,
         requestsSkill: partner.skill,
         scheduledTime: scheduledDateTime ? scheduledDateTime.toISOString() : null,
         durationMinutes: selectedDuration,
@@ -136,7 +173,7 @@ const SwapFlow = () => {
   const handleDownloadIcs = () => {
     if (!scheduledDateTime) return;
     downloadIcsFile({
-      title: `SkillSwap: ${selectedOffering} ⇄ ${partner.skill} with ${partner.name}`,
+      title: `SkillSwap: ${effectiveOffering} ⇄ ${partner.skill} with ${partner.name}`,
       description: proposalNotes,
       startTime: scheduledDateTime,
       durationMinutes: selectedDuration,
@@ -147,7 +184,7 @@ const SwapFlow = () => {
   };
 
   const googleCalendarUrl = scheduledDateTime ? generateGoogleCalendarUrl({
-    title: `SkillSwap: ${selectedOffering} ⇄ ${partner.skill} with ${partner.name}`,
+    title: `SkillSwap: ${effectiveOffering} ⇄ ${partner.skill} with ${partner.name}`,
     description: proposalNotes,
     startTime: scheduledDateTime,
     durationMinutes: selectedDuration,
@@ -234,7 +271,7 @@ const SwapFlow = () => {
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#171D2B] border border-[rgba(255,238,168,0.3)]">
                   <p className="font-mono text-[9px] text-[#FFEEA8] mb-1 uppercase font-semibold">Offering to {partner.name.split(' ')[0]}</p>
-                  <p className="font-bold text-xs text-[#F7F8FC]">{selectedOffering}</p>
+                  <p className="font-bold text-xs text-[#F7F8FC]">{effectiveOffering || 'Select a skill'}</p>
                 </div>
                 {scheduledDateTime && (
                   <div className="p-3 rounded-xl bg-[#283144] border border-[rgba(255,255,255,0.08)]">
@@ -312,20 +349,15 @@ const SwapFlow = () => {
                   <div>
                     <span className="tag-chip text-[10px] mb-2 inline-block">STEP 01</span>
                     <h3 className="heading-h2 text-lg text-[#F7F8FC] mb-1">Select Your Knowledge Offering</h3>
-                    <p className="body-md text-xs text-[#A4B0C6] mb-6">Choose the skill you will teach during this reciprocal exchange.</p>
+                    <p className="body-md text-xs text-[#A4B0C6] mb-6">Choose a skill from your profile or specify another topic to teach.</p>
                     
                     <div className="space-y-3">
-                      {[
-                        { title: partner.seeking, match: true },
-                        { title: "React Basics & State Architecture", match: false },
-                        { title: "CSS Architecture & Tailwind CSS v4", match: false },
-                        { title: "TypeScript & Production Tooling", match: false }
-                      ].map((skill, i) => (
+                      {offeringChoices.map((skill, i) => (
                         <label
                           key={i}
-                          onClick={() => setSelectedOffering(skill.title)}
+                          onClick={() => { setSelectedOffering(skill.title); setCustomOffering(''); }}
                           className={`flex items-center gap-3.5 p-4 rounded-xl border transition-colors cursor-pointer ${
-                            selectedOffering === skill.title
+                            !customOffering.trim() && selectedOffering === skill.title
                               ? 'border-[#2B3F74] bg-[#283144] shadow-xs'
                               : 'border-[rgba(255,255,255,0.1)] hover:border-[#2B3F74] hover:bg-[#283144]/50'
                           }`}
@@ -333,21 +365,34 @@ const SwapFlow = () => {
                           <input 
                             type="radio" 
                             name="skill" 
-                            checked={selectedOffering === skill.title}
-                            onChange={() => setSelectedOffering(skill.title)}
+                            checked={!customOffering.trim() && selectedOffering === skill.title}
+                            onChange={() => { setSelectedOffering(skill.title); setCustomOffering(''); }}
                             className="w-4 h-4 accent-[#2B3F74]" 
                           />
                           <div className="flex-1">
                             <p className="font-bold text-xs sm:text-sm text-[#F7F8FC]">{skill.title}</p>
-                            <p className="font-mono text-[10px] text-[#71809B]">ESTABLISHED COMPETENCY</p>
+                            <p className="font-mono text-[10px] text-[#71809B] uppercase">{skill.source}</p>
                           </div>
                           {skill.match && (
                             <span className="tag-chip text-[9px] py-0.5 px-2 bg-[rgba(255,238,168,0.15)] text-[#FFEEA8] border border-[rgba(255,238,168,0.3)] font-bold">
-                              EXACT MATCH
+                              PARTNER GOAL
                             </span>
                           )}
                         </label>
                       ))}
+
+                      <div className="pt-2">
+                        <label className="font-mono text-[10px] text-[#A4B0C6] uppercase block mb-1.5">
+                          Or enter a custom skill offering
+                        </label>
+                        <input
+                          type="text"
+                          value={customOffering}
+                          onChange={(e) => setCustomOffering(e.target.value)}
+                          placeholder="e.g. Python Data Pipelines, Conversational French..."
+                          className="input-field text-xs sm:text-sm rounded-xl"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -491,7 +536,7 @@ const SwapFlow = () => {
                       <div className="pt-2 border-t border-[rgba(255,255,255,0.08)]">
                         <p className="font-mono text-[9px] text-[#A4B0C6] uppercase mb-1">Exchange Summary</p>
                         <p className="text-xs text-[#F7F8FC]">
-                          <span className="text-[#FFEEA8]">You Teach:</span> {selectedOffering}
+                          <span className="text-[#FFEEA8]">You Teach:</span> {effectiveOffering}
                         </p>
                         <p className="text-xs text-[#F7F8FC] mt-0.5">
                           <span className="text-[#A4B0C6]">You Learn:</span> {partner.skill}

@@ -9,7 +9,7 @@ const Footer = () => {
   const handleSubscribe = (e) => {
     e.preventDefault();
     if (!email.trim()) return;
-    toast.success('Subscribed to updates!');
+    toast('Newsletter dispatch is coming soon!', { icon: '📬' });
     setEmail('');
   };
 
@@ -27,7 +27,7 @@ const Footer = () => {
               <span className="font-bold text-lg tracking-[-0.025em] text-[#F7F8FC]">
                 SKILLSWAP
               </span>
-              <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-[rgba(255, 238, 168,0.12)] border border-[rgba(255, 238, 168,0.3)] text-[#FFEEA8]">
+              <span className="font-mono text-[10px] uppercase px-2 py-0.5 rounded-full bg-[rgba(255,238,168,0.12)] border border-[rgba(255,238,168,0.3)] text-[#FFEEA8]">
                 V2.0
               </span>
             </div>
@@ -114,7 +114,7 @@ const Footer = () => {
                   required
                 />
                 <button type="submit" className="btn btn-primary text-xs py-2 px-4 shrink-0">
-                  Subscribe
+                  Notify Me
                 </button>
               </div>
             </div>

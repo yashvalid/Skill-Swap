@@ -93,7 +93,10 @@ export const getOrInitUserKeyPair = async (userId) => {
 export const getOrDeriveSharedKey = async (myPrivateKey, partnerId, partnerPublicKeyJwkString) => {
   if (!myPrivateKey || !partnerPublicKeyJwkString) return null;
 
-  const cacheKey = `${partnerId}_${partnerPublicKeyJwkString.length}`;
+  const serializedPub = typeof partnerPublicKeyJwkString === 'string'
+    ? partnerPublicKeyJwkString
+    : JSON.stringify(partnerPublicKeyJwkString);
+  const cacheKey = `${partnerId}:${serializedPub}`;
   if (SHARED_KEY_CACHE.has(cacheKey)) {
     return SHARED_KEY_CACHE.get(cacheKey);
   }
@@ -187,8 +190,149 @@ export const decryptMessageText = async (ciphertextBase64, ivBase64, sharedKey) 
     );
 
     return new TextDecoder().decode(decryptedBuffer);
-  } catch (err) {
+  } catch {
     // If decryption fails (e.g. key mismatch or unencrypted text), return safe fallback
     return '[Unable to decrypt message]';
   }
+};
+
+export const clearSharedKeyCacheForPartner = (partnerId) => {
+  if (!partnerId) return;
+  const prefix = `${partnerId}:`;
+  for (const key of SHARED_KEY_CACHE.keys()) {
+    if (key.startsWith(prefix)) {
+      SHARED_KEY_CACHE.delete(key);
+    }
+  }
+};
+
+export const exportUserKeyBackup = (userId) => {
+  if (!userId) return null;
+  const storedPriv = localStorage.getItem(`ss_e2ee_priv_${userId}`);
+  const storedPub = localStorage.getItem(`ss_e2ee_pub_${userId}`);
+  if (!storedPriv || !storedPub) return null;
+
+  return JSON.stringify({
+    version: 1,
+    userId,
+    privateJwk: JSON.parse(storedPriv),
+    publicJwk: JSON.parse(storedPub),
+    exportedAt: new Date().toISOString()
+  }, null, 2);
+};
+
+export const importUserKeyBackup = async (userId, backupString) => {
+  if (!window.crypto?.subtle) {
+    throw new Error('Web Crypto API is not supported in this browser');
+  }
+  if (!userId || !backupString?.trim()) {
+    throw new Error('Backup JSON is required');
+  }
+
+  const parsed = JSON.parse(backupString);
+  if (!parsed?.privateJwk || !parsed?.publicJwk) {
+    throw new Error('Invalid E2EE backup format');
+  }
+
+  const privateKey = await window.crypto.subtle.importKey(
+    'jwk',
+    parsed.privateJwk,
+    { name: 'ECDH', namedCurve: 'P-256' },
+    true,
+    ['deriveKey', 'deriveBits']
+  );
+
+  // Verify public JWK imports cleanly too
+  await window.crypto.subtle.importKey(
+    'jwk',
+    parsed.publicJwk,
+    { name: 'ECDH', namedCurve: 'P-256' },
+    true,
+    []
+  );
+
+  const pubString = JSON.stringify(parsed.publicJwk);
+  localStorage.setItem(`ss_e2ee_priv_${userId}`, JSON.stringify(parsed.privateJwk));
+  localStorage.setItem(`ss_e2ee_pub_${userId}`, pubString);
+  SHARED_KEY_CACHE.clear();
+
+  return {
+    privateKey,
+    publicKeyJwkString: pubString
+  };
+};
+
+const derivePasswordWrapKey = async (password, saltBytes, usages) => {
+  const baseKey = await window.crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  return window.crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    usages
+  );
+};
+
+export const encryptKeyBackupWithPassword = async (password, userId) => {
+  if (!window.crypto?.subtle || !password || !userId) return null;
+  const backupJson = exportUserKeyBackup(userId);
+  if (!backupJson) return null;
+
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const wrapKey = await derivePasswordWrapKey(password, salt, ['encrypt']);
+
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    wrapKey,
+    new TextEncoder().encode(backupJson)
+  );
+
+  return JSON.stringify({
+    v: 1,
+    kdf: 'PBKDF2-SHA256',
+    salt: uint8ArrayToBase64(salt),
+    iv: uint8ArrayToBase64(iv),
+    ct: uint8ArrayToBase64(new Uint8Array(encrypted))
+  });
+};
+
+export const decryptKeyBackupWithPassword = async (password, userId, encryptedBackupString) => {
+  if (!window.crypto?.subtle || !password || !userId || !encryptedBackupString) {
+    throw new Error('Password and encrypted backup are required');
+  }
+
+  const envelope = typeof encryptedBackupString === 'string'
+    ? JSON.parse(encryptedBackupString)
+    : encryptedBackupString;
+
+  if (!envelope?.salt || !envelope?.iv || !envelope?.ct) {
+    throw new Error('Invalid encrypted key backup payload');
+  }
+
+  const salt = base64ToUint8Array(envelope.salt);
+  const iv = base64ToUint8Array(envelope.iv);
+  const ct = base64ToUint8Array(envelope.ct);
+  const unwrapKey = await derivePasswordWrapKey(password, salt, ['decrypt']);
+
+  const decryptedBuffer = await window.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    unwrapKey,
+    ct
+  );
+
+  const backupJson = new TextDecoder().decode(decryptedBuffer);
+  return importUserKeyBackup(userId, backupJson);
 };
