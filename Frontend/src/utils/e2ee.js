@@ -93,7 +93,10 @@ export const getOrInitUserKeyPair = async (userId) => {
 export const getOrDeriveSharedKey = async (myPrivateKey, partnerId, partnerPublicKeyJwkString) => {
   if (!myPrivateKey || !partnerPublicKeyJwkString) return null;
 
-  const cacheKey = `${partnerId}_${partnerPublicKeyJwkString.length}`;
+  const serializedPub = typeof partnerPublicKeyJwkString === 'string'
+    ? partnerPublicKeyJwkString
+    : JSON.stringify(partnerPublicKeyJwkString);
+  const cacheKey = `${partnerId}:${serializedPub}`;
   if (SHARED_KEY_CACHE.has(cacheKey)) {
     return SHARED_KEY_CACHE.get(cacheKey);
   }
@@ -187,7 +190,7 @@ export const decryptMessageText = async (ciphertextBase64, ivBase64, sharedKey) 
     );
 
     return new TextDecoder().decode(decryptedBuffer);
-  } catch (err) {
+  } catch {
     // If decryption fails (e.g. key mismatch or unencrypted text), return safe fallback
     return '[Unable to decrypt message]';
   }

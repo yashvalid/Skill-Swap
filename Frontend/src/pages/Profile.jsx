@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Star,
   MapPin,
   CheckCircle2,
   Share2,
-  Award,
   Sparkles,
   ShieldCheck,
   Plus,
@@ -22,7 +21,7 @@ import toast from 'react-hot-toast';
 import { isUserVerified, getVerificationLabel } from '../utils/userVerification';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, setUser, refreshProfile } = useAuth();
   const [offeredSkills, setOfferedSkills] = useState([]);
   const [skillsToLearn, setSkillsToLearn] = useState([]);
   const [showAddSkill, setShowAddSkill] = useState(false);
@@ -37,24 +36,20 @@ const Profile = () => {
   const [showEditPost, setShowEditPost] = useState(false);
   const [editPostData, setEditPostData] = useState({ id: '', content: '' });
 
-  useEffect(() => {
-    if (user) {
-      fetchSkills();
-      fetchPosts();
-      setEditProfileData({ bio: user.bio || '', location: user.location || '' });
-    }
-  }, [user]);
+  const userId = user?._id;
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
+    if (!userId) return;
     try {
-      const res = await feedService.getUserPosts(user._id);
+      const res = await feedService.getUserPosts(userId);
       setPosts(res.data.posts || []);
     } catch (error) {
       console.error('Failed to fetch posts', error);
     }
-  };
+  }, [userId]);
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
+    if (!userId) return;
     try {
       const [offeredRes, learnRes] = await Promise.all([
         skillService.getOfferedSkills(),
@@ -65,7 +60,20 @@ const Profile = () => {
     } catch (error) {
       console.error('Failed to fetch skills', error);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchSkills();
+      fetchPosts();
+    }
+  }, [userId, fetchSkills, fetchPosts]);
+
+  useEffect(() => {
+    if (user) {
+      setEditProfileData({ bio: user.bio || '', location: user.location || '' });
+    }
+  }, [user]);
 
   const handleAutoFillBio = async () => {
     if (!aiRawText.trim()) {
@@ -79,7 +87,7 @@ const Profile = () => {
         setEditProfileData(prev => ({ ...prev, bio: res.data.suggestedBio }));
         toast.success('Bio synthesized with AI');
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to generate bio');
     } finally {
       setAiExtracting(false);
@@ -97,8 +105,8 @@ const Profile = () => {
       toast.success('Skill added successfully');
       setNewSkill({ skill: '', des: '', type: 'offer' });
       setShowAddSkill(false);
-      fetchSkills();
-    } catch (error) {
+      await Promise.all([fetchSkills(), refreshProfile()]);
+    } catch {
       toast.error('Failed to add skill');
     }
   };
@@ -107,8 +115,8 @@ const Profile = () => {
     try {
       await skillService.deleteSkill(skillId);
       toast.success('Skill removed');
-      fetchSkills();
-    } catch (error) {
+      await Promise.all([fetchSkills(), refreshProfile()]);
+    } catch {
       toast.error('Failed to delete skill');
     }
   };
@@ -116,14 +124,15 @@ const Profile = () => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      await userService.updateProfile(editProfileData);
+      const res = await userService.updateProfile(editProfileData);
       toast.success('Profile updated');
       setShowEditProfile(false);
-      if (user) {
-        user.bio = editProfileData.bio;
-        user.location = editProfileData.location;
+      if (res.data?.user) {
+        setUser(res.data.user);
+      } else {
+        await refreshProfile();
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to update profile');
     }
   };
@@ -134,7 +143,7 @@ const Profile = () => {
       await feedService.deletePost(postId);
       toast.success('Showcase removed');
       fetchPosts();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete showcase');
     }
   };
@@ -146,7 +155,7 @@ const Profile = () => {
       toast.success('Showcase updated');
       setShowEditPost(false);
       fetchPosts();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update showcase');
     }
   };
@@ -361,7 +370,7 @@ const Profile = () => {
                     </button>
                     <button
                       onClick={() => handleDeletePost(post._id)}
-                      className="p-1.5 rounded-xl text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215, 46, 43,0.1)] transition-colors"
+                      className="p-1.5 rounded-xl text-[#A4B0C6] hover:text-[#D72E2B] hover:bg-[rgba(215,46,43,0.1)] transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>

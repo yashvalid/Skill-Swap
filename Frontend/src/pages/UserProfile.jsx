@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Star,
@@ -6,12 +6,10 @@ import {
   CheckCircle2,
   MessageSquare,
   Share2,
-  Award,
   Video,
   X,
   ShieldCheck,
-  ArrowRight,
-  ArrowLeftRight
+  ArrowRight
 } from 'lucide-react';
 import { userService } from '../services/userService';
 import { feedService } from '../services/feedService';
@@ -40,20 +38,7 @@ const UserProfile = () => {
   const [review, setReview] = useState('');
   const [hasConnection, setHasConnection] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      if (currentUser && currentUser._id === id) {
-        navigate('/profile');
-        return;
-      }
-      fetchUserData();
-      if (currentUser) {
-        checkConnection();
-      }
-    }
-  }, [id, currentUser]);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     setLoading(true);
     try {
       const userRes = await userService.getUserById(id);
@@ -66,7 +51,6 @@ const UserProfile = () => {
       }
     } catch (error) {
       console.error('Failed to fetch user data', error);
-      toast.error('User not found in database');
       setProfileUser(null);
     } finally {
       setLoading(false);
@@ -75,12 +59,12 @@ const UserProfile = () => {
     try {
       const postsRes = await feedService.getUserPosts(id);
       setPosts(postsRes.data?.posts || []);
-    } catch (error) {
+    } catch {
       setPosts([]);
     }
-  };
+  }, [id]);
 
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     try {
       const res = await swapService.getAcceptedSwaps();
       const connectedUsers = res.data.allUsers || [];
@@ -89,7 +73,21 @@ const UserProfile = () => {
     } catch (error) {
       console.error('Error checking connection', error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (currentUser && currentUser._id === id) {
+      navigate('/profile');
+      return;
+    }
+    fetchUserData();
+    if (currentUser) {
+      checkConnection();
+    } else {
+      setHasConnection(false);
+    }
+  }, [id, currentUser, navigate, fetchUserData, checkConnection]);
 
   const handleRateSubmit = async (e) => {
     e.preventDefault();
@@ -99,8 +97,8 @@ const UserProfile = () => {
       setShowRatingModal(false);
       setReview('');
       fetchUserData();
-    } catch (error) {
-      toast.error('Failed to submit rating');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit rating');
     }
   };
 
@@ -118,13 +116,32 @@ const UserProfile = () => {
     navigate('/swap-flow', { state: { partner: profileUser } });
   };
 
-  if (!profileUser) {
+  if (loading) {
     return (
       <div className="max-w-[1280px] mx-auto px-6 py-24 text-center">
         <div className="max-w-md mx-auto space-y-4">
           <div className="h-6 w-48 mx-auto skeleton-shimmer rounded-xl" />
           <div className="h-28 w-full skeleton-shimmer rounded-xl" />
           <p className="font-mono text-xs text-[#71809B]">RETRIEVING PEER IDENTITY...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profileUser) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-6 py-24 text-center">
+        <div className="ui-card max-w-md mx-auto p-8 bg-[#283144] border border-[rgba(255,255,255,0.12)] rounded-2xl space-y-4">
+          <h2 className="heading-h2 text-[#F7F8FC]">Member Not Found</h2>
+          <p className="body-md text-xs text-[#A4B0C6]">
+            This peer profile could not be loaded or does not exist.
+          </p>
+          <button
+            onClick={() => navigate('/marketplace')}
+            className="btn btn-primary text-xs py-2.5 px-5 rounded-xl"
+          >
+            Back to Marketplace
+          </button>
         </div>
       </div>
     );
@@ -187,13 +204,29 @@ const UserProfile = () => {
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
             {hasConnection ? (
-              <button
-                onClick={() => startCall(profileUser)}
-                className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
-              >
-                <Video size={14} />
-                <span>Start Call</span>
-              </button>
+              <>
+                <button
+                  onClick={() => startCall(profileUser)}
+                  className="btn btn-primary text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
+                >
+                  <Video size={14} />
+                  <span>Start Call</span>
+                </button>
+                <button
+                  onClick={() => navigate('/messages', { state: { partnerId: profileUser._id } })}
+                  className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
+                >
+                  <MessageSquare size={14} />
+                  <span>Message</span>
+                </button>
+                <button
+                  onClick={() => setShowRatingModal(true)}
+                  className="btn btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 rounded-xl"
+                >
+                  <Star size={14} />
+                  <span>Rate</span>
+                </button>
+              </>
             ) : (
               <button
                 onClick={handleInitiateSwap}
@@ -201,24 +234,6 @@ const UserProfile = () => {
               >
                 <span>Propose Swap</span>
                 <ArrowRight size={14} />
-              </button>
-            )}
-
-            <button
-              onClick={() => navigate('/messages')}
-              className="btn btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 rounded-xl"
-            >
-              <MessageSquare size={14} />
-              <span>Message</span>
-            </button>
-
-            {hasConnection && (
-              <button
-                onClick={() => setShowRatingModal(true)}
-                className="btn btn-secondary text-xs py-2 px-3 rounded-xl"
-              >
-                <Star size={14} />
-                <span>Rate</span>
               </button>
             )}
 
@@ -364,17 +379,17 @@ const UserProfile = () => {
         <div className="space-y-6">
           <div className="ui-card p-6 bg-[#202738] border border-[rgba(255,255,255,0.12)] space-y-4 rounded-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.08)]">
-              <h3 className="heading-h2 text-xs text-[#F7F8FC] uppercase font-semibold">Swap Reviews</h3>
+              <h3 className="heading-h2 text-xs text-[#F7F8FC] uppercase font-semibold">Swap Standing</h3>
               <span className="tag-chip text-[9px]">ACTIVE</span>
             </div>
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0C6]">Response Time</span>
-                <span className="font-mono font-bold text-[#FFEEA8]">&lt; 2 hrs</span>
+                <span className="text-[#A4B0C6]">Peer Reviews</span>
+                <span className="font-mono font-bold text-[#FFEEA8]">{profileUser.totalRatings || 0}</span>
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
-                <span className="text-[#A4B0C6]">Avg. Session Length</span>
-                <span className="font-bold text-[#F7F8FC]">45 mins</span>
+                <span className="text-[#A4B0C6]">Showcases Shared</span>
+                <span className="font-bold text-[#F7F8FC]">{posts.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[#A4B0C6]">Connection Status</span>
@@ -387,7 +402,7 @@ const UserProfile = () => {
         </div>
       </div>
 
-      {/* Interactive Rating Modal: z-index overlay (200), modal (300) per DESIGN.md */}
+      {/* Interactive Rating Modal */}
       {showRatingModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="z-[300] ui-card rounded-2xl p-6 sm:p-7 w-full max-w-md bg-[#283144] border border-[rgba(255,255,255,0.15)] shadow-2xl">

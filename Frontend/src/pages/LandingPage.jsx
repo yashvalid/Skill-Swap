@@ -98,7 +98,7 @@ const LandingPage = () => {
                     ACTIVE EXCHANGE PAIR
                   </span>
                 </div>
-                <span className="font-mono text-[11px] bg-[#171D2B] border border-[rgba(255, 238, 168,0.3)] text-[#FFEEA8] px-2.5 py-0.5 rounded-full font-medium">
+                <span className="font-mono text-[11px] bg-[#171D2B] border border-[rgba(255,238,168,0.3)] text-[#FFEEA8] px-2.5 py-0.5 rounded-full font-medium">
                   {simulatedSynergy}% COMPATIBLE
                 </span>
               </div>
@@ -129,7 +129,7 @@ const LandingPage = () => {
               {/* Partner B */}
               <div className="p-3.5 bg-[#202738] border border-[rgba(255,255,255,0.08)] rounded-xl mb-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#283144] text-[#FFEEA8] border border-[rgba(255, 238, 168,0.3)] font-mono font-bold flex items-center justify-center text-sm">
+                  <div className="w-10 h-10 rounded-full bg-[#283144] text-[#FFEEA8] border border-[rgba(255,238,168,0.3)] font-mono font-bold flex items-center justify-center text-sm">
                     MT
                   </div>
                   <div>
@@ -298,7 +298,7 @@ const LandingPage = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#FFEEA8] animate-pulse" />
                   <span className="font-mono text-xs text-[#F7F8FC] font-bold">LIVE SWAP SESSION</span>
                 </div>
-                <span className="font-mono text-[10px] bg-[#171D2B] text-[#FFEEA8] px-2.5 py-0.5 rounded-full border border-[rgba(255, 238, 168,0.3)]">
+                <span className="font-mono text-[10px] bg-[#171D2B] text-[#FFEEA8] px-2.5 py-0.5 rounded-full border border-[rgba(255,238,168,0.3)]">
                   IN PROGRESS &bull; 35:00
                 </span>
               </div>
@@ -468,7 +468,7 @@ const LandingPage = () => {
                   <span className="text-[10px] font-mono text-[#A4B0C6] shrink-0 font-bold">Alex:</span>
                 </div>
                 <div className="flex justify-center my-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono bg-[#202738] text-[#FFEEA8] border border-[rgba(255, 238, 168,0.3)]">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono bg-[#202738] text-[#FFEEA8] border border-[rgba(255,238,168,0.3)]">
                     <Video size={10} /> Call ended &bull; 45:12 &bull; Logged to chat
                   </span>
                 </div>

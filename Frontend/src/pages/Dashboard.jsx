@@ -47,7 +47,7 @@ const TIME_SLOTS = [
 ];
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { startCall } = useVideoCall();
   const navigate = useNavigate();
   const [pendingSwaps, setPendingSwaps] = useState([]);
@@ -83,7 +83,7 @@ const Dashboard = () => {
       ]);
       setPendingSwaps(pendingRes.data.pendingSwaps || []);
       setAcceptedSwaps(acceptedRes.data.allUsers || []);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ const Dashboard = () => {
       await swapService.acceptSwap(id);
       toast.success('Swap request accepted! Added to active swaps.');
       fetchSwaps();
-    } catch (error) {
+    } catch {
       toast.error('Failed to accept swap');
     }
   };
@@ -105,7 +105,7 @@ const Dashboard = () => {
       await swapService.rejectSwap(id);
       toast.success('Swap request declined');
       fetchSwaps();
-    } catch (error) {
+    } catch {
       toast.error('Failed to decline swap');
     }
   };
@@ -114,9 +114,9 @@ const Dashboard = () => {
     try {
       await swapService.completeSwap(id);
       toast.success('Milestone certified! Reputation credit updated.');
-      fetchSwaps();
-    } catch (error) {
-      toast.error('Failed to certify swap');
+      await Promise.all([fetchSwaps(), refreshProfile()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to certify swap');
     }
   };
 
@@ -137,7 +137,7 @@ const Dashboard = () => {
       if (res.data?.curriculum) {
         setCurriculumData(res.data.curriculum);
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to generate study plan');
     } finally {
       setCurriculumLoading(false);
@@ -146,8 +146,15 @@ const Dashboard = () => {
 
   const handleCopyCurriculum = () => {
     if (!curriculumData) return;
-    const text = `4-Week Exchange Plan:\n${curriculumData.weeklyPlan?.map(w => `Week ${w.week}: ${w.focus}\n- ${w.actionItems.join('\n- ')}`).join('\n\n')}`;
-    navigator.clipboard.writeText(text);
+    const weeks = curriculumData.weeks || curriculumData.weeklyPlan || [];
+    const lines = weeks.map((w) => {
+      if (w.learnTopic || w.teachTopic || w.milestoneExercise) {
+        return `Week ${w.week}: ${w.focus}\n- Learn: ${w.learnTopic || ''}\n- Teach: ${w.teachTopic || ''}\n- Exercise: ${w.milestoneExercise || ''}`;
+      }
+      return `Week ${w.week}: ${w.focus}\n- ${(w.actionItems || []).join('\n- ')}`;
+    });
+    const header = `${curriculumData.title || '4-Week Exchange Plan'}\n${curriculumData.summary || curriculumData.overview || ''}`;
+    navigator.clipboard.writeText(`${header}\n\n${lines.join('\n\n')}`);
     setCopied(true);
     toast.success('Syllabus copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
@@ -514,7 +521,12 @@ const Dashboard = () => {
                 );
               })}
 
-              {acceptedSwaps.length === 0 && (
+              {loading ? (
+                <>
+                  <div className="h-56 skeleton-shimmer rounded-2xl" />
+                  <div className="h-56 skeleton-shimmer rounded-2xl" />
+                </>
+              ) : acceptedSwaps.length === 0 ? (
                 <div className="md:col-span-2 p-8 text-center ui-card bg-[#202738] border-dashed border-[rgba(255,255,255,0.15)] rounded-2xl">
                   <p className="font-mono text-xs text-[#A4B0C6] mb-3">
                     No active swaps yet
@@ -523,7 +535,7 @@ const Dashboard = () => {
                     Find a Partner
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           </section>
         </div>
@@ -761,9 +773,11 @@ const Dashboard = () => {
             <div className="p-5 border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between bg-[#202738]">
               <div>
                 <span className="font-mono text-[10px] text-[#FFEEA8] uppercase font-semibold">
-                  Reciprocal Roadmap
+                  Reciprocal Roadmap {activeCurriculumSwap?.otherUser?.fullname?.firstname ? `• With ${activeCurriculumSwap.otherUser.fullname.firstname}` : ''}
                 </span>
-                <h3 className="heading-h2 text-lg text-[#F7F8FC]">4-Week Study Syllabus</h3>
+                <h3 className="heading-h2 text-lg text-[#F7F8FC]">
+                  {curriculumData?.title || '4-Week Study Syllabus'}
+                </h3>
               </div>
               <button
                 onClick={() => setCurriculumModalOpen(false)}
@@ -784,24 +798,47 @@ const Dashboard = () => {
                 </div>
               ) : curriculumData ? (
                 <div className="space-y-6">
-                  <div className="p-4 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)]">
-                    <p className="font-mono text-[10px] text-[#A4B0C6] uppercase">Overview</p>
-                    <p className="text-sm font-semibold text-[#F7F8FC] mt-0.5">{curriculumData.overview}</p>
+                  <div className="p-4 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)] space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="font-mono text-[10px] text-[#A4B0C6] uppercase">Overview</p>
+                      {curriculumData.recommendedSessionCadence && (
+                        <span className="tag-chip text-[10px]">{curriculumData.recommendedSessionCadence}</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-[#F7F8FC]">
+                      {curriculumData.summary || curriculumData.overview}
+                    </p>
                   </div>
 
                   <div className="space-y-3">
-                    {curriculumData.weeklyPlan?.map((week) => (
+                    {(curriculumData.weeks || curriculumData.weeklyPlan || []).map((week) => (
                       <div key={week.week} className="p-4 rounded-xl bg-[#202738] border border-[rgba(255,255,255,0.08)] space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-mono text-xs font-bold text-[#FFEEA8]">WEEK 0{week.week}</span>
                           <span className="tag-chip text-[9px]">MILESTONE</span>
                         </div>
                         <h4 className="font-bold text-sm text-[#F7F8FC]">{week.focus}</h4>
-                        <ul className="text-xs text-[#A4B0C6] space-y-1 list-disc list-inside">
-                          {week.actionItems?.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
+                        {week.learnTopic || week.teachTopic || week.milestoneExercise ? (
+                          <div className="space-y-1.5 text-xs text-[#A4B0C6] pt-1">
+                            {week.learnTopic && (
+                              <p><span className="font-mono text-[#FFEEA8] font-semibold">Learn:</span> {week.learnTopic}</p>
+                            )}
+                            {week.teachTopic && (
+                              <p><span className="font-mono text-[#F7F8FC] font-semibold">Teach:</span> {week.teachTopic}</p>
+                            )}
+                            {week.milestoneExercise && (
+                              <p className="pt-1 border-t border-[rgba(255,255,255,0.06)]">
+                                <span className="font-mono text-[#FFA502] font-semibold">Exercise:</span> {week.milestoneExercise}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <ul className="text-xs text-[#A4B0C6] space-y-1 list-disc list-inside">
+                            {week.actionItems?.map((item, idx) => (
+                              <li key={idx}>{item}</li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     ))}
                   </div>

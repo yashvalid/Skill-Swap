@@ -66,7 +66,8 @@ const VideoCallModal = () => {
   const remoteVideoRef = useRef(null);
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
-  const typingTimerRef = useRef(null);
+  const outgoingTypingTimerRef = useRef(null);
+  const partnerTypingTimerRef = useRef(null);
   const isLocalTypingRef = useRef(false);
   const hasPlayedHalfwayCueRef = useRef(false);
 
@@ -83,7 +84,6 @@ const VideoCallModal = () => {
     '# Pair Learning Session Notes\n\n- Discuss swap objectives\n- Live code walkthrough\n- Next steps & review\n'
   );
   const [partnerIsTyping, setPartnerIsTyping] = useState(false);
-  const [lastEditedBy, setLastEditedBy] = useState('');
 
   // Bilateral Split-Timer & Role
   const [targetDuration, setTargetDuration] = useState(30); // minutes
@@ -210,7 +210,9 @@ const VideoCallModal = () => {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.45);
-    } catch (e) {}
+    } catch {
+      // Web Audio playback skipped without user gesture
+    }
   }, []);
 
   // Halfway Split Timer monitor
@@ -241,22 +243,10 @@ const VideoCallModal = () => {
     });
   }, [socket, remoteUser, currentUser]);
 
-  // Auto initial workspace sync on call start
+  // Ensure studio opens when call transitions to ongoing without overwriting loaded swap workspace
   useEffect(() => {
-    if (callStatus === 'ongoing' && remoteUser?._id) {
+    if (callStatus === 'ongoing') {
       setShowStudio(true);
-      const timer = setTimeout(() => {
-        broadcastSync({
-          isOpen: true,
-          content: studioContent,
-          milestones: milestones,
-          mode: studioMode,
-          language: codeLanguage,
-          currentPhase: currentTeacher,
-          targetDuration: targetDuration
-        });
-      }, 400);
-      return () => clearTimeout(timer);
     }
   }, [callStatus]);
 
@@ -265,32 +255,26 @@ const VideoCallModal = () => {
     if (!socket) return;
 
     const handleStudioSync = (data) => {
-      // Synchronize open/closed state so both participants see the notepad
       if (data.isOpen !== undefined) {
         setShowStudio(Boolean(data.isOpen));
       }
-      if (data.content !== undefined) {
-        // Only update if not actively typing to preserve caret position
-        if (!isLocalTypingRef.current) {
-          setStudioContent(data.content);
-        }
+      if (data.content !== undefined && !isLocalTypingRef.current) {
+        setStudioContent(data.content);
       }
       if (data.mode) setStudioMode(data.mode);
       if (data.language) setCodeLanguage(data.language);
       if (data.milestones) setMilestones(data.milestones);
       if (data.currentPhase) {
-        // Invert partner's relative perspective: if partner says 'you', it means them!
         setCurrentTeacher(data.currentPhase === 'you' ? 'partner' : 'you');
       }
       if (data.targetDuration) setTargetDuration(data.targetDuration);
-      if (data.lastEditedBy) setLastEditedBy(data.lastEditedBy);
     };
 
     const handleStudioTyping = (data) => {
       setPartnerIsTyping(Boolean(data.isTyping));
       if (data.isTyping) {
-        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = setTimeout(() => {
+        if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
+        partnerTypingTimerRef.current = setTimeout(() => {
           setPartnerIsTyping(false);
         }, 2000);
       }
@@ -302,9 +286,15 @@ const VideoCallModal = () => {
     return () => {
       socket.off('studio-sync', handleStudioSync);
       socket.off('studio-typing', handleStudioTyping);
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (partnerTypingTimerRef.current) clearTimeout(partnerTypingTimerRef.current);
     };
   }, [socket]);
+
+  useEffect(() => {
+    return () => {
+      if (outgoingTypingTimerRef.current) clearTimeout(outgoingTypingTimerRef.current);
+    };
+  }, []);
 
   // Content edit with debounce & typing status
   const handleContentChange = (e) => {
@@ -320,8 +310,8 @@ const VideoCallModal = () => {
       });
     }
 
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => {
+    if (outgoingTypingTimerRef.current) clearTimeout(outgoingTypingTimerRef.current);
+    outgoingTypingTimerRef.current = setTimeout(() => {
       isLocalTypingRef.current = false;
       broadcastSync({ content: val, mode: studioMode, language: codeLanguage, isOpen: true });
       if (socket && remoteUser?._id) {
@@ -452,7 +442,7 @@ const VideoCallModal = () => {
         sessionNotes: studioContent
       });
       toast.success('Workspace saved to swap history!', { icon: '✅' });
-    } catch (err) {
+    } catch {
       toast.error('Failed to persist workspace to swap');
     } finally {
       setIsSavingWorkspace(false);

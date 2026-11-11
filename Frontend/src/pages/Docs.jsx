@@ -136,13 +136,13 @@ const Docs = () => {
             </p>
             <ul className="space-y-2.5 text-xs text-[#A4B0C6]">
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#FFEEA8] font-semibold">[VERIFIED]</span> Verified member badges on profiles with completed swaps.
+                <span className="font-mono text-[#FFEEA8] font-semibold">[VERIFIED]</span> Verified member badges earned after completing a swap or receiving peer reviews.
               </li>
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#FFEEA8] font-semibold">[RATING]</span> Honest reviews published only after both partners submit feedback.
+                <span className="font-mono text-[#FFEEA8] font-semibold">[RATING]</span> Honest reviews gated strictly to partners with an accepted or completed swap.
               </li>
               <li className="flex items-center gap-2">
-                <span className="font-mono text-[#FFEEA8] font-semibold">[REPORT]</span> 1-click community moderation and instant call disconnection on any violation.
+                <span className="font-mono text-[#FFEEA8] font-semibold">[SAFETY]</span> Authenticated WebSocket signaling, end-to-end encrypted messaging, and instant call disconnection.
               </li>
             </ul>
           </section>

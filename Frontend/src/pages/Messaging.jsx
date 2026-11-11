@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send,
   Video,
@@ -15,10 +15,8 @@ import {
   RotateCcw,
   ArrowDown,
   Lock,
-  ShieldCheck,
   Calendar,
-  X,
-  Clock
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -47,7 +45,7 @@ const SKILLBOT_USER = {
 const DEFAULT_BOT_MESSAGE = {
   _id: 'welcome',
   senderId: 'skillbot',
-  text: "Hey! I'm SkillBot. Ask me anything about what you're learning?from coding and design to languages and music?or get help planning your next swap session.",
+  text: "Hey! I'm SkillBot. Ask me anything about what you're learning — from coding and design to languages and music — or get help planning your next swap session.",
   createdAt: new Date().toISOString()
 };
 
@@ -142,6 +140,8 @@ const Messaging = () => {
   const messagesEndRef = useRef(null);
   const isSwitchingChatRef = useRef(true);
   const prevMessagesCountRef = useRef(0);
+  const chatUsersRef = useRef([]);
+  chatUsersRef.current = chatUsers;
 
   // Initialize E2EE Key Pair
   useEffect(() => {
@@ -179,7 +179,9 @@ const Messaging = () => {
         try {
           const res = await userService.getUserById(activeChatUser._id);
           partnerPubKey = res.data?.user?.publicKey;
-        } catch (e) {}
+        } catch (err) {
+          console.warn('[E2EE] Failed to fetch partner public key:', err.message);
+        }
       }
 
       if (partnerPubKey && !isCancelled) {
@@ -267,127 +269,32 @@ const Messaging = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, [userKeyPair]);
+  const handleSelectChat = useCallback((user) => {
+    setActiveChatUser(prev => {
+      if (prev?._id === user._id) return prev;
+      isSwitchingChatRef.current = true;
+      setShowScrollBottomPill(false);
+      return user;
+    });
+    setMobileView('chat');
+  }, []);
 
-  useEffect(() => {
-    if (socket) {
-      const handleNewMessage = async (data) => {
-        let processedData = data;
-        if (data.isEncrypted && data.iv) {
-          let currentKey = partnerSharedKey;
-          if (!currentKey && userKeyPair?.privateKey && activeChatUser?.publicKey) {
-            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, activeChatUser.publicKey);
-          }
-          if (currentKey) {
-            const decrypted = await decryptMessageText(data.text, data.iv, currentKey);
-            processedData = { ...data, text: decrypted, isDecrypted: true };
-          } else {
-            processedData = { ...data, text: '[Encrypted message]', isDecrypted: false };
-          }
-        }
-
-        if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
-          setMessages((prev) => {
-            if (data._id && prev.some((m) => m._id === data._id)) return prev;
-            return [...prev, processedData];
-          });
-        }
-
-        // Reorder recipient list: partner with latest message moves to top
-        const partnerId = data.senderId === currentUser?._id ? data.receiverId : data.senderId;
-        const msgTime = new Date(data.createdAt || Date.now()).getTime();
-
-        setChatUsers((prev) => {
-          const updated = prev.map((item) => {
-            if (item.otherUser?._id === partnerId) {
-              return {
-                ...item,
-                lastMessage: processedData,
-                lastMessageAt: msgTime,
-              };
-            }
-            return item;
-          });
-          return sortByRecentMessage(updated);
-        });
-      };
-
-      socket.on('new-message', handleNewMessage);
-
-      return () => {
-        socket.off('new-message', handleNewMessage);
-      };
-    }
-  }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
-
-  useEffect(() => {
-    isSwitchingChatRef.current = true;
-    setShowScrollBottomPill(false);
-    if (activeChatUser && !activeChatUser.isBot) {
-      fetchMessages();
-    } else if (activeChatUser?.isBot) {
-      requestAnimationFrame(() => {
-        scrollToBottom('auto');
-        isSwitchingChatRef.current = false;
-      });
-    }
-  }, [activeChatUser]);
-
-  const currentChatMessages = activeChatUser?.isBot ? botMessages : messages;
-
-  useEffect(() => {
-    const currentCount = currentChatMessages.length;
-    const prevCount = prevMessagesCountRef.current;
-    prevMessagesCountRef.current = currentCount;
-
-    // Opening or switching chat: immediately snap to the bottom to see latest message
-    if (isSwitchingChatRef.current) {
-      requestAnimationFrame(() => {
-        scrollToBottom('auto');
-        isSwitchingChatRef.current = false;
-      });
-      return;
-    }
-
-    if (currentCount <= prevCount) return;
-
-    const lastMessage = currentChatMessages[currentCount - 1];
-    const isSentByMe = lastMessage?.senderId === currentUser?._id;
-
-    if (isSentByMe) {
-      // Sent by current user: scroll down smoothly
-      requestAnimationFrame(() => {
-        scrollToBottom('smooth');
-      });
-    } else {
-      // Incoming message from peer or bot:
-      // Only scroll down if user is ALREADY near the bottom!
-      if (isNearBottom()) {
-        requestAnimationFrame(() => {
-          scrollToBottom('smooth');
-        });
-      } else {
-        // Scrolled up reading history: DO NOT auto-scroll down!
-        setShowScrollBottomPill(true);
-      }
-    }
-  }, [currentChatMessages, currentUser?._id]);
-
-  useEffect(() => {
-    if (botLoading && isNearBottom()) {
-      requestAnimationFrame(() => {
-        scrollToBottom('smooth');
-      });
-    }
-  }, [botLoading]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await swapService.getAcceptedSwaps();
-      const users = response.data.allUsers || [];
-      
+      const rawUsers = response.data.allUsers || [];
+
+      // Keep one conversation entry per unique partner
+      const uniquePartnersMap = new Map();
+      for (const item of rawUsers) {
+        const pid = item.otherUser?._id;
+        if (!pid) continue;
+        if (!uniquePartnersMap.has(pid)) {
+          uniquePartnersMap.set(pid, item);
+        }
+      }
+      const users = Array.from(uniquePartnersMap.values());
+
       const processedUsers = await Promise.all(
         users.map(async (item) => {
           if (item.lastMessage?.isEncrypted && item.lastMessage?.iv && userKeyPair?.privateKey && item.otherUser?.publicKey) {
@@ -404,19 +311,19 @@ const Messaging = () => {
                   }
                 };
               }
-            } catch (e) {}
+            } catch (err) {
+              console.warn('[E2EE] Last message decryption skipped:', err.message);
+            }
           }
           return item;
         })
       );
       setChatUsers(sortByRecentMessage(processedUsers));
 
-      // Auto-select partner if navigated from Dashboard
       if (location.state?.partnerId) {
         const found = processedUsers.find(u => u.otherUser?._id === location.state.partnerId);
         if (found?.otherUser) {
           handleSelectChat(found.otherUser);
-          setMobileView('chat');
         }
       }
     } catch (error) {
@@ -424,22 +331,81 @@ const Messaging = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userKeyPair, location.state?.partnerId, handleSelectChat]);
 
-  const fetchMessages = async () => {
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = async (data) => {
+      const partnerId = data.senderId === currentUser?._id ? data.receiverId : data.senderId;
+      let processedData = data;
+
+      if (data.isEncrypted && data.iv) {
+        let currentKey = partnerId === activeChatUser?._id ? partnerSharedKey : null;
+        if (!currentKey && userKeyPair?.privateKey) {
+          const partnerEntry = chatUsersRef.current.find(u => u.otherUser?._id === partnerId);
+          const partnerPubKey = partnerEntry?.otherUser?.publicKey || (partnerId === activeChatUser?._id ? activeChatUser?.publicKey : null);
+          if (partnerPubKey) {
+            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, partnerId, partnerPubKey);
+          }
+        }
+        if (currentKey) {
+          const decrypted = await decryptMessageText(data.text, data.iv, currentKey);
+          processedData = { ...data, text: decrypted, isDecrypted: true };
+        } else {
+          processedData = { ...data, text: '[Encrypted message]', isDecrypted: false };
+        }
+      }
+
+      if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
+        setMessages((prev) => {
+          if (data._id && prev.some((m) => m._id === data._id)) return prev;
+          return [...prev, processedData];
+        });
+      }
+
+      const msgTime = new Date(data.createdAt || Date.now()).getTime();
+      setChatUsers((prev) => {
+        const updated = prev.map((item) => {
+          if (item.otherUser?._id === partnerId) {
+            return {
+              ...item,
+              lastMessage: processedData,
+              lastMessageAt: msgTime,
+            };
+          }
+          return item;
+        });
+        return sortByRecentMessage(updated);
+      });
+    };
+
+    socket.on('new-message', handleNewMessage);
+    return () => {
+      socket.off('new-message', handleNewMessage);
+    };
+  }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!activeChatUser?._id || activeChatUser.isBot) return;
     try {
       const { data } = await messageService.getMessages(activeChatUser._id);
       const rawMessages = data.messages || [];
 
-      // Determine shared key if needed
       let currentKey = partnerSharedKey;
       if (!currentKey && userKeyPair?.privateKey) {
         let partnerPubKey = activeChatUser.publicKey;
-        if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
+        if (!partnerPubKey && !activeChatUser._id.startsWith('peer-')) {
           try {
             const res = await userService.getUserById(activeChatUser._id);
             partnerPubKey = res.data?.user?.publicKey;
-          } catch (e) {}
+          } catch (err) {
+            console.warn('[E2EE] Partner key lookup skipped:', err.message);
+          }
         }
         if (partnerPubKey) {
           currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
@@ -473,16 +439,61 @@ const Messaging = () => {
       setMessages([]);
       isSwitchingChatRef.current = false;
     }
-  };
+  }, [activeChatUser, partnerSharedKey, userKeyPair]);
 
-  const handleSelectChat = (user) => {
-    if (activeChatUser?._id !== user._id) {
-      isSwitchingChatRef.current = true;
-      setShowScrollBottomPill(false);
-      setActiveChatUser(user);
-      setMobileView('chat');
+  useEffect(() => {
+    isSwitchingChatRef.current = true;
+    setShowScrollBottomPill(false);
+    if (activeChatUser && !activeChatUser.isBot) {
+      fetchMessages();
+    } else if (activeChatUser?.isBot) {
+      requestAnimationFrame(() => {
+        scrollToBottom('auto');
+        isSwitchingChatRef.current = false;
+      });
     }
-  };
+  }, [activeChatUser, fetchMessages]);
+
+  const currentChatMessages = activeChatUser?.isBot ? botMessages : messages;
+
+  useEffect(() => {
+    const currentCount = currentChatMessages.length;
+    const prevCount = prevMessagesCountRef.current;
+    prevMessagesCountRef.current = currentCount;
+
+    if (isSwitchingChatRef.current) {
+      requestAnimationFrame(() => {
+        scrollToBottom('auto');
+        isSwitchingChatRef.current = false;
+      });
+      return;
+    }
+
+    if (currentCount <= prevCount) return;
+
+    const lastMessage = currentChatMessages[currentCount - 1];
+    const isSentByMe = lastMessage?.senderId === currentUser?._id;
+
+    if (isSentByMe) {
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+    } else if (isNearBottom()) {
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+    } else {
+      setShowScrollBottomPill(true);
+    }
+  }, [currentChatMessages, currentUser?._id]);
+
+  useEffect(() => {
+    if (botLoading && isNearBottom()) {
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+    }
+  }, [botLoading]);
 
   const handleOpenSchedule = () => {
     setScheduleDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
@@ -554,7 +565,7 @@ const Messaging = () => {
           createdAt: new Date().toISOString()
         };
         setBotMessages(prev => [...prev, botReply]);
-      } catch (err) {
+      } catch {
         setBotMessages(prev => [
           ...prev,
           {
@@ -576,7 +587,9 @@ const Messaging = () => {
             try {
               const res = await userService.getUserById(activeChatUser._id);
               partnerPubKey = res.data?.user?.publicKey;
-            } catch (e) {}
+            } catch (err) {
+              console.warn('[E2EE] Failed to lookup partner public key on send:', err.message);
+            }
           }
           if (partnerPubKey) {
             currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
@@ -815,7 +828,7 @@ const Messaging = () => {
                         {activeChatUser.isBot ? 'AI TUTOR' : 'PARTNER'}
                       </span>
                       {!activeChatUser.isBot && isE2EEActive && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255, 238, 168,0.3)]">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-[#FFEEA8] bg-[#171D2B] px-2 py-0.5 rounded-full border border-[rgba(255,238,168,0.3)]">
                           <Lock size={9} /> <span className="hidden sm:inline">E2E Encrypted</span><span className="sm:hidden">E2EE</span>
                         </span>
                       )}
@@ -885,7 +898,7 @@ const Messaging = () => {
 
                 {!activeChatUser.isBot && isE2EEActive && (
                   <div className="flex justify-center my-3">
-                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#171D2B] rounded-full border border-[rgba(255, 238, 168,0.25)] text-[#A4B0C6] text-[10px] font-mono max-w-md text-center">
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#171D2B] rounded-full border border-[rgba(255,238,168,0.25)] text-[#A4B0C6] text-[10px] font-mono max-w-md text-center">
                       <Lock size={12} className="text-[#FFEEA8] shrink-0" />
                       <span>Messages in this conversation are end-to-end encrypted. No one outside of this chat can read them.</span>
                     </div>
@@ -907,8 +920,8 @@ const Messaging = () => {
                         <div className="flex items-center gap-3 px-4 py-2.5 bg-[#171D2B] border border-[rgba(255,255,255,0.12)] rounded-xl shadow-sm max-w-md w-full sm:w-auto">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                             isMissedOrDeclined 
-                              ? 'bg-[#D72E2B]/20 text-[#D72E2B] border border-[rgba(215, 46, 43,0.3)]' 
-                              : 'bg-[#FFEEA8]/20 text-[#FFEEA8] border border-[rgba(255, 238, 168,0.3)]'
+                              ? 'bg-[#D72E2B]/20 text-[#D72E2B] border border-[rgba(215,46,43,0.3)]' 
+                              : 'bg-[#FFEEA8]/20 text-[#FFEEA8] border border-[rgba(255,238,168,0.3)]'
                           }`}>
                             <Video size={15} />
                           </div>
@@ -943,7 +956,7 @@ const Messaging = () => {
                             isMe
                               ? 'bg-[#2B3F74] text-white font-medium shadow-sm'
                               : isBotMsg
-                              ? 'bg-[#202738] text-[#F7F8FC] border border-[rgba(255, 238, 168,0.3)] shadow-xs'
+                              ? 'bg-[#202738] text-[#F7F8FC] border border-[rgba(255,238,168,0.3)] shadow-xs'
                               : 'bg-[#283144] text-[#F7F8FC] border border-[rgba(255,255,255,0.1)] shadow-xs'
                           }`}
                         >

@@ -3,6 +3,7 @@ import api from './api';
 export const userService = {
   register: (data) => api.post('/users/register', data),
   login: (data) => api.post('/users/login', data),
+  logout: () => api.post('/users/logout'),
   getProfile: () => api.get('/users/profile'),
   getAllUsers: () => api.get('/users/all-users'),
   getUserById: (id) => api.get(`/users/${id}`),
