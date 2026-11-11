@@ -204,6 +204,9 @@ module.exports.updateProfile = async (req, res) => {
             { new: true, runValidators: true }
         ).select('-password -__v');
         if (!user) return res.status(404).json({ message: "User not found" });
+        if (allowedFields.publicKey !== undefined) {
+            await invalidateCache('cache:swaps:accepted:*');
+        }
         return res.status(200).json({ message: "Profile updated successfully", user });
     } catch (err) {
         return res.status(500).json({ message: "Internal server error" });

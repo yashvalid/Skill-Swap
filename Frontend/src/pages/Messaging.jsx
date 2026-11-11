@@ -115,7 +115,7 @@ const TIME_SLOTS = [
 ];
 
 const Messaging = () => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { socket, isUserOnline, swapEvent } = useSocket();
@@ -165,11 +165,58 @@ const Messaging = () => {
   const partnerSharedKeyRef = useRef(partnerSharedKey);
   partnerSharedKeyRef.current = partnerSharedKey;
   const refreshedPartnerKeysRef = useRef(new Set());
+  const derivedKeysByPartnerRef = useRef(new Map());
   const rawMessagesRef = useRef([]);
   const messagesRef = useRef([]);
   messagesRef.current = messages;
   const chatUsersRef = useRef([]);
   chatUsersRef.current = chatUsers;
+
+  const activePartnerId = activeChatUser?.isBot ? null : activeChatUser?._id || null;
+
+  const resolvePartnerSharedKey = useCallback(async (partnerUser, { forceRefresh = false } = {}) => {
+    const partnerId = partnerUser?._id;
+    const privKey = userKeyPairRef.current?.privateKey;
+    if (!privKey || !partnerId || partnerId === 'skillbot' || partnerId.startsWith('peer-')) {
+      return null;
+    }
+
+    if (!forceRefresh && derivedKeysByPartnerRef.current.has(partnerId)) {
+      const cached = derivedKeysByPartnerRef.current.get(partnerId);
+      if (activeChatUserRef.current?._id === partnerId) {
+        partnerSharedKeyRef.current = cached;
+        setPartnerSharedKey(cached);
+        setIsE2EEActive(true);
+      }
+      return cached;
+    }
+
+    let partnerPubKey = forceRefresh ? null : partnerUser.publicKey;
+    if (!partnerPubKey) {
+      try {
+        const res = await userService.getUserById(partnerId);
+        partnerPubKey = res.data?.user?.publicKey || null;
+      } catch (err) {
+        console.warn('[E2EE] Partner public key lookup skipped:', err.message);
+      }
+    }
+    if (!partnerPubKey) return null;
+
+    if (forceRefresh) {
+      clearSharedKeyCacheForPartner(partnerId);
+    }
+
+    const sharedKey = await getOrDeriveSharedKey(privKey, partnerId, partnerPubKey);
+    if (sharedKey) {
+      derivedKeysByPartnerRef.current.set(partnerId, sharedKey);
+      if (activeChatUserRef.current?._id === partnerId) {
+        partnerSharedKeyRef.current = sharedKey;
+        setPartnerSharedKey(sharedKey);
+        setIsE2EEActive(true);
+      }
+    }
+    return sharedKey;
+  }, []);
 
   // Initialize E2EE Key Pair
   useEffect(() => {
@@ -179,9 +226,15 @@ const Messaging = () => {
       try {
         const keyInfo = await getOrInitUserKeyPair(currentUser._id);
         if (keyInfo && !isCancelled) {
+          derivedKeysByPartnerRef.current.clear();
+          refreshedPartnerKeysRef.current.clear();
+          userKeyPairRef.current = keyInfo;
           setUserKeyPair(keyInfo);
-          if (keyInfo.isNew || !currentUser.publicKey) {
-            await userService.updateProfile({ publicKey: keyInfo.publicKeyJwkString });
+          if (keyInfo.isNew || !currentUser.publicKey || currentUser.publicKey !== keyInfo.publicKeyJwkString) {
+            const res = await userService.updateProfile({ publicKey: keyInfo.publicKeyJwkString });
+            if (res.data?.user && !isCancelled) {
+              setUser(res.data.user);
+            }
           }
         }
       } catch (err) {
@@ -190,38 +243,23 @@ const Messaging = () => {
     };
     initCrypto();
     return () => { isCancelled = true; };
-  }, [currentUser?._id, currentUser?.publicKey]);
+  }, [currentUser?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derive E2EE Shared Key for Active Conversation
   useEffect(() => {
     let isCancelled = false;
     const deriveKeyForChat = async () => {
-      if (!activeChatUser || activeChatUser.isBot || !userKeyPair?.privateKey) {
+      if (!activePartnerId || !userKeyPair?.privateKey) {
+        partnerSharedKeyRef.current = null;
         setPartnerSharedKey(null);
         setIsE2EEActive(false);
         return;
       }
 
-      let partnerPubKey = activeChatUser.publicKey;
-      if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
-        try {
-          const res = await userService.getUserById(activeChatUser._id);
-          partnerPubKey = res.data?.user?.publicKey;
-        } catch (err) {
-          console.warn('[E2EE] Failed to fetch partner public key:', err.message);
-        }
-      }
-
-      if (partnerPubKey && !isCancelled) {
-        const derivedKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
-        if (!isCancelled && derivedKey) {
-          setPartnerSharedKey(derivedKey);
-          setIsE2EEActive(true);
-          return;
-        }
-      }
-
-      if (!isCancelled) {
+      const partnerObj = activeChatUserRef.current;
+      const derivedKey = await resolvePartnerSharedKey(partnerObj);
+      if (!isCancelled && !derivedKey) {
+        partnerSharedKeyRef.current = null;
         setPartnerSharedKey(null);
         setIsE2EEActive(false);
       }
@@ -229,7 +267,7 @@ const Messaging = () => {
 
     deriveKeyForChat();
     return () => { isCancelled = true; };
-  }, [activeChatUser, userKeyPair]);
+  }, [activePartnerId, userKeyPair, resolvePartnerSharedKey]);
 
   // Sync botMessages to localStorage on change
   useEffect(() => {
@@ -302,6 +340,14 @@ const Messaging = () => {
       if (prev?._id === user._id) return prev;
       isSwitchingChatRef.current = true;
       setShowScrollBottomPill(false);
+      const cachedKey = user?.isBot ? null : (derivedKeysByPartnerRef.current.get(user._id) || null);
+      partnerSharedKeyRef.current = cachedKey;
+      setPartnerSharedKey(cachedKey);
+      setIsE2EEActive(Boolean(cachedKey));
+      if (!user?.isBot) {
+        setMessages([]);
+        rawMessagesRef.current = [];
+      }
       return user;
     });
     setMobileView('chat');
@@ -325,12 +371,18 @@ const Messaging = () => {
 
       const processedUsers = await Promise.all(
         users.map(async (item) => {
-          const activeKeyPair = userKeyPairRef.current;
-          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv && activeKeyPair?.privateKey && item.otherUser?.publicKey) {
+          if (item.lastMessage?.isEncrypted && item.lastMessage?.iv) {
             try {
-              const key = await getOrDeriveSharedKey(activeKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
+              const key = await resolvePartnerSharedKey(item.otherUser);
               if (key) {
-                const dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, key);
+                let dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, key);
+                if (dec === '[Unable to decrypt message]' && !refreshedPartnerKeysRef.current.has(`prev:${item.otherUser?._id}`)) {
+                  refreshedPartnerKeysRef.current.add(`prev:${item.otherUser?._id}`);
+                  const freshKey = await resolvePartnerSharedKey(item.otherUser, { forceRefresh: true });
+                  if (freshKey) {
+                    dec = await decryptMessageText(item.lastMessage.text, item.lastMessage.iv, freshKey);
+                  }
+                }
                 return {
                   ...item,
                   lastMessage: {
@@ -341,6 +393,14 @@ const Messaging = () => {
                   }
                 };
               }
+              return {
+                ...item,
+                lastMessage: {
+                  ...item.lastMessage,
+                  _cipherText: item.lastMessage.text,
+                  isDecrypted: false
+                }
+              };
             } catch (err) {
               console.warn('[E2EE] Last message decryption skipped:', err.message);
             }
@@ -361,7 +421,7 @@ const Messaging = () => {
     } finally {
       setLoading(false);
     }
-  }, [location.state?.partnerId, handleSelectChat]);
+  }, [location.state?.partnerId, handleSelectChat, resolvePartnerSharedKey]);
 
   useEffect(() => {
     if (currentUser?._id) {
@@ -369,19 +429,32 @@ const Messaging = () => {
     }
   }, [currentUser?._id, fetchUsers, swapEvent]);
 
-  // Re-decrypt sidebar lastMessage previews locally once E2EE keypair loads
+  // Re-decrypt sidebar lastMessage previews locally once E2EE keypair loads or keys are restored
   useEffect(() => {
     if (!userKeyPair?.privateKey || chatUsersRef.current.length === 0) return;
+    const hasPendingPreview = chatUsersRef.current.some(
+      (item) => item.lastMessage?.isEncrypted && !item.lastMessage?.isDecrypted && item.lastMessage?.iv && (item.lastMessage?._cipherText || item.lastMessage?.text)
+    );
+    if (!hasPendingPreview) return;
+
     let cancelled = false;
     const decryptPreviews = async () => {
       const updated = await Promise.all(
         chatUsersRef.current.map(async (item) => {
           const cipherText = item.lastMessage?._cipherText || item.lastMessage?.text;
-          if (item.lastMessage?.isEncrypted && !item.lastMessage?.isDecrypted && item.lastMessage?.iv && item.otherUser?.publicKey && cipherText) {
+          if (item.lastMessage?.isEncrypted && !item.lastMessage?.isDecrypted && item.lastMessage?.iv && cipherText) {
             try {
-              const key = await getOrDeriveSharedKey(userKeyPair.privateKey, item.otherUser._id, item.otherUser.publicKey);
+              let key = await resolvePartnerSharedKey(item.otherUser);
               if (key) {
-                const dec = await decryptMessageText(cipherText, item.lastMessage.iv, key);
+                let dec = await decryptMessageText(cipherText, item.lastMessage.iv, key);
+                if (dec === '[Unable to decrypt message]' && !refreshedPartnerKeysRef.current.has(`prev:${item.otherUser?._id}`)) {
+                  refreshedPartnerKeysRef.current.add(`prev:${item.otherUser?._id}`);
+                  const freshKey = await resolvePartnerSharedKey(item.otherUser, { forceRefresh: true });
+                  if (freshKey) {
+                    key = freshKey;
+                    dec = await decryptMessageText(cipherText, item.lastMessage.iv, freshKey);
+                  }
+                }
                 return {
                   ...item,
                   lastMessage: {
@@ -405,59 +478,25 @@ const Messaging = () => {
     };
     decryptPreviews();
     return () => { cancelled = true; };
-  }, [userKeyPair]);
+  }, [userKeyPair, loading, resolvePartnerSharedKey]);
 
-  const decryptMessageBatch = useCallback(async (rawMessages, partnerUser, initialKey) => {
-    const activeKeyPair = userKeyPairRef.current;
-    let activeKey = initialKey || partnerSharedKeyRef.current;
-    if (!activeKey && activeKeyPair?.privateKey && partnerUser?._id) {
-      let partnerPubKey = partnerUser.publicKey;
-      if (!partnerPubKey && !partnerUser._id.startsWith('peer-') && !refreshedPartnerKeysRef.current.has(partnerUser._id)) {
-        refreshedPartnerKeysRef.current.add(partnerUser._id);
-        try {
-          const res = await userService.getUserById(partnerUser._id);
-          partnerPubKey = res.data?.user?.publicKey;
-        } catch (err) {
-          console.warn('[E2EE] Partner key lookup skipped:', err.message);
-        }
-      }
-      if (partnerPubKey) {
-        activeKey = await getOrDeriveSharedKey(activeKeyPair.privateKey, partnerUser._id, partnerPubKey);
-        if (activeKey && activeChatUserRef.current?._id === partnerUser._id) {
-          partnerSharedKeyRef.current = activeKey;
-          setPartnerSharedKey(activeKey);
-          setIsE2EEActive(true);
-        }
-      }
-    }
-
+  const decryptMessageBatch = useCallback(async (rawMessages, partnerUser) => {
+    let activeKey = await resolvePartnerSharedKey(partnerUser);
     let attemptedRefresh = partnerUser?._id ? refreshedPartnerKeysRef.current.has(`retry:${partnerUser._id}`) : true;
-    return Promise.all(
+
+    const decryptedBatch = await Promise.all(
       rawMessages.map(async (msg) => {
         if (!msg.isEncrypted || !msg.iv) return msg;
         if (!activeKey) return { ...msg, _cipherText: msg.text, text: '[Encrypted message]', isDecrypted: false };
 
         let decrypted = await decryptMessageText(msg.text, msg.iv, activeKey);
-        if (decrypted === '[Unable to decrypt message]' && !attemptedRefresh && partnerUser?._id && !partnerUser._id.startsWith('peer-') && activeKeyPair?.privateKey) {
+        if (decrypted === '[Unable to decrypt message]' && !attemptedRefresh && partnerUser?._id) {
           attemptedRefresh = true;
           refreshedPartnerKeysRef.current.add(`retry:${partnerUser._id}`);
-          try {
-            clearSharedKeyCacheForPartner(partnerUser._id);
-            const res = await userService.getUserById(partnerUser._id);
-            const freshPubKey = res.data?.user?.publicKey;
-            if (freshPubKey) {
-              const refreshedKey = await getOrDeriveSharedKey(activeKeyPair.privateKey, partnerUser._id, freshPubKey);
-              if (refreshedKey) {
-                activeKey = refreshedKey;
-                if (activeChatUserRef.current?._id === partnerUser._id) {
-                  partnerSharedKeyRef.current = refreshedKey;
-                  setPartnerSharedKey(refreshedKey);
-                }
-                decrypted = await decryptMessageText(msg.text, msg.iv, refreshedKey);
-              }
-            }
-          } catch {
-            // Keep graceful fallback
+          const refreshedKey = await resolvePartnerSharedKey(partnerUser, { forceRefresh: true });
+          if (refreshedKey) {
+            activeKey = refreshedKey;
+            decrypted = await decryptMessageText(msg.text, msg.iv, refreshedKey);
           }
         }
         return {
@@ -468,7 +507,9 @@ const Messaging = () => {
         };
       })
     );
-  }, []);
+
+    return decryptedBatch;
+  }, [resolvePartnerSharedKey]);
 
   useEffect(() => {
     if (!socket) return;
@@ -478,29 +519,39 @@ const Messaging = () => {
       let processedData = data;
 
       if (data.isEncrypted && data.iv) {
-        let currentKey = partnerId === activeChatUser?._id ? partnerSharedKey : null;
-        if (!currentKey && userKeyPair?.privateKey) {
-          const partnerEntry = chatUsersRef.current.find(u => u.otherUser?._id === partnerId);
-          const partnerPubKey = partnerEntry?.otherUser?.publicKey || (partnerId === activeChatUser?._id ? activeChatUser?.publicKey : null);
-          if (partnerPubKey) {
-            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, partnerId, partnerPubKey);
-          }
-        }
+        const partnerEntry = chatUsersRef.current.find(u => u.otherUser?._id === partnerId);
+        const partnerObj = partnerEntry?.otherUser || (partnerId === activeChatUserRef.current?._id ? activeChatUserRef.current : { _id: partnerId });
+        let currentKey = await resolvePartnerSharedKey(partnerObj);
+
         if (currentKey) {
-          const decrypted = await decryptMessageText(data.text, data.iv, currentKey);
-          processedData = { ...data, text: decrypted, isDecrypted: decrypted !== '[Unable to decrypt message]' };
+          let decrypted = await decryptMessageText(data.text, data.iv, currentKey);
+          if (decrypted === '[Unable to decrypt message]' && !refreshedPartnerKeysRef.current.has(`sock:${partnerId}`)) {
+            refreshedPartnerKeysRef.current.add(`sock:${partnerId}`);
+            const refreshedKey = await resolvePartnerSharedKey(partnerObj, { forceRefresh: true });
+            if (refreshedKey) {
+              currentKey = refreshedKey;
+              decrypted = await decryptMessageText(data.text, data.iv, refreshedKey);
+            }
+          }
+          processedData = {
+            ...data,
+            _cipherText: data.text,
+            text: decrypted,
+            isDecrypted: decrypted !== '[Unable to decrypt message]'
+          };
         } else {
-          processedData = { ...data, text: '[Encrypted message]', isDecrypted: false };
+          processedData = { ...data, _cipherText: data.text, text: '[Encrypted message]', isDecrypted: false };
         }
       }
 
-      const isFromOpenPartner = activeChatUser && !activeChatUser.isBot && data.senderId === activeChatUser._id;
+      const currentOpenPartner = activeChatUserRef.current;
+      const isFromOpenPartner = currentOpenPartner && !currentOpenPartner.isBot && data.senderId === currentOpenPartner._id;
       if (isFromOpenPartner) {
         setPartnerTyping(false);
-        messageService.markSeen(activeChatUser._id).catch(() => {});
+        messageService.markSeen(currentOpenPartner._id).catch(() => {});
       }
 
-      if (activeChatUser && !activeChatUser.isBot && (data.senderId === activeChatUser._id || data.receiverId === activeChatUser._id)) {
+      if (currentOpenPartner && !currentOpenPartner.isBot && (data.senderId === currentOpenPartner._id || data.receiverId === currentOpenPartner._id)) {
         setMessages((prev) => {
           if (data._id && prev.some((m) => m._id === data._id)) return prev;
           return [...prev, processedData];
@@ -558,9 +609,7 @@ const Messaging = () => {
       socket.off('messages-seen', handleMessagesSeen);
       if (partnerTypingTimeoutRef.current) clearTimeout(partnerTypingTimeoutRef.current);
     };
-  }, [socket, activeChatUser, currentUser?._id, partnerSharedKey, userKeyPair]);
-
-  const activePartnerId = activeChatUser?.isBot ? null : activeChatUser?._id;
+  }, [socket, currentUser?._id, resolvePartnerSharedKey]);
 
   const fetchMessages = useCallback(async (partnerId) => {
     const partnerObj = activeChatUserRef.current;
@@ -575,7 +624,7 @@ const Messaging = () => {
       rawMessagesRef.current = rawMessages;
       setHasMoreMessages(Boolean(data.hasMore));
 
-      const processed = await decryptMessageBatch(rawMessages, partnerObj, partnerSharedKeyRef.current);
+      const processed = await decryptMessageBatch(rawMessages, partnerObj);
       if (activeChatUserRef.current?._id !== partnerId) return;
 
       setMessages(processed);
@@ -622,7 +671,7 @@ const Messaging = () => {
       rawMessagesRef.current = [...olderRaw, ...rawMessagesRef.current];
       setHasMoreMessages(Boolean(data.hasMore));
 
-      const olderProcessed = await decryptMessageBatch(olderRaw, activeChatUser, partnerSharedKeyRef.current);
+      const olderProcessed = await decryptMessageBatch(olderRaw, activeChatUser);
       isPrependingRef.current = true;
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m._id));
@@ -656,11 +705,11 @@ const Messaging = () => {
     }
   }, [activePartnerId, activeChatUser?.isBot, fetchMessages]);
 
-  // In-memory re-decryption when shared key finishes deriving after initial fetch (no extra HTTP call)
+  // In-memory re-decryption when shared key finishes deriving or keys are restored (no extra HTTP call)
   useEffect(() => {
-    if (!partnerSharedKey || !activeChatUserRef.current || activeChatUserRef.current.isBot) return;
+    if (!partnerSharedKey || !activePartnerId) return;
     const current = messagesRef.current;
-    const needsDecrypt = current.some((m) => m.isEncrypted && !m.isDecrypted && m._cipherText);
+    const needsDecrypt = current.some((m) => m.isEncrypted && m._cipherText && !m.isDecrypted);
     if (!needsDecrypt) return;
 
     let cancelled = false;
@@ -679,7 +728,7 @@ const Messaging = () => {
       }
     });
     return () => { cancelled = true; };
-  }, [partnerSharedKey]);
+  }, [partnerSharedKey, activePartnerId]);
 
   const currentChatMessages = activeChatUser?.isBot ? botMessages : messages;
 
@@ -830,13 +879,27 @@ const Messaging = () => {
     setImportingKeys(true);
     try {
       const restored = await importUserKeyBackup(currentUser._id, backupInput);
-      await userService.updateProfile({ publicKey: restored.publicKeyJwkString });
-      setUserKeyPair({
+      const res = await userService.updateProfile({ publicKey: restored.publicKeyJwkString });
+      if (res.data?.user) {
+        setUser(res.data.user);
+      }
+      derivedKeysByPartnerRef.current.clear();
+      refreshedPartnerKeysRef.current.clear();
+      const nextPair = {
         privateKey: restored.privateKey,
         publicKeyJwkString: restored.publicKeyJwkString,
         isNew: false
-      });
+      };
+      userKeyPairRef.current = nextPair;
+      setUserKeyPair(nextPair);
+      partnerSharedKeyRef.current = null;
       setPartnerSharedKey(null);
+      setMessages((prev) => prev.map((m) => (m._cipherText ? { ...m, isDecrypted: false } : m)));
+      setChatUsers((prev) => prev.map((item) => (
+        item.lastMessage?._cipherText
+          ? { ...item, lastMessage: { ...item.lastMessage, isDecrypted: false } }
+          : item
+      )));
       setBackupInput('');
       setKeyModalOpen(false);
       toast.success('E2EE keys restored! Re-decrypting messages...');
@@ -902,25 +965,7 @@ const Messaging = () => {
       }
     } else {
       try {
-        let currentKey = partnerSharedKey;
-        if (!currentKey && userKeyPair?.privateKey) {
-          let partnerPubKey = activeChatUser.publicKey;
-          if (!partnerPubKey && activeChatUser._id && !activeChatUser._id.startsWith('peer-')) {
-            try {
-              const res = await userService.getUserById(activeChatUser._id);
-              partnerPubKey = res.data?.user?.publicKey;
-            } catch (err) {
-              console.warn('[E2EE] Failed to lookup partner public key on send:', err.message);
-            }
-          }
-          if (partnerPubKey) {
-            currentKey = await getOrDeriveSharedKey(userKeyPair.privateKey, activeChatUser._id, partnerPubKey);
-            if (currentKey) {
-              setPartnerSharedKey(currentKey);
-              setIsE2EEActive(true);
-            }
-          }
-        }
+        const currentKey = await resolvePartnerSharedKey(activeChatUser);
 
         let payload = {
           receiverId: activeChatUser._id,
@@ -1343,7 +1388,20 @@ const Messaging = () => {
                               : 'bg-[#283144] text-[#F7F8FC] border border-[rgba(255,255,255,0.1)] shadow-xs'
                           }`}
                         >
-                          {msg.text}
+                          {msg.isEncrypted && !msg.isDecrypted && msg.text === '[Unable to decrypt message]' ? (
+                            <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] opacity-85 italic">
+                              <span>Encrypted with a previous device key</span>
+                              <button
+                                type="button"
+                                onClick={() => setKeyModalOpen(true)}
+                                className="underline text-[#FFEEA8] not-italic font-mono text-[10px] hover:opacity-80 cursor-pointer"
+                              >
+                                Restore key
+                              </button>
+                            </span>
+                          ) : (
+                            msg.text
+                          )}
                         </div>
                         <span className="font-mono text-[9px] text-[#71809B] px-1 flex items-center gap-1">
                           {msg.isEncrypted && (
