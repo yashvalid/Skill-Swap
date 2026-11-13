@@ -24,11 +24,16 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
+    const defaultSocketUrl =
+      import.meta.env.PROD && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'http://localhost:9000';
+
     const socketUrl =
       import.meta.env.VITE_SOCKET_URL ||
       import.meta.env.VITE_API_URL ||
       import.meta.env.VITE_BASE_URL ||
-      'http://localhost:9000';
+      defaultSocketUrl;
     const token = localStorage.getItem('token');
 
     const newSocket = io(socketUrl, {

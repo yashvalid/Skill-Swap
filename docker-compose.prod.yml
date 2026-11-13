@@ -1,0 +1,71 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=9000
+      - REDIS_URL=redis://redis:6379
+    expose:
+      - "9000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  coturn:
+    image: coturn/coturn:alpine
+    profiles: ["turn"]
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --min-port=49152
+      - --max-port=49252
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_STATIC_SECRET:-}
+      - --realm=${APP_DOMAIN:-skillswap.local}
+      - --external-ip=${TURN_EXTERNAL_IP:-}
+      - --no-cli
+
+volumes:
+  redis_data:
+  caddy_data:
+  caddy_config:
