@@ -1,0 +1,18 @@
+{
+  "appId": "com.skillswap.app",
+  "appName": "SkillSwap",
+  "webDir": "dist",
+  "backgroundColor": "#202738",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
+}
