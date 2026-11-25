@@ -53,6 +53,9 @@ describe('CORS & User Security', () => {
         process.env.NODE_ENV = 'production';
         try {
             assert.equal(app.isOriginAllowed('https://app.skillswap.example'), true);
+            assert.equal(app.isOriginAllowed('https://localhost'), true);
+            assert.equal(app.isOriginAllowed('capacitor://localhost'), true);
+            assert.equal(app.isOriginAllowed('http://localhost'), false);
             assert.equal(app.isOriginAllowed('https://evil.example.com'), false);
         } finally {
             process.env.NODE_ENV = prevEnv;

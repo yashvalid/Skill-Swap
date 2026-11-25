@@ -1,4 +1,4 @@
-const path = require('path');
+﻿const path = require('path');
 const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
@@ -35,6 +35,7 @@ if (process.env.NODE_ENV !== 'test') {
     connectDB();
 }
 
+const CAPACITOR_ORIGINS = ['capacitor://localhost', 'https://localhost'];
 const configuredOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL;
 const allowedOrigins = configuredOrigins
     ? configuredOrigins.split(',').map(o => o.trim()).filter(Boolean)
@@ -43,7 +44,7 @@ const allowedOrigins = configuredOrigins
 const isOriginAllowed = (origin) => {
     if (!origin) return true;
     if (process.env.NODE_ENV !== 'production') return true;
-    return allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+    return allowedOrigins.includes('*') || allowedOrigins.includes(origin) || CAPACITOR_ORIGINS.includes(origin);
 };
 
 const corsOptions = {
@@ -116,3 +117,4 @@ app.use((err, req, res, _next) => {
 
 module.exports = app;
 module.exports.isOriginAllowed = isOriginAllowed;
+

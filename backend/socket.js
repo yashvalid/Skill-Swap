@@ -260,6 +260,7 @@ const attachRedisAdapter = async (ioInstance) => {
 };
 
 const initSocket = async (server) => {
+    const capacitorOrigins = ['capacitor://localhost', 'https://localhost'];
     const configuredOrigins = process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL;
     const allowedOrigins = configuredOrigins
         ? configuredOrigins.split(',').map(o => o.trim()).filter(Boolean)
@@ -271,7 +272,13 @@ const initSocket = async (server) => {
         maxHttpBufferSize: 1e6,
         cors: {
             origin: (origin, callback) => {
-                if (!origin || process.env.NODE_ENV !== 'production' || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+                if (
+                    !origin ||
+                    process.env.NODE_ENV !== 'production' ||
+                    allowedOrigins.includes('*') ||
+                    allowedOrigins.includes(origin) ||
+                    capacitorOrigins.includes(origin)
+                ) {
                     return callback(null, true);
                 }
                 return callback(new Error('Not allowed by CORS'));

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { resolveBackendUrl } from '../services/api';
 import toast from 'react-hot-toast';
 
 const SocketContext = createContext();
@@ -24,16 +25,7 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const defaultSocketUrl =
-      import.meta.env.PROD && typeof window !== 'undefined'
-        ? window.location.origin
-        : 'http://localhost:9000';
-
-    const socketUrl =
-      import.meta.env.VITE_SOCKET_URL ||
-      import.meta.env.VITE_API_URL ||
-      import.meta.env.VITE_BASE_URL ||
-      defaultSocketUrl;
+    const socketUrl = resolveBackendUrl(import.meta.env.VITE_SOCKET_URL);
     const token = localStorage.getItem('token');
 
     const newSocket = io(socketUrl, {

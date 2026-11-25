@@ -1,0 +1,103 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Backend API URL (optional; defaults to VITE_API_URL repo variable or Android emulator 10.0.2.2:9000)'
+        required: false
+        type: string
+      socket_url:
+        description: 'Socket.IO URL (optional; defaults to api_url or VITE_SOCKET_URL)'
+        required: false
+        type: string
+  push:
+    branches: [main, master, dev]
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/android-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Install frontend dependencies
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Build web assets and sync Capacitor Android
+        working-directory: Frontend
+        env:
+          VITE_API_URL: ${{ inputs.api_url || vars.VITE_API_URL || '' }}
+          VITE_SOCKET_URL: ${{ inputs.socket_url || vars.VITE_SOCKET_URL || inputs.api_url || vars.VITE_API_URL || '' }}
+        run: npm run cap:sync
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
+
+      - name: Prepare release signing keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          KS_PATH="$RUNNER_TEMP/skillswap-release.jks"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 --decode > "$KS_PATH"
+            echo "ANDROID_KEYSTORE_PATH=$KS_PATH" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=${KEY_PASS:-$KS_PASS}" >> "$GITHUB_ENV"
+          else
+            GEN_PASS="$(openssl rand -hex 24)"
+            echo "::add-mask::$GEN_PASS"
+            keytool -genkeypair -noprompt \
+              -keystore "$KS_PATH" \
+              -storetype PKCS12 \
+              -alias skillswap \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$GEN_PASS" \
+              -keypass "$GEN_PASS" \
+              -dname "CN=SkillSwap, OU=Mobile, O=SkillSwap, L=Bengaluru, ST=KA, C=IN"
+            echo "ANDROID_KEYSTORE_PATH=$KS_PATH" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=$GEN_PASS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=skillswap" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=$GEN_PASS" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build signed release Android APK
+        working-directory: Frontend/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/skillswap-release.apk
+
+      - name: Upload signed release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillswap-release-apk
+          path: Frontend/android/app/build/outputs/apk/release/skillswap-release.apk
+          if-no-files-found: error
